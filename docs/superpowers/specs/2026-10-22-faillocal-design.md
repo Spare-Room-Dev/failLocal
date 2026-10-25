@@ -149,7 +149,7 @@ Ship in usable pieces with a LinkedIn post at each. The owner has said not to pl
 Each release must meet the anti-goal bar on its own: nothing half-working goes public.
 
 ## 8. Left to the builder
-- **Art style:** at the start of the build, show the owner 2–3 styled mockups of the same scene (polished top-down vs isometric at minimum) and let them pick. **[user]** All final art is **vector art drawn in code** (PixiJS graphics / SVG), with no bought, commissioned or AI-generated images **[user]**, so every element can be animated and recoloured for state changes and is fully owned.
+- **Art style: decided 25 Oct 2026 [user] — "The Living Diorama"**, an engineering-true isometric scale model of the site with outside services cabled into the board edge (chosen over "The Survey Sheet" and "Night Shift" mockups). The visual system is recorded in `DESIGN.md`; the reference mockups are in `.impeccable/mocks/directions/diorama/`. All final art is **vector art drawn in code** (PixiJS graphics / SVG), with no bought, commissioned or AI-generated images **[user]**, so every element can be animated and recoloured for state changes and is fully owned.
 - Register schema details, engine propagation algorithm, and PixiJS scene structure.
 - Exact revenue formula and default values. Defaults must be sourced or labelled as assumptions (e.g. a mid-size Pilbara mine's Mtpa, a dated iron ore price).
 - How "prepared" is represented (a variant file or an overlay of controls on one register), provided it is the same site with controls toggled.

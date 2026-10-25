@@ -19,7 +19,7 @@ The spec covers three subsystems with clean seams, so it is split into four plan
 | Plan | Delivers | Gate before starting |
 |---|---|---|
 | **1 (this)** | Register schema, model-site register, engine, CLI, Markdown continuity pack, decision log | none |
-| 2 | Site for **release 2** (first playable): welcome page, guided run, S1 hero, unprepared/prepared toggle, revenue counter, side panels, assumptions editor, free-play cuts, mobile tiering, CSP, Cloudflare Pages deploy, repo goes public | **Task 1 of Plan 2 is "show the owner 2–3 styled vector mockups of the same scene (top-down vs isometric at minimum) and STOP until they pick one."** The brainstorm mockups were throwaway and do not count. The owner's domain name is also needed for deploy. |
+| 2 | Site for **release 2** (first playable): welcome page, guided run, S1 hero, unprepared/prepared toggle, revenue counter, side panels, assumptions editor, free-play cuts, mobile tiering, CSP, Cloudflare Pages deploy, repo goes public | The art direction is decided (The Living Diorama, 25 Oct 2026), and Plan 2 builds against `DESIGN.md`. The owner's domain name is still needed for deploy. |
 | 3 | **Release 3**: Docker lab (PLC sim, HMI, mock ERP, vendor jump hosts, local identity/logging, Zeek + Suricata), Python harness, lab write-back of `measured` capabilities and observations, S3 detection evidence, "How this was tested" page, network overlay, assets tab, risk ranking with KEV | Plan 2 shipped |
 | 4 | **Full launch**: S2/S4 polish on the site, continuity pack PDF, video, "How I built this", limitations, practitioner review changes | Plan 3 shipped |
 

@@ -1,0 +1,804 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T13:08:15.137Z",
+  "title": "Design System: FailLocal",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(22.0% 0.007 67.4)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262523",
+          "#44413f",
+          "#64615d",
+          "#85827e",
+          "#a7a4a2",
+          "#cbc9c6",
+          "#f0eeed"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "canonical": "oklch(42.8% 0.015 67.4)",
+        "tonalRamp": [
+          "#0d0b09",
+          "#282421",
+          "#46413c",
+          "#666059",
+          "#88817a",
+          "#aaa49e",
+          "#cdc8c4",
+          "#f1eeeb"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "canonical": "oklch(50.8% 0.016 67.5)",
+        "tonalRamp": [
+          "#0d0b09",
+          "#282421",
+          "#46413c",
+          "#676059",
+          "#888179",
+          "#aaa49e",
+          "#cdc8c3",
+          "#f1eeeb"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(98.0% 0.006 84.6)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262523",
+          "#434240",
+          "#62615e",
+          "#84827f",
+          "#a6a5a2",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "paper-2": {
+        "role": "neutral",
+        "displayName": "Paper 2",
+        "canonical": "oklch(95.3% 0.010 81.8)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262522",
+          "#44423e",
+          "#64615b",
+          "#85827c",
+          "#a7a5a0",
+          "#cbc9c5",
+          "#efeeec"
+        ]
+      },
+      "gallery-floor": {
+        "role": "neutral",
+        "displayName": "Gallery Floor",
+        "canonical": "oklch(92.7% 0.012 79.8)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272522",
+          "#44423d",
+          "#64615a",
+          "#86827b",
+          "#a8a49f",
+          "#cbc9c5",
+          "#f0eeeb"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "canonical": "oklch(86.1% 0.019 78.2)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#282520",
+          "#46413a",
+          "#676057",
+          "#888177",
+          "#aaa49c",
+          "#cdc8c2",
+          "#f1eeea"
+        ]
+      },
+      "line-2": {
+        "role": "neutral",
+        "displayName": "Line 2",
+        "canonical": "oklch(79.6% 0.022 79.1)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#28241f",
+          "#474139",
+          "#676055",
+          "#898175",
+          "#aaa49a",
+          "#cdc8c1",
+          "#f1eee9"
+        ]
+      },
+      "computed-fill": {
+        "role": "neutral",
+        "displayName": "Computed Fill",
+        "canonical": "oklch(93.6% 0.015 80.7)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272521",
+          "#45413c",
+          "#656159",
+          "#868279",
+          "#a8a49e",
+          "#ccc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "state-wash": {
+        "role": "neutral",
+        "displayName": "State Wash",
+        "canonical": "oklch(97.4% 0.017 88.0)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272520",
+          "#45423b",
+          "#656158",
+          "#868278",
+          "#a8a59d",
+          "#cbc9c3",
+          "#f0eeea"
+        ]
+      },
+      "cut-wash": {
+        "role": "neutral",
+        "displayName": "Cut Wash",
+        "canonical": "oklch(96.0% 0.011 76.6)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272522",
+          "#44413e",
+          "#64615b",
+          "#86827c",
+          "#a8a4a0",
+          "#cbc9c5",
+          "#f0eeec"
+        ]
+      },
+      "meter-track": {
+        "role": "neutral",
+        "displayName": "Meter Track",
+        "canonical": "oklch(90.0% 0.017 79.3)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272520",
+          "#45413b",
+          "#666058",
+          "#878178",
+          "#a9a49d",
+          "#ccc9c3",
+          "#f0eeea"
+        ]
+      },
+      "stop-red": {
+        "role": "secondary",
+        "displayName": "Stop Red",
+        "canonical": "oklch(50.1% 0.178 28.7)",
+        "tonalRamp": [
+          "#1e0000",
+          "#480a07",
+          "#771b15",
+          "#aa2e25",
+          "#d15447",
+          "#ea8476",
+          "#ffb2a7",
+          "#ffe0d8"
+        ]
+      },
+      "stop-red-text": {
+        "role": "secondary",
+        "displayName": "Stop Red Text",
+        "canonical": "oklch(45.4% 0.163 28.7)",
+        "tonalRamp": [
+          "#1d0201",
+          "#460e0a",
+          "#73211a",
+          "#a4362c",
+          "#cb5a4d",
+          "#e5887b",
+          "#fcb5aa",
+          "#ffe2da"
+        ]
+      },
+      "degraded-amber": {
+        "role": "secondary",
+        "displayName": "Degraded Amber",
+        "canonical": "oklch(71.1% 0.147 77.5)",
+        "tonalRamp": [
+          "#160700",
+          "#391e00",
+          "#603800",
+          "#8a5400",
+          "#ae7600",
+          "#ca9c54",
+          "#e5c390",
+          "#ffebcb"
+        ]
+      },
+      "hivis": {
+        "role": "primary",
+        "displayName": "Hi-Vis Haul Yellow",
+        "canonical": "oklch(79.9% 0.159 80.2)",
+        "tonalRamp": [
+          "#160700",
+          "#391e00",
+          "#603800",
+          "#8b5400",
+          "#ae7600",
+          "#ca9d4a",
+          "#e6c48a",
+          "#ffebc7"
+        ]
+      },
+      "hivis-pressed": {
+        "role": "primary",
+        "displayName": "Hi-Vis Pressed",
+        "canonical": "oklch(74.2% 0.153 77.7)",
+        "tonalRamp": [
+          "#160700",
+          "#3a1e00",
+          "#613700",
+          "#8b5300",
+          "#af7500",
+          "#cb9c50",
+          "#e6c38e",
+          "#ffebc9"
+        ]
+      },
+      "hivis-parked": {
+        "role": "primary",
+        "displayName": "Parked Khaki",
+        "canonical": "oklch(75.5% 0.058 87.7)",
+        "tonalRamp": [
+          "#0f0b03",
+          "#2b2413",
+          "#4b4128",
+          "#6e603e",
+          "#90815e",
+          "#b0a488",
+          "#d1c8b3",
+          "#f4eee0"
+        ]
+      },
+      "oxide-low": {
+        "role": "tertiary",
+        "displayName": "Oxide Ground (low)",
+        "canonical": "oklch(48.6% 0.129 37.0)",
+        "tonalRamp": [
+          "#1a0401",
+          "#40170b",
+          "#6a2d1b",
+          "#97452d",
+          "#bd674e",
+          "#d8917c",
+          "#f1bbaa",
+          "#ffe5db"
+        ]
+      },
+      "oxide-high": {
+        "role": "tertiary",
+        "displayName": "Oxide Ground (high)",
+        "canonical": "oklch(61.2% 0.127 49.9)",
+        "tonalRamp": [
+          "#190500",
+          "#3e1902",
+          "#67310c",
+          "#934a1a",
+          "#b96c3f",
+          "#d49471",
+          "#eebda3",
+          "#ffe7d6"
+        ]
+      },
+      "ironstone-low": {
+        "role": "tertiary",
+        "displayName": "Ironstone Ridge (low)",
+        "canonical": "oklch(35.7% 0.058 29.6)",
+        "tonalRamp": [
+          "#120807",
+          "#321f1c",
+          "#563a35",
+          "#7d5650",
+          "#a07770",
+          "#be9c96",
+          "#dcc2be",
+          "#fbeae7"
+        ]
+      },
+      "ironstone-high": {
+        "role": "tertiary",
+        "displayName": "Ironstone Ridge (high)",
+        "canonical": "oklch(45.5% 0.083 42.2)",
+        "tonalRamp": [
+          "#150703",
+          "#371e14",
+          "#5d3728",
+          "#85523e",
+          "#a9735e",
+          "#c69988",
+          "#e3c1b3",
+          "#ffe9e0"
+        ]
+      },
+      "spinifex-low": {
+        "role": "tertiary",
+        "displayName": "Spinifex (low)",
+        "canonical": "oklch(66.5% 0.066 120.1)",
+        "tonalRamp": [
+          "#0a0d04",
+          "#232814",
+          "#3f4629",
+          "#5d663f",
+          "#7d885f",
+          "#a1aa89",
+          "#c6cdb4",
+          "#ecf1e1"
+        ]
+      },
+      "spinifex-high": {
+        "role": "tertiary",
+        "displayName": "Spinifex (high)",
+        "canonical": "oklch(73.2% 0.066 111.9)",
+        "tonalRamp": [
+          "#0b0c03",
+          "#252713",
+          "#424527",
+          "#62653c",
+          "#83865d",
+          "#a5a887",
+          "#c9ccb3",
+          "#eef0e0"
+        ]
+      },
+      "galvanised": {
+        "role": "tertiary",
+        "displayName": "Galvanised Plant",
+        "canonical": "oklch(87.4% 0.013 86.8)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262521",
+          "#44423c",
+          "#64615a",
+          "#85827b",
+          "#a7a59f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "roof-steel": {
+        "role": "tertiary",
+        "displayName": "Roof Steel",
+        "canonical": "oklch(73.8% 0.007 233.7)",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#3f4244",
+          "#5e6264",
+          "#7f8386",
+          "#a2a6a8",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "haul-road": {
+        "role": "tertiary",
+        "displayName": "Haul Road",
+        "canonical": "oklch(72.3% 0.075 64.1)",
+        "tonalRamp": [
+          "#120902",
+          "#322110",
+          "#563c22",
+          "#7c5937",
+          "#9f7a57",
+          "#bd9f83",
+          "#dcc4af",
+          "#fbebde"
+        ]
+      },
+      "ore-load": {
+        "role": "tertiary",
+        "displayName": "Ore Load",
+        "canonical": "oklch(49.1% 0.126 38.8)",
+        "tonalRamp": [
+          "#190401",
+          "#3f170a",
+          "#692e1b",
+          "#96472c",
+          "#bb684d",
+          "#d6927b",
+          "#f0bbaa",
+          "#ffe6da"
+        ]
+      },
+      "wagon-dark": {
+        "role": "tertiary",
+        "displayName": "Ore Wagon",
+        "canonical": "oklch(33.6% 0.013 41.7)",
+        "tonalRamp": [
+          "#0d0b0a",
+          "#282423",
+          "#46403e",
+          "#675f5c",
+          "#89807d",
+          "#aaa3a1",
+          "#cdc8c6",
+          "#f1eeec"
+        ]
+      },
+      "plinth": {
+        "role": "tertiary",
+        "displayName": "Plinth",
+        "canonical": "oklch(33.7% 0.010 61.2)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#272423",
+          "#45413e",
+          "#65605c",
+          "#86817d",
+          "#a8a4a1",
+          "#ccc8c6",
+          "#f0eeec"
+        ]
+      },
+      "plate-engraving": {
+        "role": "tertiary",
+        "displayName": "Plate Engraving",
+        "canonical": "oklch(83.1% 0.018 73.0)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#282420",
+          "#46413b",
+          "#676057",
+          "#898178",
+          "#aaa49c",
+          "#cdc8c2",
+          "#f1eeea"
+        ]
+      },
+      "shade-dark": {
+        "role": "neutral",
+        "displayName": "Shade Dark (facet pole)",
+        "canonical": "oklch(24.1% 0.027 355.1)",
+        "tonalRamp": [
+          "#0e0a0b",
+          "#2b2225",
+          "#4b3e42",
+          "#6d5c62",
+          "#8f7c83",
+          "#b0a0a5",
+          "#d1c5c9",
+          "#f4ecef"
+        ]
+      },
+      "shade-lite": {
+        "role": "neutral",
+        "displayName": "Shade Lite (facet pole)",
+        "canonical": "oklch(97.0% 0.029 82.6)",
+        "tonalRamp": [
+          "#0d0b07",
+          "#29241d",
+          "#474136",
+          "#696051",
+          "#8a8171",
+          "#aba497",
+          "#cec8be",
+          "#f2eee7"
+        ]
+      },
+      "cast-shadow": {
+        "role": "neutral",
+        "displayName": "Cast Shadow",
+        "canonical": "oklch(25.5% 0.062 37.2)",
+        "tonalRamp": [
+          "#130806",
+          "#331f1a",
+          "#573a31",
+          "#7d564a",
+          "#a1776b",
+          "#bf9c92",
+          "#ddc2ba",
+          "#fceae5"
+        ]
+      },
+      "hatch-ink": {
+        "role": "neutral",
+        "displayName": "Hatch Ink",
+        "canonical": "oklch(21.6% 0.007 67.4)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262523",
+          "#44413f",
+          "#64615d",
+          "#85827e",
+          "#a7a4a1",
+          "#cbc9c6",
+          "#f0eeed"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The landing question only; 34px on phone."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Detail panel heading (process area name)."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Day number and revenue-at-risk value; tabular."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Service names, scenario name, plaque names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "App chrome text; tabular numerals."
+      },
+      "body-long": {
+        "displayName": "Body Long",
+        "purpose": "Landing prose, max 31em."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Status lines, legend, controls, stocks, continuity rows."
+      },
+      "tag": {
+        "displayName": "Tag",
+        "purpose": "Provenance tags only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-float",
+        "value": "0 1px 0 rgba(29,26,23,.04), 0 6px 14px -8px rgba(60,40,25,.25)",
+        "purpose": "Service cards floating over the stage only."
+      },
+      {
+        "name": "hivis-lift",
+        "value": "0 1px 0 rgba(29,26,23,.25), 0 10px 22px -12px rgba(150,95,10,.55)",
+        "purpose": "Primary landing button."
+      },
+      {
+        "name": "toggle-knob",
+        "value": "0 1px 2px rgba(29,26,23,.3)",
+        "purpose": "Switch thumb."
+      },
+      {
+        "name": "scene-cast",
+        "value": "fill #3b160b @ 0.34, blur ~1.6k px; hull(footprint ∪ footprint + h·(1.5, −0.15))",
+        "purpose": "Ground shadow of every scene object (PixiJS: graphics fill + blur filter)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-ui",
+        "value": "cubic-bezier(.2,.8,.2,1) 0.2s",
+        "purpose": "Switch knob, primary-button arrow nudge."
+      },
+      {
+        "name": "ui-fade",
+        "value": "0.15s",
+        "purpose": "Button background and ghost circle fill."
+      },
+      {
+        "name": "belt",
+        "value": "9s linear infinite dash offset",
+        "purpose": "Conveyor ore dashes."
+      },
+      {
+        "name": "cut-pulse",
+        "value": "2.4s ease-in-out infinite, opacity .25 to 1",
+        "purpose": "Ring at a severed cable."
+      },
+      {
+        "name": "cable-dot",
+        "value": "5–7s per run, staggered",
+        "purpose": "Travelling dot on a live cable."
+      },
+      {
+        "name": "dust",
+        "value": "puff every 0.22s, 2.6s life, fade from 0.42",
+        "purpose": "Dust behind moving haul trucks."
+      },
+      {
+        "name": "frame-throttle",
+        "value": "~30ms",
+        "purpose": "Scene frame update cadence."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "still engine frame; static dots; no pulse, belt or UI transitions",
+        "purpose": "prefers-reduced-motion fallback."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "760px"
+      }
+    ],
+    "projection": {
+      "type": "true 2:1 dimetric",
+      "formula": "screenX = ox + (x − y)·k; screenY = oy + (x + y)·k/2 − z·k·1.2247",
+      "axes": "+x screen lower-right, +y screen lower-left, z up, north top corner",
+      "units": "metres; board 720 × 480 m",
+      "k": {
+        "app": 0.83,
+        "landing": 1.18
+      },
+      "depthSort": "x + y"
+    },
+    "lighting": {
+      "lightVector": "normalize(−1, 0.1, 1.05)",
+      "faceTone": "b = dot(n̂, L)·0.8 − 0.12; b<0: mix(base, #2a1a20, 0.6|b|); b>0: mix(base, #fff4e0, 0.5b)",
+      "canonicalFaces": {
+        "top": 0.458,
+        "yFace": -0.065,
+        "xFace": -0.67
+      },
+      "groundFacets": "20 m grid, ±4.5 m jitter, b ≈ top − 0.42 ± 0.045",
+      "shadowVector": "(1.5, −0.15) m per m of height"
+    },
+    "hatch": {
+      "pattern": "7px tile rotated 26.565°",
+      "line": "#1c1916 1.5px @ .62",
+      "wash": "#1c1916 @ .08",
+      "outline": "#1c1916 1.1px dashed 5/3 @ .8"
+    }
+  },
+  "components": [
+    {
+      "name": "Service Card",
+      "kind": "card",
+      "refersTo": "service-card",
+      "description": "Outside service cabled into the board; Cut on the right.",
+      "html": "<div class=\"ds-svc\"><svg class=\"ds-ico\" viewBox=\"0 0 32 32\" width=\"30\" height=\"30\"><path d=\"M9 22h15a5 5 0 0 0 .6-10 7 7 0 0 0-13.5-1.6A5.8 5.8 0 0 0 9 22z\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/></svg><div><b>Cloud login</b><span class=\"ds-st\">Up</span></div><button class=\"ds-cut\" aria-pressed=\"false\">Cut</button></div>",
+      "css": ".ds-svc{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px;width:240px;height:58px;padding:0 8px 0 9px;background:#faf8f4;border:1px solid #c4bbad;border-radius:6px;box-shadow:0 1px 0 rgba(29,26,23,.04),0 6px 14px -8px rgba(60,40,25,.25);font-family:Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc b{display:block;font-size:13px;font-weight:680;font-stretch:88%;line-height:1.15}.ds-st{font-size:11.5px;color:#554e47;font-stretch:94%}.ds-cut{height:28px;padding:0 8px;border:1px solid #c4bbad;border-radius:5px;background:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-cut:hover{border-color:#1d1a17;background:#fff}.ds-cut:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+    },
+    {
+      "name": "Service Card, Cut",
+      "kind": "card",
+      "refersTo": "service-card-cut",
+      "description": "Cut state: dashed ink border, slashed icon, red status, Restore.",
+      "html": "<div class=\"ds-svc-cut\"><svg viewBox=\"0 0 32 32\" width=\"30\" height=\"30\"><rect x=\"8\" y=\"5\" width=\"15\" height=\"20\" rx=\"1.5\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\"/><path d=\"M4 28L28 4\" stroke=\"#b3261e\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><div><b>Hosted ERP</b><span>Cut since day 0</span></div><button class=\"ds-restore\" aria-pressed=\"true\">Restore</button></div>",
+      "css": ".ds-svc-cut{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px;width:240px;height:58px;padding:0 8px 0 9px;background:#f6f1ea;border:1px dashed #1d1a17;border-radius:6px;font-family:Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc-cut b{display:block;font-size:13px;font-weight:680;font-stretch:88%}.ds-svc-cut span{font-size:11.5px;font-weight:650;color:#b3261e;font-stretch:94%}.ds-restore{height:28px;padding:0 8px;border:1px solid #1d1a17;border-radius:5px;background:#1d1a17;color:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-restore:hover{background:#3a3430}.ds-restore:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one hi-vis call to action on the landing page.",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\">Show me the site <svg width=\"18\" height=\"14\" viewBox=\"0 0 18 14\"><path d=\"M1 7h15M10.5 1.5L16 7l-5.5 5.5\" fill=\"none\" stroke=\"#1d1a17\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></a>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 20px 0 22px;border-radius:7px;background:#f2b01e;color:#1d1a17;font-family:Archivo,system-ui,sans-serif;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 1px 0 rgba(29,26,23,.25),0 10px 22px -12px rgba(150,95,10,.55);transition:background .15s,transform .15s}.ds-btn-primary svg{transition:transform .2s cubic-bezier(.2,.8,.2,1)}.ds-btn-primary:hover{background:#e09d0c}.ds-btn-primary:hover svg{transform:translateX(3px)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid #1d1a17;outline-offset:3px}"
+    },
+    {
+      "name": "Provenance Tags",
+      "kind": "chip",
+      "refersTo": "tag-computed",
+      "description": "Four kinds distinguished by border: computed, assumed, sourced, measured.",
+      "html": "<span class=\"ds-tag ds-computed\">computed</span> <span class=\"ds-tag ds-assumed\">assumed</span> <span class=\"ds-tag ds-sourced\">sourced</span> <span class=\"ds-tag ds-measured\">measured</span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:3px;font-family:Archivo,system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.02em;font-stretch:92%;color:#554e47;border:1px solid #c4bbad}.ds-computed{background:#efe9df;border-color:#efe9df}.ds-assumed{border-style:dashed}.ds-sourced{border-color:#6c645c}.ds-measured{border-color:#6c645c;border-width:1px 1px 2px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "nav",
+      "refersTo": "segmented-active",
+      "description": "Unprepared / Prepared site toggle.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"true\">Unprepared</button><button aria-pressed=\"false\">Prepared</button></div>",
+      "css": ".ds-seg{display:inline-flex;border:1px solid #c4bbad;border-radius:7px;padding:2px;background:#faf8f4;font-family:Archivo,system-ui,sans-serif}.ds-seg button{border:0;background:none;height:26px;padding:0 9px;border-radius:5px;font:inherit;font-size:12.5px;font-weight:600;color:#554e47;cursor:pointer}.ds-seg button[aria-pressed=\"true\"]{background:#1d1a17;color:#faf8f4}.ds-seg button:hover:not([aria-pressed=\"true\"]){background:#f3efe8;color:#1d1a17}.ds-seg button:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+    },
+    {
+      "name": "Scenario Badges",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill badges; Projection is dashed.",
+      "html": "<span class=\"ds-badge\">Fictional model site</span> <span class=\"ds-badge ds-dash\">Projection</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid #1d1a17;border-radius:999px;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-weight:600;font-stretch:94%;color:#1d1a17}.ds-dash{border-style:dashed}"
+    },
+    {
+      "name": "Stock Meter",
+      "kind": "custom",
+      "description": "Days of stock on site with a computed tag.",
+      "html": "<div class=\"ds-stk\"><em>Diesel</em><span class=\"ds-trk\"><i style=\"width:23%\"></i></span><b>1.4 d</b><span class=\"ds-tag2\">computed</span></div>",
+      "css": ".ds-stk{display:grid;grid-template-columns:64px 120px auto auto;align-items:center;gap:8px;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:#1d1a17}.ds-stk em{font-style:normal;color:#554e47;font-stretch:94%}.ds-trk{height:6px;border-radius:3px;background:#e4ddd2;position:relative;overflow:hidden}.ds-trk i{position:absolute;left:0;top:0;bottom:0;background:#1d1a17;border-radius:3px}.ds-stk b{font-weight:680}.ds-tag2{height:16px;padding:0 5px;border-radius:3px;background:#efe9df;font-size:10px;font-weight:600;color:#554e47;display:inline-flex;align-items:center}"
+    },
+    {
+      "name": "State Box with Survey Flag",
+      "kind": "custom",
+      "refersTo": "state-box",
+      "description": "Degraded half flag in the detail panel.",
+      "html": "<div class=\"ds-state\"><svg width=\"18\" height=\"20\" viewBox=\"0 0 16 18\"><path d=\"M2 17V1\" stroke=\"#1d1a17\" stroke-width=\"1.2\"/><rect x=\"2.6\" y=\"1.5\" width=\"11\" height=\"8\" fill=\"#fff\" stroke=\"#1d1a17\"/><path d=\"M2.6 9.5V1.5L13.6 9.5z\" fill=\"#d4940a\" stroke=\"#1d1a17\" stroke-linejoin=\"round\"/></svg><b>Degraded</b><span>Diesel rationed</span></div>",
+      "css": ".ds-state{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1px solid #c4bbad;border-radius:6px;background:#fbf6ea;font-family:Archivo,system-ui,sans-serif;font-size:14px;color:#1d1a17}.ds-state b{font-weight:720}"
+    },
+    {
+      "name": "Plaque, Selected",
+      "kind": "custom",
+      "refersTo": "plaque-selected",
+      "description": "In-scene label beside a survey flag; selected inverts to ink.",
+      "html": "<div class=\"ds-plq\"><b>Haulage</b><span><strong>Degraded</strong> · Diesel rationed</span></div>",
+      "css": ".ds-plq{display:inline-flex;flex-direction:column;justify-content:center;height:31px;padding:0 7px;border-radius:3px;background:#1d1a17;border:1.2px solid #1d1a17;font-family:Archivo,system-ui,sans-serif;color:#faf8f4}.ds-plq b{font-size:11px;font-weight:680;line-height:1.1}.ds-plq span{font-size:10.5px;font-stretch:92%;color:#e9e2d6;line-height:1.2}.ds-plq strong{font-weight:700;color:#faf8f4}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Living Diorama",
+    "overview": "FailLocal is the scale model of the mine that stands in a head-office foyer, switched on. An engineering-true dimetric slab of Pilbara ground, cut away at the edges to show the strata, sits on a dark plinth on a pale gallery floor. The outside services (Hosted ERP, Cloud login, Perth IROC link, Vendor remote access) are physical cables that run down from the top edge and plug into posts on the board's northern rim. Cutting one breaks the cable, and the consequence spreads across the land: trucks park at the fuel bay, ground is hatched, survey flags go up. The world refuses the flat map-plus-sidebar dashboard.\n\nTwo materials share the screen and must never blur into each other. The **scene** is lit, faceted and earthy: iron-oxide reds and ochres, dark ironstone, grey-green spinifex, galvanised plant, hi-vis yellow trucks, dark ore wagons, all drawn as flat-shaded polygons under one light. The **chrome** is paper and ink: warm off-white panels, near-black type in Archivo with the width axis doing the work of hierarchy, hairline rules, and small boxed provenance tags on every number. Chrome is quiet so the model can be loud; the only saturated colours in the chrome are the state colours and the hi-vis call to action.\n\nDensity is that of an operations tool, not a marketing page: 14 px body, 12 px labels, tabular numerals everywhere, a docked 372 px detail panel and a 92 px timeline strip. The landing page is the one place the type opens up (52 px display, 17 px prose) and the model is cropped full-bleed behind it.",
+    "keyCharacteristics": [
+      "True 2:1 dimetric projection, every dimension in metres, one north-west light, computed facet tones.",
+      "Paper-and-ink chrome; colour reserved for state and for the scene.",
+      "State told by shape first (flag form, hatching, dashes, parked marker), colour second.",
+      "Every number carries a provenance tag: sourced, measured, assumed or computed.",
+      "Dashed always means \"not solid\": assumed, projected, cut or dead.",
+      "The art is vector drawn in code. No bitmaps, no stock imagery."
+    ],
+    "rules": [
+      {
+        "name": "The No Green Rule",
+        "body": "Normal is a white open pennant, not a green anything. The scene owns the earth palette; the chrome has only two signal hues, and \"fine\" is the absence of signal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Parked Is Desaturated Rule",
+        "body": "Anything not working loses its colour (parked trucks go khaki, a cut service's entry post goes from galvanised to `#8a817a`). Colour on the board means activity.",
+        "section": "colors"
+      },
+      {
+        "name": "The Width Before Size Rule",
+        "body": "Hierarchy comes from width and weight before size: display at 86%, figures at 90%, titles at 88 to 96%, labels at 92 to 94%, prose at 100%. Do not add a second typeface to get contrast.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Everything Rule",
+        "body": "`font-variant-numeric: tabular-nums` is set at the body. Counters, stocks, days and money must not jitter as engine output changes.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Sun Rule",
+        "body": "Every facet in the scene is toned by the same light vector and the same two shade poles. No hand-picked side colours, no second light, no gradients on solids.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Flat Chrome Rule",
+        "body": "Panels, the timeline and the top bar have no shadow. If chrome needs separation, it gets a hairline in `line`.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** project every scene object through the one dimetric function in metres, and depth-sort by `x + y`.",
+      "**Do** tone every facet with the one-sun function (`L = normalize(−1, 0.1, 1.05)`, poles `shade-dark` / `shade-lite`) and cast its shadow with the `(1.5, −0.15)` per-metre vector.",
+      "**Do** show state by shape first: full flag, half flag, open pennant, hatched ground, parked marker, severed cable. Colour reinforces; it never carries state alone.",
+      "**Do** put a provenance tag after every number on screen, distinguished by border treatment.",
+      "**Do** use dashes to mean \"not solid\": assumed tags, the Projection badge, the projected timeline, cut cards, dead network runs, the run beyond a cut.",
+      "**Do** set every numeral tabular and get hierarchy from Archivo's width axis before adding size.",
+      "**Do** desaturate whatever is not working: parked trucks to khaki, a cut service's entry post to grey.",
+      "**Do** keep the plinth plate \"FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA\" visible wherever the board's front edge is in frame.",
+      "**Do** render reduced motion as a still frame of the live engine state, not a blank or a placeholder."
+    ],
+    "donts": [
+      "**Don't** use green or any third signal hue for \"normal\"; normal is a white pennant.",
+      "**Don't** put shadows, gradients or textures on chrome panels; the chrome is paper and hairline.",
+      "**Don't** add a second light, hand-pick side colours, or shade solids with gradients.",
+      "**Don't** apply a perspective or rotation transform to the scene; the projection is dimetric and the camera does not tilt.",
+      "**Don't** draw cables as curves or free diagonals; they are octilinear with 9 px chamfers.",
+      "**Don't** place bitmap, AI-generated or stock imagery in the scene or chrome; all art is drawn in code.",
+      "**Don't** leave a stopped or parked thing in its working colour.",
+      "**Don't** put mining equipment where a real site would not: roads through the pit wall, spinifex on pads, a magazine beside the camp."
+    ]
+  }
+}

@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FailLocal · Hosted ERP lost · Day 6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ebe6de; --paper:#faf8f4; --paper-2:#f3efe8; --ink:#1d1a17; --ink-2:#554e47; --ink-3:#6c645c;
+  --line:#d8d0c4; --line-2:#c4bbad;
+  --stop:#b3261e; --degr:#d4940a; --norm:#2e7a5f; --hivis:#f2b01e;
+  --r:6px;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Archivo,system-ui,sans-serif;font-stretch:100%;font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+::selection{background:#f2b01e;color:#1d1a17}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:4px}
+*{scrollbar-width:thin;scrollbar-color:#b9ae9f transparent}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#b9ae9f;border-radius:8px}
+button{font:inherit;color:inherit;cursor:pointer}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 372px;grid-template-rows:60px minmax(0,1fr) 92px;height:100vh;min-height:640px}
+
+/* top bar */
+.bar{grid-column:1;grid-row:1;display:flex;align-items:center;gap:14px;padding:0 18px 0 20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:760;font-stretch:96%;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.brand svg{display:block}
+.sep{width:1px;height:28px;background:var(--line)}
+.scen{display:flex;flex-direction:column;min-width:0}
+.scen b{font-size:15px;font-weight:680;letter-spacing:-.005em;white-space:nowrap}
+.scen span{font-size:12px;color:var(--ink-2);white-space:nowrap;font-stretch:92%}
+.badges{display:flex;gap:6px}
+.badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid var(--ink);border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;font-stretch:94%}
+.badge.dash{border-style:dashed}
+.ctrls{margin-left:auto;display:flex;align-items:center;gap:12px}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;padding:2px;background:var(--paper)}
+.seg button{border:0;background:none;height:26px;padding:0 9px;border-radius:5px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:hover:not([aria-pressed="true"]){background:var(--paper-2);color:var(--ink)}
+.sw{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;border:0;background:none;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:0}
+.sw i{width:30px;height:18px;border-radius:9px;background:#cfc6b9;position:relative;display:block;transition:background .2s}
+.sw i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--paper);box-shadow:0 1px 2px rgba(29,26,23,.3);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.sw[aria-pressed="true"] i{background:var(--ink)}.sw[aria-pressed="true"] i::after{transform:translateX(12px)}
+.sw:hover{color:var(--ink)}
+
+/* stage */
+.stage{grid-column:1;grid-row:2;position:relative;overflow:hidden;background:radial-gradient(120% 90% at 45% 45%,#f1ede6 0%,#e8e2d9 70%,#e1dad0 100%)}
+#world{position:absolute;inset:0;width:100%;height:100%;display:block}
+.services{position:absolute;left:0;right:0;top:10px;height:60px;pointer-events:none}
+.svc{position:absolute;top:0;width:240px;height:58px;transform:translateX(-50%);transform-origin:50% 0;display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;padding:0 8px 0 9px;background:var(--paper);border:1px solid var(--line-2);border-radius:var(--r);box-shadow:0 1px 0 rgba(29,26,23,.04),0 6px 14px -8px rgba(60,40,25,.25);pointer-events:auto}
+.svc .ico{width:30px;height:30px;display:block}
+.svc b{display:block;font-size:13px;font-weight:680;line-height:1.15;white-space:nowrap;font-stretch:88%}
+.svc .st{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-2);font-stretch:94%;white-space:nowrap}
+.svc.cut{border:1px dashed var(--ink);background:#f6f1ea}
+.svc.cut .st{color:var(--stop);font-weight:650}
+.cutbtn{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid var(--line-2);border-radius:5px;background:var(--paper);font-size:12px;font-weight:650}
+.cutbtn:hover{border-color:var(--ink);background:#fff}
+.cutbtn.restore{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.cutbtn.restore:hover{background:#3a3430}
+.legend{position:absolute;right:16px;bottom:12px;display:flex;gap:14px;align-items:center;padding:7px 11px;background:rgba(250,248,244,.86);border:1px solid var(--line);border-radius:var(--r);font-size:11.5px;color:var(--ink-2);font-stretch:94%}
+.legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.legend b{color:var(--ink);font-weight:650}
+
+/* timeline */
+.time{grid-column:1;grid-row:3;display:grid;grid-template-columns:186px minmax(0,1fr) 250px;align-items:center;border-top:1px solid var(--line);background:var(--paper)}
+.day{display:flex;align-items:center;gap:12px;padding-left:20px}
+.play{width:38px;height:38px;border-radius:50%;border:1px solid var(--ink);background:var(--paper);display:grid;place-items:center}
+.play:hover{background:var(--ink)}.play:hover path{fill:var(--paper)}
+.day .n{font-size:24px;font-weight:720;letter-spacing:-.02em;line-height:1;font-stretch:90%}
+.day .n small{font-size:13px;font-weight:550;color:var(--ink-2);letter-spacing:0}
+.day .m{font-size:11.5px;color:var(--ink-2);margin-top:3px;font-stretch:92%;line-height:1.25}
+.track{position:relative;height:92px}
+.track svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.stocks{padding:0 20px 0 14px;border-left:1px solid var(--line);height:64px;display:flex;flex-direction:column;justify-content:space-between}
+.stk{display:grid;grid-template-columns:64px 1fr auto auto;align-items:center;gap:8px;font-size:12px}
+.stk em{font-style:normal;color:var(--ink-2);font-stretch:94%}
+.stk .bar2{height:6px;border-radius:3px;background:#e4ddd2;position:relative;overflow:hidden}
+.stk .bar2 i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:3px}
+.stk b{font-weight:680;min-width:34px;text-align:right}
+
+/* provenance tags */
+.tag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.02em;color:var(--ink-2);border:1px solid var(--line-2);font-stretch:92%;white-space:nowrap;vertical-align:middle}
+.tag.computed{background:#efe9df;border-color:#efe9df}
+.tag.assumed{border-style:dashed}
+.tag.sourced{border-color:var(--ink-3)}
+.tag.measured{border-color:var(--ink-3);border-width:1px 1px 2px}
+
+/* right column */
+.right{grid-column:2;grid-row:1/4;background:var(--paper);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.rev{padding:16px 20px 16px;border-bottom:1px solid var(--line)}
+.rev .lab{font-size:12.5px;color:var(--ink-2);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.odo{display:flex;align-items:center;gap:3px;margin:7px 0 5px}
+.odo i{font-style:normal;width:21px;height:30px;display:grid;place-items:center;border-radius:3px;background:#efe9df;font-size:19px;font-weight:650;color:#a99f93;box-shadow:inset 0 -1px 0 rgba(29,26,23,.08)}
+.odo i.on{color:var(--ink);background:#e7e0d5}
+.odo .u{font-size:14px;font-weight:650;margin-left:6px}
+.odo .gap{width:5px}
+.rev .note{font-size:12px;color:var(--ink-2)}
+.rev hr{border:0;border-top:1px solid var(--line);margin:13px 0 12px}
+.risk{display:flex;align-items:baseline;gap:8px;margin:5px 0 4px}
+.risk .v{font-size:25px;font-weight:720;letter-spacing:-.02em;font-stretch:92%}
+.risk .v small{font-size:14px;font-weight:600;letter-spacing:0;color:var(--ink-2)}
+.work{font-size:12px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.panel{flex:1;min-height:0;overflow:auto;padding:16px 20px 18px}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ph h2{margin:0;font-size:23px;font-weight:740;letter-spacing:-.02em;font-stretch:94%;line-height:1.1}
+.ph p{margin:3px 0 0;font-size:12px;color:var(--ink-2)}
+.x{width:30px;height:30px;border:1px solid var(--line-2);border-radius:6px;background:var(--paper);display:grid;place-items:center;flex:none}
+.x:hover{border-color:var(--ink)}
+.state{margin:14px 0 0;padding:11px 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fbf6ea}
+.state .s1{display:flex;align-items:center;gap:8px;font-size:14px}
+.state .s1 b{font-weight:720}
+.fleet{display:flex;gap:4px;margin:9px 0 6px}
+.fleet svg{display:block}
+.state .s2{font-size:12px;color:var(--ink-2)}
+.why{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:12.5px;line-height:1.35}
+.why svg{flex:none;margin-top:1px}
+h3{font-size:12px;font-weight:700;margin:17px 0 6px;color:var(--ink);font-stretch:96%}
+.deps{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.deps li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.deps li>b{font-weight:500}.deps li>span:last-child{grid-column:1/3;font-size:11.5px;color:var(--ink-2)}
+.deps .val{display:flex;gap:6px;align-items:center;font-weight:650}
+dl{margin:0;display:grid;grid-template-columns:1fr auto;border-top:1px solid var(--line)}
+dt,dd{margin:0;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+dt{color:var(--ink-2)}
+dd{text-align:right;font-weight:650;display:flex;justify-content:flex-end;align-items:center;gap:6px}
+
+/* world labels */
+.plq text{font-family:Archivo,system-ui,sans-serif}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+.blink{animation:blink 2.4s ease-in-out infinite}
+@keyframes belt{to{stroke-dashoffset:-56}}
+.dio-ore{animation:belt 9s linear infinite}
+@media (prefers-reduced-motion: reduce){.blink,.dio-ore{animation:none}}
+
+/* phone */
+@media (max-width: 760px){
+  .app{display:block;height:auto}
+  .bar{flex-wrap:wrap;height:auto;padding:12px 16px;gap:10px}
+  .sep,.scen span{display:none}
+  .ctrls{margin-left:0;width:100%;justify-content:space-between}
+  .stage{height:auto;aspect-ratio:1030/600;overflow:visible}
+  .services{order:-1;position:relative;top:0;height:auto;display:flex;gap:8px;overflow-x:auto;padding:10px 16px;pointer-events:auto}
+  .svc{position:relative;transform:none;left:auto!important;flex:none;width:210px}
+  .stage{display:flex;flex-direction:column}
+  #world{position:relative;inset:auto;height:auto;aspect-ratio:1030/560}
+  .legend{position:relative;left:auto;bottom:auto;margin:0 16px 10px;flex-wrap:wrap;gap:8px}
+  .time{display:block;padding:12px 16px}
+  .day{padding:0}
+  .track{height:84px;margin:6px 0}
+  .stocks{border:0;padding:0;height:auto;gap:6px}
+  .right{border:0}
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: The head-office foyer scale model of the mine, alive. It is an engineering-true isometric diorama with the outside services physically cabled into the board, so cutting one visibly spreads across the land. It refuses the flat map-plus-sidebar dashboard.
+OWN-WORLD: Iron-oxide reds and ochres faceted under north-west light, grey-green spinifex, galvanised plant, hi-vis yellow trucks, dark ore wagons. Paper-and-ink chrome in Archivo (width axis, tabular numerals). Survey flags and hatched ground mark state; small boxed tags carry provenance.
+STORY: A recruiter sees a real-looking mine running, watches the ERP cable cut, trucks park and the crusher idle, then sees the prepared site hold, and concludes this candidate understands their industry.
+FIRST VIEWPORT: The diorama tile fills about 70% at left, with services cabled in along the top edge, the detail panel docked right, and the day timeline and stocks across the bottom. Primary action: cut/restore on the service row.
+FORM: Living Diorama, rank 1 of 7, seed abe831fd.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+<div class="app">
+  <header class="bar">
+    <div class="brand"><svg width="26" height="22" viewBox="0 0 26 22" aria-hidden="true"><path d="M1 20.5h24M4 16.5h18M7.5 12.5h11M11 8.5h4" stroke="#1d1a17" stroke-width="2" stroke-linecap="round"/><path d="M19 3.5l4-3" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/></svg>FailLocal</div>
+    <div class="sep"></div>
+    <div class="scen"><b>Hosted ERP lost</b><span>Modelled on Scope Systems, Perth, May 2026 <span class="tag sourced">sourced</span></span></div>
+    <div class="badges">
+      <span class="badge"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 9.5l4.5 2 4.5-2v-6L6 1.5l-4.5 2z M1.5 3.5L6 5.6l4.5-2.1M6 5.6v5.9" fill="none" stroke="#1d1a17" stroke-width="1.2" stroke-linejoin="round"/></svg>Fictional model site</span>
+      <span class="badge dash"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 9.5c2-1 3.2-5.5 5-5.5s3 3 5 2" fill="none" stroke="#1d1a17" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 1.6"/></svg>Projection</span>
+    </div>
+    <div class="ctrls">
+      <div class="seg" role="group" aria-label="Site version"><button aria-pressed="true">Unprepared</button><button aria-pressed="false">Prepared</button></div>
+      <button class="sw" aria-pressed="false"><i></i>Show the network</button>
+    </div>
+  </header>
+
+  <main class="stage" aria-label="Isometric model of the fictional iron ore site, day 6 of the Hosted ERP outage">
+    <svg id="world" viewBox="0 0 1068 748" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Fictional Pilbara iron ore site. Diesel and explosives ordering stopped; haulage, crushing, drill and blast, work orders and payroll degraded; rail normal.">
+      <g id="wires"></g>
+    </svg>
+    <div class="services" id="services"></div>
+    <div class="legend" aria-label="Status key">
+      <span><svg width="16" height="18" viewBox="0 0 16 18"><path d="M2 17V1" stroke="#1d1a17" stroke-width="1.2"/><rect x="2.6" y="1.5" width="11" height="8" fill="#b3261e" stroke="#1d1a17" stroke-width="1"/><path d="M5 3.5l6 4M11 3.5l-6 4" stroke="#fff" stroke-width="1.2"/></svg><b>Stopped</b> full flag, hatched ground</span>
+      <span><svg width="16" height="18" viewBox="0 0 16 18"><path d="M2 17V1" stroke="#1d1a17" stroke-width="1.2"/><rect x="2.6" y="1.5" width="11" height="8" fill="#fff" stroke="#1d1a17" stroke-width="1"/><path d="M2.6 9.5V1.5L13.6 9.5z" fill="#d4940a" stroke="#1d1a17" stroke-width="1" stroke-linejoin="round"/></svg><b>Degraded</b> half flag</span>
+      <span><svg width="16" height="18" viewBox="0 0 16 18"><path d="M2 17V1" stroke="#1d1a17" stroke-width="1.2"/><path d="M2.6 1.5L13.6 5.5 2.6 9.5z" fill="#fff" stroke="#1d1a17" stroke-width="1" stroke-linejoin="round"/></svg><b>Normal</b> open pennant</span>
+      <span><svg width="13" height="14" viewBox="0 0 13 14"><rect x="1" y="1" width="11" height="11" rx="1.5" fill="#fbf8f2" stroke="#1d1a17"/><rect x="3.9" y="3.4" width="1.7" height="6.2" fill="#1d1a17"/><rect x="7.4" y="3.4" width="1.7" height="6.2" fill="#1d1a17"/></svg><b>Parked</b> truck</span>
+    </div>
+  </main>
+
+  <footer class="time">
+    <div class="day">
+      <button class="play" aria-label="Play the outage from day 6"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3.5 1.8v10.4L12 7z" fill="#1d1a17"/></svg></button>
+      <div><div class="n">Day 6 <small>of 12</small></div><div class="m">Projection: what if<br>the workarounds ran out</div></div>
+    </div>
+    <div class="track"><svg id="tl" viewBox="0 0 640 92"></svg></div>
+    <div class="stocks" aria-label="Stocks on site">
+      <div class="stk"><em>Diesel</em><span class="bar2"><i style="width:23%"></i></span><b>1.4 d</b><span class="tag computed">computed</span></div>
+      <div class="stk"><em>ROM pad</em><span class="bar2"><i style="width:10%"></i></span><b>0.6 d</b><span class="tag computed">computed</span></div>
+      <div class="stk"><em>Stockpile</em><span class="bar2"><i style="width:35%"></i></span><b>2.1 d</b><span class="tag computed">computed</span></div>
+    </div>
+  </footer>
+
+  <aside class="right">
+    <section class="rev" aria-label="Revenue counter">
+      <div class="lab">Production deferred so far <span class="tag computed">computed</span></div>
+      <div class="odo" aria-label="0 tonnes"><i>0</i><i>0</i><span class="gap"></span><i>0</i><i>0</i><i>0</i><span class="gap"></span><i>0</i><i>0</i><i class="on">0</i><span class="u">t</span></div>
+      <div class="note">Stockpile still buffering rail</div>
+      <hr>
+      <div class="lab">Revenue at risk once the stockpile runs dry <span class="tag computed">computed</span></div>
+      <div class="risk"><span class="v">≈ US$11 M <small>per day</small></span></div>
+      <div class="work"><span>40 Mt/a</span><span class="tag assumed">assumed</span><span>×</span><span>US$100/t</span><span class="tag assumed">assumed</span><span>÷ 365 days</span></div>
+    </section>
+    <section class="panel" aria-labelledby="ph">
+      <div class="ph">
+        <div><h2 id="ph">Haulage</h2><p>Process area: pit ramp, haul roads and fuel bay</p></div>
+        <button class="x" aria-label="Close the Haulage panel"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="#1d1a17" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="state">
+        <div class="s1"><svg width="18" height="20" viewBox="0 0 16 18" aria-hidden="true"><path d="M2 17V1" stroke="#1d1a17" stroke-width="1.2"/><rect x="2.6" y="1.5" width="11" height="8" fill="#fff" stroke="#1d1a17" stroke-width="1"/><path d="M2.6 9.5V1.5L13.6 9.5z" fill="#d4940a" stroke="#1d1a17" stroke-width="1" stroke-linejoin="round"/></svg><b>Degraded</b><span>Diesel rationed</span></div>
+        <div class="fleet" id="fleet" aria-label="5 trucks hauling, 3 parked"></div>
+        <div class="s2">5 of 8 trucks hauling; 3 parked at the fuel bay <span class="tag computed">computed</span></div>
+      </div>
+      <p class="why"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h4.5M10 8h4.5" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/><path d="M6 5.5v5M10 5.5v5" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/></svg><span>Why this stops: diesel is ordered through the hosted ERP.</span></p>
+      <h3>Depends on</h3>
+      <ul class="deps">
+        <li><b>Diesel stock</b> <span class="val">1.4 d <i class="tag computed">computed</i></span><span>Runs out around day 7.4 at the rationed burn</span></li>
+        <li><b>Broken-ore stock</b> <span class="val">Drawing down</span><span>No new blasts while explosives ordering is stopped</span></li>
+        <li><b>Perth IROC supervision</b> <span class="val">Link up</span><span>Autonomous haulage is supervised from Perth</span></li>
+      </ul>
+      <h3>Continuity</h3>
+      <dl>
+        <dt>Maximum tolerable outage</dt><dd>24 h <span class="tag assumed">assumed</span></dd>
+        <dt>Recovery target</dt><dd>12 h <span class="tag assumed">assumed</span></dd>
+        <dt>Independent copy</dt><dd>n/a</dd>
+        <dt>Last restore test</dt><dd>None</dd>
+        <dt>Owner</dt><dd>Mining Superintendent</dd>
+      </dl>
+    </section>
+  </aside>
+</div>
+
+<script>
+/* FailLocal diorama engine.
+   True 2:1 dimetric projection, every dimension in metres, one light from the north-west.
+   World axes: +x runs to screen lower-right, +y to screen lower-left, z up. North is the top corner. */
+const DIORAMA = (() => {
+  const SQ = 1.2247;               // vertical metre relative to the plan unit (true dimetric, 30 deg camera)
+  const PI = Math.PI;
+
+  // ---------- small utilities
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const f1 = v => Math.round(v * 10) / 10;
+  function h2r(h) { h = h.replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+  function r2h(c) { return '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join(''); }
+  function mix(a, b, t) { const A = h2r(a), B = h2r(b); return r2h(A.map((v, i) => v + (B[i] - v) * t)); }
+  const DARK = '#2a1a20', LITE = '#fff4e0';
+  function tone(c, b) { return b < 0 ? mix(c, DARK, Math.min(1, -b) * 0.6) : mix(c, LITE, Math.min(1, b) * 0.5); }
+  const LV = (() => { const v = [-1, 0.1, 1.05]; const m = Math.hypot(...v); return v.map(x => x / m); })();
+  function lit(n) { const m = Math.hypot(n[0], n[1], n[2]) || 1; return ((n[0] * LV[0] + n[1] * LV[1] + n[2] * LV[2]) / m) * 0.8 - 0.12; }
+  const T_TOP = lit([0, 0, 1]), T_Y = lit([0, 1, 0]), T_X = lit([1, 0, 0]);
+  const SH = [1.5, -0.15];          // ground shadow vector per metre of height (light from NW, low sun)
+  const VIEW = [0.612, 0.612, 0.5]; // toward the camera
+
+  function vnoise(seed) {
+    const r = rng(seed), G = []; for (let i = 0; i < 4096; i++) G.push(r());
+    const g = (a, b) => G[((a & 63) * 64 + (b & 63))];
+    const s = t => t * t * (3 - 2 * t);
+    return (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = s(x - xi), v = s(y - yi);
+      return (g(xi, yi) * (1 - u) + g(xi + 1, yi) * u) * (1 - v) + (g(xi, yi + 1) * (1 - u) + g(xi + 1, yi + 1) * u) * v; };
+  }
+  function hull(P) {
+    const p = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    up.pop(); lo.pop(); return lo.concat(up);
+  }
+  function chaikin(pts, it = 2, closed = false) {
+    let p = pts;
+    for (let k = 0; k < it; k++) {
+      const o = []; const n = p.length;
+      if (!closed) o.push(p[0]);
+      for (let i = 0; i < (closed ? n : n - 1); i++) {
+        const a = p[i], b = p[(i + 1) % n];
+        o.push(a.map((v, j) => v * 0.75 + b[j] * 0.25), a.map((v, j) => v * 0.25 + b[j] * 0.75));
+      }
+      if (!closed) o.push(p[n - 1]);
+      p = o;
+    }
+    return p;
+  }
+  function offsetLine(pts, d) {
+    const n = pts.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+      let tx = b[0] - a[0], ty = b[1] - a[1]; const m = Math.hypot(tx, ty) || 1; tx /= m; ty /= m;
+      out.push([pts[i][0] - ty * d, pts[i][1] + tx * d, pts[i][2] || 0]);
+    }
+    return out;
+  }
+  function distSeg(px, py, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1]; const L = dx * dx + dy * dy || 1;
+    let t = ((px - a[0]) * dx + (py - a[1]) * dy) / L; t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy);
+  }
+  function distLine(px, py, pts) { let m = 1e9; for (let i = 0; i < pts.length - 1; i++) m = Math.min(m, distSeg(px, py, pts[i], pts[i + 1])); return m; }
+
+  class Path {
+    constructor(pts, closed) {
+      this.p = closed ? pts.concat([pts[0]]) : pts; this.c = [0];
+      for (let i = 1; i < this.p.length; i++) { const a = this.p[i - 1], b = this.p[i]; this.c.push(this.c[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1], (b[2] || 0) - (a[2] || 0))); }
+      this.len = this.c[this.c.length - 1];
+    }
+    at(s) {
+      s = ((s % this.len) + this.len) % this.len;
+      let lo = 0, hi = this.c.length - 1;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (this.c[m] <= s) lo = m; else hi = m; }
+      const a = this.p[lo], b = this.p[hi], t = (s - this.c[lo]) / ((this.c[hi] - this.c[lo]) || 1);
+      return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, z: (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * t, th: Math.atan2(b[1] - a[1], b[0] - a[0]) };
+    }
+  }
+
+  // ---------- the drawing context
+  class Iso {
+    constructor(k, ox, oy) { this.k = k; this.ox = ox; this.oy = oy; }
+    P(x, y, z = 0) { return [this.ox + (x - y) * this.k, this.oy + (x + y) * this.k * 0.5 - z * this.k * SQ]; }
+    pts(a) { let s = ''; for (const p of a) { const q = this.P(p[0], p[1], p[2] || 0); s += f1(q[0]) + ',' + f1(q[1]) + ' '; } return s; }
+    poly(a, fill, ex = '') { return `<polygon points="${this.pts(a)}" fill="${fill}" stroke="${fill}" stroke-width=".45" stroke-linejoin="round"${ex}/>`; }
+    flat(a, fill, ex = '') { return `<polygon points="${this.pts(a)}" fill="${fill}"${ex}/>`; }
+    line(a, stroke, w, ex = '') { return `<polyline points="${this.pts(a)}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"${ex}/>`; }
+    box(x, y, z, w, d, h, c, o = {}) {
+      const t = o.top || tone(c, T_TOP), sy = o.sy || tone(c, T_Y), sx = o.sx || tone(c, T_X);
+      return this.poly([[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]], sy)
+        + this.poly([[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]], sx)
+        + this.poly([[x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]], t);
+    }
+    // oriented box: centre cx,cy, heading th, local u (forward) / v (left) extents
+    obox(cx, cy, th, u0, u1, v0, v1, z0, z1, c, o = {}) {
+      const ct = Math.cos(th), st = Math.sin(th);
+      const W = (u, v, z) => [cx + u * ct + v * st, cy + u * st - v * ct, z];
+      const A = [u0, v0], B = [u1, v0], C = [u1, v1], D = [u0, v1];
+      const sides = [[A, B, [-st, ct]], [B, C, [ct, st]], [C, D, [st, -ct]], [D, A, [-ct, -st]]];
+      let s = '';
+      for (const [p, q, n] of sides) {
+        if (n[0] + n[1] <= 0) continue;
+        s += this.poly([W(p[0], p[1], z0), W(q[0], q[1], z0), W(q[0], q[1], z1), W(p[0], p[1], z1)], o.side || tone(c, lit([n[0], n[1], 0])));
+      }
+      s += this.poly([W(...A, z1), W(...B, z1), W(...C, z1), W(...D, z1)], o.top || tone(c, T_TOP));
+      return s;
+    }
+    // prism along a 3D segment (booms, beams, galleries)
+    beam(p0, p1, w, h, c) {
+      const dx = p1[0] - p0[0], dy = p1[1] - p0[1]; const m = Math.hypot(dx, dy) || 1; const nx = -dy / m * w / 2, ny = dx / m * w / 2;
+      const a = [p0[0] + nx, p0[1] + ny, p0[2]], b = [p1[0] + nx, p1[1] + ny, p1[2]], cc = [p1[0] - nx, p1[1] - ny, p1[2]], d = [p0[0] - nx, p0[1] - ny, p0[2]];
+      const up = q => [q[0], q[1], q[2] + h];
+      let s = '';
+      const sideN1 = [nx, ny], sideN2 = [-nx, -ny];
+      const sd = (P1, P2, n) => { if (n[0] + n[1] > 0) s += this.poly([P1, P2, up(P2), up(P1)], tone(c, lit([n[0], n[1], 0]))); };
+      sd(a, b, sideN1); sd(d, cc, sideN2);
+      const endN = [dx, dy]; if (endN[0] + endN[1] > 0) s += this.poly([b, cc, up(cc), up(b)], tone(c, lit([dx, dy, 0]))); else s += this.poly([a, d, up(d), up(a)], tone(c, lit([-dx, -dy, 0])));
+      s += this.poly([up(a), up(b), up(cc), up(d)], tone(c, T_TOP));
+      return s;
+    }
+    cyl(cx, cy, z, r, h, c, o = {}) {
+      let s = ''; const N = 12;
+      for (let i = 0; i < N; i++) {
+        const a0 = -PI / 4 + i * PI / N, a1 = a0 + PI / N, am = (a0 + a1) / 2;
+        s += this.poly([[cx + r * Math.cos(a0), cy + r * Math.sin(a0), z], [cx + r * Math.cos(a1), cy + r * Math.sin(a1), z], [cx + r * Math.cos(a1), cy + r * Math.sin(a1), z + h], [cx + r * Math.cos(a0), cy + r * Math.sin(a0), z + h]], tone(c, lit([Math.cos(am), Math.sin(am), 0]) + (o.gloss || 0)));
+      }
+      const top = []; for (let i = 0; i < 24; i++) { const a = i / 24 * 2 * PI; top.push([cx + r * Math.cos(a), cy + r * Math.sin(a), z + h]); }
+      s += this.poly(top, o.top || tone(c, T_TOP));
+      return s;
+    }
+    // convex solid from faces (each an array of 3D points); back faces culled
+    convex(faces, c, o = {}) {
+      const all = faces.flat(); const cen = [0, 1, 2].map(j => all.reduce((a, p) => a + p[j], 0) / all.length);
+      let s = '';
+      for (const f of faces) {
+        let n = [0, 0, 0];
+        for (let i = 0; i < f.length; i++) { const a = f[i], b = f[(i + 1) % f.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); }
+        const fc = [0, 1, 2].map(j => f.reduce((a, p) => a + p[j], 0) / f.length);
+        if (n[0] * (fc[0] - cen[0]) + n[1] * (fc[1] - cen[1]) + n[2] * (fc[2] - cen[2]) < 0) n = n.map(v => -v);
+        if (n[0] * VIEW[0] + n[1] * VIEW[1] + n[2] * VIEW[2] <= 0.001) continue;
+        s += this.poly(f, tone(o.base ? o.base(fc) : c, lit(n)));
+      }
+      return s;
+    }
+    shadow(foot, h, z = 0) {
+      const pts = foot.concat(foot.map(p => [p[0] + SH[0] * h, p[1] + SH[1] * h]));
+      return this.flat(hull(pts).map(p => [p[0], p[1], z]), 'currentColor');
+    }
+    ribbon(pts, w) {
+      const L = offsetLine(pts, w / 2), R = offsetLine(pts, -w / 2);
+      return L.concat(R.reverse());
+    }
+  }
+
+  // ---------- solids reused by the site
+  function windrow(x0, x1, c, hw, H) {
+    const e = hw * 0.55, r = hw * 0.95;
+    const B = [[x0, c - e, 0], [x0 + e, c - hw, 0], [x1 - e, c - hw, 0], [x1, c - e, 0], [x1, c + e, 0], [x1 - e, c + hw, 0], [x0 + e, c + hw, 0], [x0, c + e, 0]];
+    const R0 = [x0 + r, c - 1, H], R1 = [x1 - r, c - 1, H], R0b = [x0 + r, c + 1, H], R1b = [x1 - r, c + 1, H];
+    return [[B[1], B[2], R1, R0], [B[0], B[1], R0], [B[2], B[3], R1], [B[3], B[4], R1b, R1], [B[4], B[5], R1b], [B[5], B[6], R0b, R1b], [B[6], B[7], R0b], [B[7], B[0], R0, R0b], [R0, R1, R1b, R0b]];
+  }
+  function cone(cx, cy, r, H, n = 10, rot = 0.3) {
+    const B = []; for (let i = 0; i < n; i++) { const a = rot + i / n * 2 * PI; B.push([cx + r * Math.cos(a), cy + r * Math.sin(a) * 0.92, 0]); }
+    const A = [cx, cy, H]; const f = []; for (let i = 0; i < n; i++) f.push([B[i], B[(i + 1) % n], A]); return f;
+  }
+  function frustum(x0, y0, x1, y1, z0, z1, inset) {
+    const b = [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]];
+    const t = [[x0 + inset, y0 + inset, z1], [x1 - inset, y0 + inset, z1], [x1 - inset, y1 - inset, z1], [x0 + inset, y1 - inset, z1]];
+    return [[b[0], b[1], t[1], t[0]], [b[1], b[2], t[2], t[1]], [b[2], b[3], t[3], t[2]], [b[3], b[0], t[0], t[3]], t];
+  }
+
+  // ---------- a haul truck (CAT 793 / Komatsu 930E class: 13 m long, 7.6 m wide, cab on the left)
+  function truckSVG(iso, x, y, z, th, st) {
+    const Y = st.parked ? '#bfae86' : '#f2b01e', Yd = st.parked ? '#a6977a' : '#d6940f', TY = st.parked ? '#4a4440' : '#262220';
+    const parts = [
+      [-5.7, -1.9, 2.2, 3.8, 0, 3.5, TY], [-5.7, -1.9, -3.8, -2.2, 0, 3.5, TY],
+      [3.0, 6.0, 2.5, 3.8, 0, 3.5, TY], [3.0, 6.0, -3.8, -2.5, 0, 3.5, TY],
+      [-5.4, 6.2, -2.1, 2.1, 1.0, 2.7, '#4b4541'],
+      [4.2, 6.7, -1.8, 1.0, 1.6, 4.4, Yd],
+      [4.1, 6.1, 1.2, 3.7, 3.0, 4.3, Y], [4.1, 6.1, 1.2, 3.7, 4.3, 5.4, '#3a4146'],
+      [-6.6, 3.9, -3.8, 3.8, 2.8, 6.1, Y],
+      [3.9, 6.4, -3.8, 3.8, 5.6, 6.1, Y],
+    ];
+    if (st.loaded) parts.push([-5.9, 3.0, -3.1, 3.1, 6.1, 7.0, '#8b3a22']);
+    const ct = Math.cos(th), st2 = Math.sin(th);
+    parts.forEach(p => { const u = (p[0] + p[1]) / 2, v = (p[2] + p[3]) / 2; p.key = (u * ct + v * st2) + (u * st2 - v * ct) + p[4] * 0.05; });
+    parts.sort((a, b) => a.key - b.key);
+    let s = iso.flat(hull([[-6.6, -3.8], [6.7, -3.8], [6.7, 3.8], [-6.6, 3.8]].flatMap(([u, v]) => { const px = x + u * ct + v * st2, py = y + u * st2 - v * ct; return [[px, py], [px + SH[0] * 5.5, py + SH[1] * 5.5]]; })).map(p => [p[0], p[1], z]), '#2a140c', ' opacity=".26"');
+    for (const p of parts) s += iso.obox(x, y, th, p[0], p[1], p[2], p[3], z + p[4], z + p[5], p[6]);
+    return s;
+  }
+
+  // ---------- the site
+  function build(svg, cfg) {
+    const k = cfg.k, W = 720, D = 480, iso = new Iso(k, cfg.ox, cfg.oy);
+    const R = rng(7);
+    const defs = [], under = [], ground = [], over = [], net = [], shadows = [], objs = [], top = [];
+    const add = (key, s) => objs.push({ key, s });
+    const scen = cfg.scenario;
+    const PIT = { cx: 230, cy: 272, RX: 140, RY: 115, n: 5, h: 12, run: 5, berm: 11 };
+    PIT.step = PIT.run + PIT.berm; PIT.H = PIT.n * PIT.h; PIT.ry = PIT.RY / PIT.RX;
+    const wob = a => 1 + 0.045 * Math.sin(3 * a + 1.3) + 0.03 * Math.sin(5 * a + 0.4) + 0.02 * Math.sin(2 * a + 2.2);
+    const ringPt = (a, inset, z) => { const w = wob(a); return [PIT.cx + (PIT.RX - inset) * Math.cos(a) * w, PIT.cy + (PIT.RY - inset * PIT.ry) * Math.sin(a) * w, z]; };
+    const inPit = (x, y, pad = 1.06) => { const a = Math.atan2((y - PIT.cy) / PIT.RY, (x - PIT.cx) / PIT.RX); const w = wob(a); const dx = (x - PIT.cx) / (PIT.RX * w), dy = (y - PIT.cy) / (PIT.RY * w); return dx * dx + dy * dy < pad * pad; };
+
+    // ---- the slab, plinth and the gallery-floor shadow
+    const TH = 30, PL = 14;
+    under.push(`<g filter="url(#dio-floor)" opacity=".42">${iso.flat([[0, 0, -TH - PL], [W, 0, -TH - PL], [W + 260, D + 40, -TH - PL], [260, D + 40, -TH - PL]].map(p => p), '#4a3226')}</g>`);
+    const bands = [[0, -2.2, '#9b4428'], [-2.2, -5.5, '#b8743d'], [-5.5, -8, '#6d3a36'], [-8, -10, '#c08a4c'], [-10, -13.5, '#5a3431'], [-13.5, -15.5, '#a65a34'], [-15.5, -17, '#4d3030'], [-17, -19.5, '#94603a'], [-19.5, -24, '#4a2f2c'], [-24, -TH, '#3a2725']];
+    for (const [a, b, c] of bands) {
+      under.push(iso.poly([[0, D, a], [W, D, a], [W, D, b], [0, D, b]], tone(c, T_Y)));
+      under.push(iso.poly([[W, 0, a], [W, D, a], [W, D, b], [W, 0, b]], tone(c, T_X)));
+    }
+    under.push(iso.poly([[0, D, -TH], [W, D, -TH], [W, D, -TH - PL], [0, D, -TH - PL]], '#3b3632'));
+    under.push(iso.poly([[W, 0, -TH], [W, D, -TH], [W, D, -TH - PL], [W, 0, -TH - PL]], '#25221f'));
+    under.push(iso.line([[0, D, -TH], [W, D, -TH], [W, 0, -TH]], '#5a524b', .8));
+    under.push(iso.line([[0, D, 0], [W, D, 0], [W, 0, 0]], '#e9c9a4', .9, ' opacity=".7"'));
+    // plate on the plinth: engraved in the plane of the front-left face
+    {
+      const p = iso.P(40, D, -TH - PL * 0.5 + 0.2);
+      const m = `matrix(${f1(0.894 * 100) / 100},${f1(0.447 * 100) / 100},0,1,${f1(p[0])},${f1(p[1])})`;
+      under.push(`<g transform="${m}" class="dio-plate"><text x="0" y="3.6" font-size="${f1(9.5 * Math.max(.8, k))}" fill="#cfc6bb" letter-spacing=".06em">FICTIONAL MODEL SITE  ·  PILBARA IRON ORE  ·  SYNTHETIC DATA</text></g>`);
+      const q = iso.P(W - 175, D, -TH - PL * 0.5 + 0.2);
+      const m2 = `matrix(.894,.447,0,1,${f1(q[0])},${f1(q[1])})`;
+      under.push(`<g transform="${m2}"><rect x="0" y="-1.5" width="${f1(50 * k * 1.118)}" height="3" fill="#cfc6bb"/><rect x="${f1(50 * k * 1.118)}" y="-1.5" width="${f1(50 * k * 1.118)}" height="3" fill="none" stroke="#cfc6bb" stroke-width=".8"/><text x="${f1(100 * k * 1.118 + 6)}" y="3.4" font-size="${f1(9 * Math.max(.8, k))}" fill="#cfc6bb">100 m</text></g>`);
+    }
+
+    {
+      const q = iso.P(W, 452, -TH * 0.45);
+      under.push(`<g transform="matrix(.894,-.447,0,1,${f1(q[0])},${f1(q[1])})"><text x="6" y="3.4" font-size="${f1(9 * Math.max(.85, k))}" fill="#f1e4d2" letter-spacing=".05em">RAIL TO PORT HEDLAND</text></g>`);
+    }
+    // ---- ground: jittered triangulated facets in iron-oxide reds and ochres
+    const nz = vnoise(11), nz2 = vnoise(23);
+    const G = 20, NX = W / G, NY = D / G, V = [];
+    for (let i = 0; i <= NX; i++) { V.push([]); for (let j = 0; j <= NY; j++) { const jx = (i > 0 && i < NX) ? (R() - 0.5) * 9 : 0, jy = (j > 0 && j < NY) ? (R() - 0.5) * 9 : 0; V[i].push([i * G + jx, j * G + jy, 0]); } }
+    const creekC = chaikin([[480, -5], [492, 70], [507, 150], [500, 215], [482, 285], [462, 350], [446, 420], [436, 490]], 3);
+    const groundCol = (x, y) => {
+      const n = nz(x / 95, y / 95), m = nz2(x / 30, y / 30);
+      let c = mix('#9a3f24', '#bf6a36', Math.min(1, Math.max(0, n * 1.15 - 0.05)));
+      c = mix(c, '#8a3a24', Math.max(0, m - 0.62) * 1.2);
+      const dc = distLine(x, y, creekC); if (dc < 70) c = mix(c, '#c9894f', (1 - dc / 70) * 0.35);
+      if (x < 70) c = mix(c, '#7c3424', (1 - x / 70) * 0.35);
+      return c;
+    };
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
+      const a = V[i][j], b = V[i + 1][j], c = V[i + 1][j + 1], d = V[i][j + 1];
+      const t1 = [a, b, c], t2 = [a, c, d];
+      for (const t of [t1, t2]) {
+        const cx = (t[0][0] + t[1][0] + t[2][0]) / 3, cy = (t[0][1] + t[1][1] + t[2][1]) / 3;
+        const col = tone(groundCol(cx, cy), T_TOP - 0.42 + (R() - 0.5) * 0.09);
+        ground.push(iso.poly(t, col));
+      }
+    }
+
+    // ---- creek: a pale braided bed with river red gums
+    over.push(iso.flat(iso.ribbon(creekC, 34), '#c88d58', ' opacity=".55"'));
+    for (const [off, w, ph] of [[-7, 5, 0], [5, 7, 1.7], [0, 3.5, 3.1]]) {
+      const br = creekC.map((p, i) => [p[0] + Math.sin(i * 0.33 + ph) * 6 + off * 0.5, p[1] + Math.cos(i * 0.21 + ph) * 3, 0]);
+      over.push(iso.flat(iso.ribbon(br, w), '#e6cfa5'));
+    }
+    const trees = [];
+    creekC.forEach((p, i) => { if (i % 3 === 0 && R() < 0.75) { const s = R() < 0.5 ? -1 : 1; trees.push([p[0] + s * (16 + R() * 8), p[1] + (R() - 0.5) * 6, 4 + R() * 2.5]); } });
+
+    // ---- ridge: dark ironstone along the western edge
+    {
+      const crest = [], sh = [], foot = [];
+      for (let y = 105, i = 0; y <= 405; y += 15, i++) {
+        const h = Math.min(22, 8 + 30 * Math.sin((y - 105) / 300 * PI)) * (0.9 + 0.12 * Math.sin(i * 1.7));
+        crest.push([10 + Math.sin(i * 0.9) * 4, y, h]);
+        sh.push([24 + Math.sin(i * 1.3) * 4, y + 3, h * 0.82]);
+        foot.push([52 + Math.sin(i * 0.7) * 8, y + 6, 0]);
+      }
+      crest[0][2] = 0; sh[0][2] = 0; crest[crest.length - 1][2] = 0; sh[sh.length - 1][2] = 0;
+      const rcol = fc => mix('#57302a', '#7d4630', Math.min(1, Math.max(0, fc[2] / 50)));
+      let s = '';
+      for (let i = 0; i < crest.length - 1; i++) {
+        const quadA = [crest[i], crest[i + 1], sh[i + 1], sh[i]], quadB = [sh[i], sh[i + 1], foot[i + 1], foot[i]];
+        for (const q of [quadA, quadB]) for (const t of [[q[0], q[1], q[2]], [q[0], q[2], q[3]]]) {
+          let n = [0, 0, 0]; for (let m = 0; m < 3; m++) { const a = t[m], b = t[(m + 1) % 3]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); }
+          if (n[2] < 0) n = n.map(v => -v);
+          const fc = [0, 1, 2].map(j => (t[0][j] + t[1][j] + t[2][j]) / 3);
+          s += iso.poly(t, tone(rcol(fc), lit(n) + (R() - 0.5) * 0.06));
+        }
+      }
+      // western flank beyond the crest, back to the board edge
+      for (let i = 0; i < crest.length - 1; i++) s = iso.poly([[0, crest[i][1], 0], [0, crest[i + 1][1], 0], crest[i + 1], crest[i]], tone('#6a3a2c', T_TOP - 0.1)) + s;
+      add(60, s);
+      shadows.push(iso.flat(hull(foot.map(p => [p[0], p[1]]).concat(crest.map(p => [p[0] + SH[0] * p[2], p[1] + SH[1] * p[2]]))).map(p => [p[0], p[1], 0]), 'currentColor'));
+    }
+
+    // ---- pads and hardstands
+    const pad = (pts, c, ex = '') => over.push(iso.flat(pts.map(p => [p[0], p[1], 0]), c, ex));
+    pad([[28, 30], [150, 30], [150, 112], [28, 112]], '#b88e6e');          // workshop hardstand
+    pad([[150, 60], [250, 60], [250, 108], [150, 108]], '#b48b69');        // fuel bay apron
+    pad([[365, 135], [442, 135], [442, 228], [365, 228]], '#86492f');     // ROM pad
+    pad([[545, 120], [712, 120], [712, 252], [545, 252]], '#a5704f');     // stockyard
+    pad([[290, 62], [372, 62], [372, 92], [290, 92]], '#5d5550');          // car park
+    pad([[560, 4], [716, 4], [716, 58], [560, 58]], '#c5a07a');            // camp
+    pad([[12, 416], [74, 416], [74, 472], [12, 472]], '#b48a68');          // magazine compound
+
+    // ---- roads
+    const haul1 = chaikin([[336, 196], [362, 189], [400, 187], [428, 187]], 2);
+    const haul2 = chaikin([[336, 196], [318, 150], [270, 112], [215, 100], [150, 92], [80, 90]], 2);
+    const access = chaikin([[725, 66], [640, 66], [540, 66], [470, 70], [380, 74], [300, 78], [250, 80]], 1);
+    const magTrack = chaikin([[60, 100], [62, 150], [64, 260], [60, 360], [52, 410], [45, 428]], 2);
+    const campRd = [[560, 30], [716, 30]];
+    for (const [pl, w, c, e] of [[haul2, 26, '#c79c74', '#9d6a48'], [haul1, 26, '#c79c74', '#9d6a48'], [magTrack, 7, '#c29672', null], [access, 9, '#4e4743', null]]) {
+      if (e) over.push(iso.flat(iso.ribbon(pl, w + 3), e));
+      over.push(iso.flat(iso.ribbon(pl, w), c));
+    }
+    over.push(iso.line(access, '#d9d2c4', .7, ' stroke-dasharray="3 4"'));
+    over.push(iso.flat(iso.ribbon(campRd, 6), '#a88d74'));
+    // rail: balloon loop, neck and the main line to port
+    const LOOP = { cx: 602, cy: 382, r: 82 };
+    const loopPts = []; for (let i = 0; i <= 96; i++) { const a = i / 96 * 2 * PI; loopPts.push([LOOP.cx + LOOP.r * Math.cos(a), LOOP.cy + LOOP.r * Math.sin(a), 0]); }
+    const mainLine = chaikin([[LOOP.cx + LOOP.r, LOOP.cy - 4], [LOOP.cx + LOOP.r + 2, LOOP.cy + 30], [700, 440], [740, 452]], 3);
+    for (const pl of [loopPts, mainLine]) {
+      over.push(iso.flat(iso.ribbon(pl, 8.5), '#b8ab9a'));
+      over.push(iso.flat(iso.ribbon(pl, 5), '#cfc5b7'));
+      over.push(iso.line(offsetLine(pl, 0.9), '#3b3532', .55));
+      over.push(iso.line(offsetLine(pl, -0.9), '#3b3532', .55));
+    }
+
+    // ---- stopped-area hatching (in the world's grammar: a survey overlay on the ground)
+    const hatch = (pts) => { over.push(iso.flat(pts.map(p => [p[0], p[1], 0]), 'url(#dio-hatch)')); over.push(`<polygon points="${iso.pts(pts.map(p => [p[0], p[1], 0]))}" fill="none" stroke="#1c1916" stroke-width="1.1" stroke-dasharray="5 3" opacity=".8"/>`); };
+    if (scen) { hatch([[138, 8], [256, 8], [256, 58], [138, 58]]); hatch([[8, 412], [78, 412], [78, 476], [8, 476]]); }
+
+    // ---- the pit: terraced benches, nested crest clips hide the near walls
+    const benchCol = ['#8b3b25', '#a8582e', '#74403a', '#b36a31', '#6b3a31'];
+    const NP = 56, pitTruckLayers = [];
+    let pit = '', close = '';
+    for (let i = 0; i < PIT.n; i++) {
+      const z0 = -i * PIT.h, z1 = z0 - PIT.h, ins = i * PIT.step;
+      const crest = [], toe = [];
+      for (let j = 0; j < NP; j++) { const a = j / NP * 2 * PI; crest.push(ringPt(a, ins, z0)); toe.push(ringPt(a, ins + PIT.run, z1)); }
+      defs.push(`<clipPath id="dio-pc${i}"><polygon points="${iso.pts(crest)}"/></clipPath>`);
+      pit += `<g clip-path="url(#dio-pc${i})">`;
+      pit += iso.flat(crest, tone(benchCol[i], -0.45));
+      for (let j = 0; j < NP; j++) {
+        const a = (j + 0.5) / NP * 2 * PI; const n = [-Math.cos(a) / PIT.RX, -Math.sin(a) / PIT.RY, 0]; const m = Math.hypot(n[0], n[1]);
+        const nn = [n[0] / m * 0.92, n[1] / m * 0.92, 0.38];
+        if (nn[0] + nn[1] < -0.3) continue;
+        const band = (j % 7 === 0) ? 0.05 : 0;
+        pit += iso.poly([crest[j], crest[(j + 1) % NP], toe[(j + 1) % NP], toe[j]], tone(benchCol[i], lit(nn) + band));
+      }
+      pit += iso.flat(toe, i === PIT.n - 1 ? '#8e4a31' : tone('#b47852', T_TOP - 0.3 - i * 0.03));
+      pit += iso.line(crest.filter((p, j) => { const a = j / NP * 2 * PI; return Math.cos(a) + Math.sin(a) < 0.2; }), tone(benchCol[i], 0.45), .6, ' opacity=".8"');
+      pit += `<g data-ramp="${i}"></g><g id="${cfg.id}-pt${i}"></g>`;
+      close += '</g>';
+    }
+    pit += close;
+    // spiral ramp, ~11% grade, cut into the walls; drawn level by level inside the nested clips
+    const rampAt = (t, lane = 0) => { const a = -0.70 - t * 5.40; const ins = PIT.n * t * PIT.step + 3 - lane; return ringPt(a, ins, -PIT.H * t); };
+    const rampSeg = (t0, t1, w) => { const pts = []; for (let t = t0; t <= t1 + 1e-6; t += 0.01) pts.push(rampAt(Math.min(t, t1))); return pts; };
+    const rampPieces = [];
+    for (let i = 0; i < PIT.n; i++) {
+      const t0 = i / PIT.n, t1 = (i + 1) / PIT.n; let s = '';
+      for (let j = 0; j <= i; j++) {
+        const a = j / PIT.n, b = (j + 1) / PIT.n;
+        const pts = rampSeg(Math.max(0, a - 0.012), Math.min(1, b + 0.012));
+        s += iso.flat(iso.ribbon(pts, 25), '#c39a72');
+        s += iso.line(offsetLine(pts, -12.5), '#6f3d27', .9, ' opacity=".75"');
+        s += iso.line(offsetLine(pts, 11.5), '#e2c19a', .7, ' opacity=".8"');
+      }
+      rampPieces.push(s);
+    }
+    pit = pit.replace(/<g data-ramp="(\d)"><\/g>/g, (m, i) => rampPieces[+i]);
+    // sump and a rim bund
+    {
+      const sp = []; for (let j = 0; j < 18; j++) { const a = j / 18 * 2 * PI; sp.push([PIT.cx + 6 + 14 * Math.cos(a) * (1 + 0.15 * Math.sin(3 * a)), PIT.cy - 18 + 8 * Math.sin(a), -PIT.H]); }
+      pit = pit.replace(`<g id="${cfg.id}-pt${PIT.n - 1}">`, iso.flat(sp, '#2f8f86') + iso.flat(sp.map(p => [p[0] - 1.5, p[1] - 1.2, p[2]]).map((p, j) => j % 2 ? p : [p[0] + 0.6, p[1] + 0.6, p[2]]), '#3fa69a') + iso.line(sp.concat([sp[0]]), '#8fd0c2', .6) + `<g id="${cfg.id}-pt${PIT.n - 1}">`);
+      const rim = []; for (let j = 0; j <= NP; j++) { const a = j / NP * 2 * PI; rim.push(ringPt(a, -6, 0)); }
+      over.push(iso.line(rim, '#c3865c', 2.2, ' opacity=".7"'));
+    }
+    // floor machines: a face shovel at the back of the floor, a drill on the first bench
+    const fl = ringPt(3.55, PIT.n * PIT.step + 18, -PIT.H);
+    const shovel = (x, y, z) => iso.obox(x, y, 0.5, -4, 4, -3.5, 3.5, z, z + 2.4, '#33302d') + iso.obox(x, y, 0.5, -3.5, 3, -3, 3, z + 2.4, z + 6.5, '#e0a61e') + iso.beam([x + 2, y + 1.5, z + 5.5], [x + 10, y + 5.5, z + 3], 1.6, 1.4, '#d39a19') + iso.obox(x + 10.5, y + 6, 0.5, -1.5, 1.5, -2, 2, z + 0.5, z + 3.2, '#3b3632');
+    pit = pit.replace(`<g id="${cfg.id}-pt${PIT.n - 1}">`, shovel(fl[0], fl[1], fl[2]) + `<g id="${cfg.id}-pt${PIT.n - 1}">`);
+    const da = 3.78, dr = ringPt(da, PIT.run + 5, -PIT.h);
+    {
+      const tg = [-Math.sin(da), Math.cos(da)], rd = [-Math.cos(da), -Math.sin(da)];
+      let s = '';
+      for (let a = 0; a < 5; a++) for (let b = 0; b < 2; b++) { const q = iso.P(dr[0] + tg[0] * (9 + a * 3) + rd[0] * (b * 3 - 1.5), dr[1] + tg[1] * (9 + a * 3) + rd[1] * (b * 3 - 1.5), dr[2]); s += `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${f1(0.6 * k + .2)}" fill="#3a201a" opacity=".75"/>`; }
+      const th = Math.atan2(tg[1], tg[0]);
+      s += iso.obox(dr[0], dr[1], th, -4, 4, -1.8, 1.8, dr[2], dr[2] + 2.6, '#d7d2c6') + iso.obox(dr[0], dr[1], th, 2.2, 3.4, -0.6, 0.6, dr[2] + 2.6, dr[2] + 16, '#c9a63a');
+      pit = pit.replace(`<g id="${cfg.id}-pt0">`, s + `<g id="${cfg.id}-pt0">`);
+    }
+    PIT.drill = dr;
+
+    // ---- objects
+    // workshop: gable shed with four roller doors on the south-west face (sized for ultra-class trucks)
+    {
+      const x = 40, y = 38, w = 82, d = 40, h = 17, rh = 23, c = '#d9d5cc';
+      let s = iso.box(x + w, y + 10, 0, 16, 28, 7, '#c9c4b8');
+      s += iso.poly([[x, y + d, 0], [x + w, y + d, 0], [x + w, y + d, h], [x, y + d, h]], tone(c, T_Y));
+      s += iso.poly([[x + w, y, 0], [x + w, y + d, 0], [x + w, y + d, h], [x + w, y + d / 2, rh], [x + w, y, h]], tone(c, T_X));
+      for (let i = 0; i < 4; i++) {
+        const dx = x + 5 + i * 19.5;
+        s += iso.poly([[dx, y + d, 0], [dx + 14, y + d, 0], [dx + 14, y + d, 13], [dx, y + d, 13]], i === 1 ? '#3a3330' : '#9aa0a3');
+        if (i !== 1) for (let zz = 1.6; zz < 13; zz += 1.6) s += iso.line([[dx + 0.3, y + d, zz], [dx + 13.7, y + d, zz]], '#82898c', .35);
+      }
+      const roofC = '#a6abae';
+      s += iso.poly([[x, y, h], [x + w, y, h], [x + w, y + d / 2, rh], [x, y + d / 2, rh]], tone(roofC, lit([0, -0.3, 1])));
+      s += iso.poly([[x, y + d / 2, rh], [x + w, y + d / 2, rh], [x + w, y + d, h], [x, y + d, h]], tone(roofC, lit([0, 0.3, 1])));
+      for (let i = 1; i < 8; i++) s += iso.line([[x + i * w / 8, y + d / 2, rh], [x + i * w / 8, y + d, h]], '#8e9497', .35, ' opacity=".7"');
+      add(x + y + w * 0.6, s);
+      shadows.push(iso.shadow([[x, y], [x + w, y], [x + w, y + d], [x, y + d]], 19));
+    }
+    // fuel farm: bunded diesel tanks, a canopied fuel bay
+    {
+      let s = '';
+      const bx = 146, by = 14, bw = 56, bd = 38;
+      s += iso.flat([[bx, by, 0], [bx + bw, by, 0], [bx + bw, by + bd, 0], [bx, by + bd, 0]], '#c9c1b5');
+      s += iso.box(bx, by, 0, bw, 1.2, 1.8, '#bfb6a8') + iso.box(bx, by, 0, 1.2, bd, 1.8, '#bfb6a8');
+      add(bx + by, s);
+      const tanks = [[160, 26], [182, 26], [160, 42], [182, 42]];
+      tanks.forEach(([tx, ty], i) => { add(tx + ty + 1, iso.cyl(tx, ty, 0, 6.5, 10, '#ecebe6', { top: '#d8d9d6' }) + iso.line([[tx - 4.6, ty + 4.6, 10], [tx + 4.6, ty - 4.6, 10]], '#c3c4c2', .4)); shadows.push(iso.shadow([[tx - 6.5, ty - 6.5], [tx + 6.5, ty - 6.5], [tx + 6.5, ty + 6.5], [tx - 6.5, ty + 6.5]], 10)); });
+      add(bx + bw + by + bd + 1, iso.box(bx, by + bd - 1.2, 0, bw, 1.2, 1.8, '#bfb6a8') + iso.box(bx + bw - 1.2, by, 0, 1.2, bd, 1.8, '#bfb6a8'));
+      add(206 + 22, iso.box(206, 20, 0, 8, 6, 4, '#d6d1c7'));
+      // fuel bay canopy
+      let c = '';
+      for (const [px, py] of [[158, 70], [190, 70], [158, 92], [190, 92]]) c += iso.box(px, py, 0, 0.8, 0.8, 9, '#8f9497');
+      c += iso.box(156, 68, 9, 36, 26, 1.1, '#e3e1dc', { top: '#d2d4d2' });
+      c += iso.box(172, 78, 0, 2, 2, 2, '#c84f2a') + iso.box(172, 86, 0, 2, 2, 2, '#c84f2a');
+      add(156 + 68 + 30, c);
+      shadows.push(iso.shadow([[156, 68], [192, 68], [192, 94], [156, 94]], 9));
+    }
+    // admin offices, car park with light vehicles, communications mast
+    {
+      for (const [x, y, w, d] of [[296, 22, 30, 12], [296, 40, 30, 12], [332, 22, 30, 12]]) {
+        add(x + y + w / 2, iso.box(x, y, 0, w, d, 3.8, '#ece5d8', { top: '#b9bdbf' }) + iso.box(x, y + d, 0, w, 3, 0.3, '#b4a99a') + iso.line([[x + 1, y + d, 1.6], [x + w - 1, y + d, 1.6]], '#5c6670', 1.1, ' stroke-dasharray="2 1.4"'));
+        shadows.push(iso.shadow([[x, y], [x + w, y], [x + w, y + d], [x, y + d]], 4));
+      }
+      for (let i = 0; i < 7; i++) add(300 + i * 9 + 72, iso.obox(300 + i * 9, 72, PI / 2, -2.7, 2.7, -1.05, 1.05, 0, 1.9, i === 3 ? '#d0d4d6' : '#f2f0ea'));
+      // lattice mast 45 m
+      const mx = 380, my = 34;
+      let s = '';
+      s += iso.line([[mx - 1.5, my + 1.5, 0], [mx - 0.3, my + 0.3, 45]], '#9aa2a8', .9) + iso.line([[mx + 1.5, my - 1.5, 0], [mx + 0.3, my - 0.3, 45]], '#7f878d', .9) + iso.line([[mx + 1.5, my + 1.5, 0], [mx + 0.3, my + 0.3, 45]], '#b7bec2', .9);
+      for (let zz = 4; zz < 44; zz += 5) s += iso.line([[mx - 1.4 + zz * 0.025, my + 1.4 - zz * .025, zz], [mx + 1.4 - zz * 0.025, my + 1.4 - zz * 0.025, zz + 2.5]], '#a7afb4', .4);
+      const dp = iso.P(mx - 1, my + 1, 38);
+      s += `<ellipse cx="${f1(dp[0] - 2 * k)}" cy="${f1(dp[1])}" rx="${f1(1.4 * k + .6)}" ry="${f1(2.2 * k + .8)}" fill="#eeeeea" stroke="#9aa2a8" stroke-width=".4"/>`;
+      add(mx + my + 2, s);
+      shadows.push(iso.flat([[mx - 2, my, 0], [mx + 2, my, 0], [mx + 2 + SH[0] * 45, my + SH[1] * 45, 0], [mx + SH[0] * 45, my + SH[1] * 45 + 1, 0]], 'currentColor'));
+    }
+    // camp: rows of modular rooms, mess hall, shade trees
+    {
+      for (let r = 0; r < 4; r++) for (let cI = 0; cI < 5; cI++) {
+        const x = 566 + cI * 29, y = r < 2 ? 8 + r * 10 : 36 + (r - 2) * 10;
+        add(x + y + 12, iso.box(x, y, 0, 25, 3.6, 3.2, '#efece5', { top: '#c2c5c4' }) + iso.line([[x + 0.5, y + 3.6, 1.8], [x + 24.5, y + 3.6, 1.8]], '#7b8790', .7, ' stroke-dasharray="1.1 2"'));
+        shadows.push(iso.shadow([[x, y], [x + 25, y], [x + 25, y + 3.6], [x, y + 3.6]], 3.2));
+      }
+      add(530 + 30, iso.box(530, 14, 0, 24, 30, 5.5, '#e7e1d5', { top: '#a9aeb0' }));
+      shadows.push(iso.shadow([[530, 14], [554, 14], [554, 44], [530, 44]], 5.5));
+      for (let i = 0; i < 9; i++) trees.push([566 + R() * 145, 25 + (R() < .5 ? 0 : 1) * 2 + R() * 3, 2.8 + R() * 1.2]);
+    }
+    // explosives magazine: two magazines inside earth bunds, well away from everything else
+    {
+      for (const [x, y] of [[22, 426], [46, 444]]) {
+        add(x + y, iso.convex(frustum(x - 4, y - 4, x + 18, y + 16, 0, 3.4, 3), '#a5683f'));
+        add(x + y + 8, iso.box(x + 3, y + 3, 0, 9, 6, 2.6, '#ebe4d6', { top: '#c7c9c8' }));
+      }
+      // fence posts
+      let f = ''; for (let i = 0; i <= 12; i++) f += iso.line([[12 + i * 5.1, 472, 0], [12 + i * 5.1, 472, 2.2]], '#5f5650', .45);
+      f += iso.line([[12, 472, 2], [74, 472, 2], [74, 416, 2]], '#6f655e', .35);
+      add(74 + 472, f);
+    }
+    // waste dump: two 10 m lifts of paler waste rock
+    add(330 + 440, iso.convex(frustum(300, 412, 392, 474, 0, 10, 14), '#b07752'));
+    add(330 + 441, iso.convex(frustum(318, 428, 380, 470, 10, 18, 7), '#bb835c'));
+    shadows.push(iso.shadow([[300, 412], [392, 412], [392, 474], [300, 474]], 14));
+    // ROM pad stocks (running low) and the primary gyratory crusher with its dump pocket
+    {
+      const romS = scen ? 0.55 : 1;
+      for (const [x, y, r] of [[386, 152, 10], [404, 210, 8]]) add(x + y, iso.convex(cone(x, y, r * (scen ? 0.75 : 1), r * 0.6 * romS + 1.5), '#8f3d24'));
+      add(440 + 168, iso.box(438, 168, 0, 5, 36, 6, '#b9b2a8'));
+      const cx = 443, cy = 166;
+      let s = iso.box(cx, cy, 0, 28, 40, 18, '#c8cbca');
+      s += iso.box(cx + 4, cy + 6, 18, 18, 22, 14, '#d4d6d4');
+      s += iso.box(cx + 22, cy + 30, 0, 9, 8, 6, '#e8e3d6');
+      s += iso.line([[cx + 4.2, cy + 28, 27], [cx + 21.8, cy + 28, 27]], '#5e676d', 1.1, ' stroke-dasharray="2 1.2"');
+      s += iso.beam([cx - 1, cy + 12, 7], [cx - 9, cy + 14, 9], 1.2, 1.2, '#e3a51f');
+      add(cx + cy + 30, s);
+      shadows.push(iso.shadow([[cx, cy], [cx + 28, cy], [cx + 28, cy + 40], [cx, cy + 40]], 26));
+    }
+    // overland conveyor: open trough on a raised gallery over the creek, then yard conveyor
+    const BELT_Z = 10;
+    {
+      const y0 = 184.5;
+      let s = '';
+      for (let x = 476; x <= 556; x += 16) {
+        s += iso.box(x, y0 - 2.2, 0, .8, .8, BELT_Z, '#8f969a') + iso.box(x, y0 + 2.2, 0, .8, .8, BELT_Z, '#7d8488');
+        s += iso.line([[x, y0 - 2, 0.5], [x, y0 + 2.6, BELT_Z - 0.5]], '#8f969a', .45);
+      }
+      add(476 + y0 + 20, s);
+      add(560 + y0 - 10, iso.box(471, y0 - 2, BELT_Z, 92, 4, 1.1, '#aab0b3') + iso.box(471, y0 + 2, BELT_Z, 92, 0.6, 2.2, '#c7ccce'));
+      add(705 + y0, iso.box(563, y0 - 2, 1.2, 145, 4, 1.4, '#a4abae'));
+      shadows.push(iso.flat([[471, y0 - 2, 0], [563, y0 - 2, 0], [563 + SH[0] * BELT_Z, y0 - 2 + SH[1] * BELT_Z, 0], [563 + SH[0] * BELT_Z, y0 + 2 + SH[1] * BELT_Z, 0], [471 + SH[0] * BELT_Z, y0 + 2 + SH[1] * BELT_Z, 0]], 'currentColor'));
+      top.push({ belt: [[471, y0, BELT_Z + 1.15], [563, y0, BELT_Z + 1.15], [563, y0, 2.65], [706, y0, 2.65]] });
+    }
+    // stockyard: windrows built by the stacker, recovered by the bucket-wheel reclaimer
+    {
+      const pA = scen ? [575, 698] : [568, 700], pB = scen ? [600, 690] : [570, 700];
+      add(600 + 150, iso.convex(windrow(pA[0], pA[1], 160, 21, 14), '#7d321e'));
+      add(600 + 214, iso.convex(windrow(pB[0], pB[1], 212, 21, 14), '#6c2c1c'));
+      // rails
+      over.push(iso.line([[548, 180.5, 0], [710, 180.5, 0]], '#4a403b', .6) + iso.line([[548, 189, 0], [710, 189, 0]], '#4a403b', .6));
+      // stacker at x 612: portal, tower, boom luffed over pile A, counterweight
+      const sx = 612, sy = 185;
+      let s = iso.box(sx - 6, sy - 5, 0, 12, 10, 4, '#d8d3c4') + iso.box(sx - 2.5, sy - 2.5, 4, 5, 5, 10, '#e2dccd');
+      s += iso.beam([sx, sy - 2, 14], [sx - 3, sy - 34, 20], 2.2, 1.8, '#e6dfcf') + iso.beam([sx, sy + 2, 14], [sx + 1, sy + 14, 13], 2, 1.6, '#e6dfcf');
+      s += iso.box(sx - 1.5, sy + 12, 11, 4, 5, 4, '#6d6560');
+      const tip = iso.P(sx - 3, sy - 34, 19.5), land = iso.P(sx - 3, sy - 34, 13);
+      s += `<line x1="${f1(tip[0])}" y1="${f1(tip[1])}" x2="${f1(land[0])}" y2="${f1(land[1])}" stroke="#8c3b22" stroke-width="${f1(1.4 * k)}" opacity=".85"/>`;
+      add(sx + sy + 2, s);
+      shadows.push(iso.shadow([[sx - 6, sy - 5], [sx + 6, sy - 5], [sx + 6, sy + 5], [sx - 6, sy + 5]], 14));
+      // reclaimer at x 662: wheel on a boom into pile B
+      const rx = 664, ry = 185;
+      let r = iso.box(rx - 6, ry - 5, 0, 12, 10, 4, '#d8d3c4') + iso.box(rx - 2.5, ry - 2.5, 4, 5, 5, 8, '#e2dccd');
+      r += iso.beam([rx, ry + 2, 11], [rx - 2, ry + 30, 7], 2.2, 1.6, '#e6dfcf') + iso.beam([rx, ry - 2, 11], [rx + 1, ry - 13, 12], 2, 1.6, '#e6dfcf') + iso.box(rx - 1.5, ry - 17, 10, 4, 5, 4, '#6d6560');
+      const wh = []; for (let i = 0; i < 20; i++) { const a = i / 20 * 2 * PI; wh.push([rx - 4, ry + 31 + 4.6 * Math.cos(a), 7 + 4.6 * Math.sin(a)]); }
+      r += iso.flat(wh, '#e0a420') + `<polygon points="${iso.pts(wh)}" fill="none" stroke="#9b6c10" stroke-width=".5" stroke-dasharray="1 1.2"/>`;
+      add(rx + ry + 20, r);
+      shadows.push(iso.shadow([[rx - 6, ry - 5], [rx + 6, ry - 5], [rx + 6, ry + 5], [rx - 6, ry + 5]], 12));
+      // reclaim conveyor to the train loadout (gallery rising south over the loop)
+      let g = '';
+      const g0 = [560, 194, 2.6], g1 = [567, 303, 26];
+      for (let f = 0.12; f < 0.95; f += 0.15) { const x = g0[0] + (g1[0] - g0[0]) * f, y = g0[1] + (g1[1] - g0[1]) * f, z = g0[2] + (g1[2] - g0[2]) * f; g += iso.box(x - 0.4, y, 0, .8, .8, z, '#8f969a'); }
+      g += iso.beam(g0, g1, 3.2, 1.2, '#aab0b3');
+      add(g0[0] + 240, g);
+      shadows.push(iso.flat([[g0[0] - 1.6, g0[1], 0], [g0[0] + 1.6, g0[1], 0], [g1[0] + 1.6 + SH[0] * 26, g1[1] + SH[1] * 26, 0], [g1[0] - 1.6 + SH[0] * 26, g1[1] + SH[1] * 26, 0]], 'currentColor'));
+      top.push({ belt: [[560, 194, 3.9], [567, 303, 27.3]] });
+    }
+    // trees (creek gums and camp shade trees)
+    for (const [x, y, r] of trees) {
+      let s = iso.line([[x, y, 0], [x, y, r * 1.1]], '#e7dccb', Math.max(.6, .45 * k));
+      const c = iso.P(x, y, r * 1.35);
+      const rr = r * k * 1.15;
+      s += `<circle cx="${f1(c[0] + rr * .25)}" cy="${f1(c[1] + rr * .15)}" r="${f1(rr)}" fill="#4a5530"/><circle cx="${f1(c[0] - rr * .2)}" cy="${f1(c[1] - rr * .1)}" r="${f1(rr * .82)}" fill="#66733f"/><circle cx="${f1(c[0] - rr * .38)}" cy="${f1(c[1] - rr * .35)}" r="${f1(rr * .45)}" fill="#829152"/>`;
+      add(x + y, s);
+      shadows.push(iso.flat(hull(Array.from({ length: 10 }, (_, i) => { const a = i / 10 * 2 * PI; return [x + r * Math.cos(a) + SH[0] * r * 1.3, y + r * Math.sin(a) + SH[1] * r * 1.3]; })).map(p => [p[0], p[1], 0]), 'currentColor'));
+    }
+
+    // ---- spinifex: grey-green tussocks wherever the ground is open
+    {
+      const roads = [[haul1, 18], [haul2, 18], [magTrack, 6], [access, 8], [creekC, 14], [mainLine, 8]];
+      const rects = [[24, 6, 160, 116], [140, 6, 258, 112], [286, 14, 392, 96], [360, 130, 476, 232], [540, 112, 716, 256], [520, 0, 720, 64], [6, 410, 80, 478], [296, 408, 396, 478], [466, 176, 570, 196], [550, 190, 566, 304]];
+      const free = (x, y) => {
+        if (x < 4 || y < 4 || x > W - 4 || y > D - 4) return false;
+        if (inPit(x, y, 1.1)) return false;
+        if (x < 55 && y > 100 && y < 410) return false;
+        for (const r of rects) if (x > r[0] && x < r[2] && y > r[1] && y < r[3]) return false;
+        for (const [pl, w] of roads) if (distLine(x, y, pl) < w) return false;
+        const dl = Math.hypot(x - LOOP.cx, y - LOOP.cy); if (Math.abs(dl - LOOP.r) < 8) return false;
+        return true;
+      };
+      const R2 = rng(99); let n = 0;
+      const dens = vnoise(5);
+      for (let i = 0; i < 5200 && n < (cfg.spinifex || 1100); i++) {
+        const x = R2() * W, y = R2() * D;
+        if (!free(x, y) || R2() > dens(x / 40, y / 40) * 1.4) continue;
+        n++;
+        const r = 1.6 + R2() * 1.6, c = iso.P(x, y, 0), rr = r * k * 1.25;
+        const g = mix('#8e9a6c', '#a9ad7d', R2());
+        add(x + y, `<ellipse cx="${f1(c[0] + rr * 0.9)}" cy="${f1(c[1] + rr * .15)}" rx="${f1(rr * 1.3)}" ry="${f1(rr * .45)}" fill="#5a2414" opacity=".22"/><ellipse cx="${f1(c[0])}" cy="${f1(c[1] - rr * .25)}" rx="${f1(rr)}" ry="${f1(rr * .62)}" fill="${tone(g, -0.25)}"/><ellipse cx="${f1(c[0] - rr * .2)}" cy="${f1(c[1] - rr * .42)}" rx="${f1(rr * .62)}" ry="${f1(rr * .38)}" fill="${tone(g, 0.18)}"/>`);
+      }
+    }
+
+    // ---- compose the static scene
+    objs.sort((a, b) => a.key - b.key);
+    const belts = top.filter(t => t.belt).map(t => `<polyline class="dio-belt" points="${iso.pts(t.belt)}" fill="none" stroke="#2f2a28" stroke-width="${f1(1.7 * k)}" stroke-linejoin="round"/><polyline class="dio-ore" points="${iso.pts(t.belt)}" fill="none" stroke="#a5482a" stroke-width="${f1(1.2 * k)}" stroke-dasharray="${f1(2.2 * k)} ${f1(3.4 * k)}" stroke-linejoin="round"/>`).join('');
+    const id = cfg.id;
+    svg.insertAdjacentHTML('beforeend', `
+      <defs>
+        <filter id="dio-floor" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="${f1(16 * k)}"/></filter>
+        <filter id="dio-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${f1(1.6 * k)}"/></filter>
+        <pattern id="dio-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(26.565)"><rect width="7" height="7" fill="#1c1916" opacity=".08"/><line x1="0" y1="0" x2="7" y2="0" stroke="#1c1916" stroke-width="1.5" opacity=".62"/></pattern>
+        ${defs.join('')}
+      </defs>
+      <g id="${id}-under">${under.join('')}</g>
+      <g id="${id}-ground">${ground.join('')}</g>
+      <g id="${id}-over">${over.join('')}</g>
+      <g id="${id}-net"></g>
+      <g id="${id}-pit">${pit}</g>
+      <g id="${id}-shadow" filter="url(#dio-soft)" style="color:#3b160b" opacity=".34">${shadows.join('')}</g>
+      <g id="${id}-belts">${belts}</g>
+      <g id="${id}-objs">${objs.map(o => o.s).join('')}</g>
+      <g id="${id}-actors"></g>
+      <g id="${id}-train"></g>
+      <g id="${id}-flags"></g>
+    `);
+
+    // ---- actors
+    const lay = n => svg.querySelector('#' + id + '-' + n);
+    const pitLayers = []; for (let i = 0; i < PIT.n; i++) pitLayers.push(svg.querySelector('#' + id + '-pt' + i));
+    // haul cycle: dump pocket -> ramp -> floor -> shovel and back, two lanes
+    const centre = [];
+    [...haul1].reverse().forEach(p => centre.push([p[0], p[1], 0]));
+    for (let t = 0; t <= 1.0001; t += 0.008) centre.push(rampAt(Math.min(1, t)));
+    const fe = rampAt(1); centre.push([fe[0] - 14, fe[1] - 10, -PIT.H], [fl[0] + 22, fl[1] + 12, -PIT.H], [fl[0] + 13, fl[1] + 8, -PIT.H]);
+    const laneA = offsetLine(centre, 4.6), laneB = offsetLine(centre, -4.6).reverse();
+    const cycle = new Path(laneA.concat(laneB), true);
+    const half = new Path(laneA, false).len;
+    const trucks = [];
+    const nMove = cfg.trucksMoving;
+    for (let i = 0; i < nMove; i++) { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); trucks.push({ g, s0: (cfg.phases ? cfg.phases[i] : (i + 0.15) / nMove) * cycle.len, dust: [], lastPuff: 0, layer: null }); }
+    // parked trucks at the fuel bay, settled dust, drawn parked marker
+    if (cfg.parked) {
+      let s = '';
+      [[206, 79], [218, 79], [230, 79]].forEach(([x, y]) => {
+        s += truckSVG(iso, x, y, 0, PI / 2, { parked: true });
+      });
+      lay('actors').insertAdjacentHTML('beforeend', `<g>${s}</g>`);
+      let m = '';
+      [[206, 79], [218, 79], [230, 79]].forEach(([x, y]) => {
+        const p = iso.P(x, y, 9);
+        m += `<g transform="translate(${f1(p[0])},${f1(p[1])})"><line x1="0" y1="0" x2="0" y2="-11" stroke="#1d1a17" stroke-width="1"/><rect x="-5.5" y="-22" width="11" height="11" rx="1.5" fill="#fbf8f2" stroke="#1d1a17" stroke-width="1"/><rect x="-2.6" y="-19.6" width="1.7" height="6.2" fill="#1d1a17"/><rect x=".9" y="-19.6" width="1.7" height="6.2" fill="#1d1a17"/></g>`;
+      });
+      lay('flags').insertAdjacentHTML('beforeend', m);
+    }
+    // light vehicles on the access road
+    const lvPath = new Path(access.map(p => [p[0], p[1] - 2.2, 0]).concat([...access].reverse().map(p => [p[0], p[1] + 2.2, 0])), true);
+    const lvs = [0, 0.55].map(f => ({ g: document.createElementNS('http://www.w3.org/2000/svg', 'g'), s0: f * lvPath.len }));
+    lvs.forEach(l => lay('actors').appendChild(l.g));
+    // the ore train: three locomotives and 40 dark ore wagons circling the balloon loop under the loadout
+    const loadA = 4.28; // loop angle of the loadout (radians)
+    const train = { g: lay('train'), cars: [] };
+    for (let i = 0; i < 3; i++) train.cars.push({ L: 22, loco: true });
+    for (let i = 0; i < (cfg.wagons || 34); i++) train.cars.push({ L: 10.6 });
+    let off = 0; train.cars.forEach(c => { c.off = off + c.L / 2; off += c.L + 0.7; });
+    train.len = off;
+
+    function frame(t) {
+      // trucks
+      for (const tr of trucks) {
+        const s = (tr.s0 + t * cfg.truckSpeed) % cycle.len;
+        const p = cycle.at(s);
+        const loaded = s > half;
+        const inPitNow = p.z < -0.8;
+        const layer = inPitNow ? pitLayers[Math.min(PIT.n - 1, Math.max(0, Math.floor(-p.z / PIT.h)))] : lay('actors');
+        if (tr.layer !== layer) { layer.appendChild(tr.g); tr.layer = layer; }
+        if (!cfg.still && t - tr.lastPuff > 0.22) { tr.lastPuff = t; const bx = p.x - Math.cos(p.th) * 7, by = p.y - Math.sin(p.th) * 7; tr.dust.push({ x: bx, y: by, z: p.z, t0: t }); }
+        tr.dust = tr.dust.filter(d => t - d.t0 < 2.6);
+        let ds = '';
+        for (const d of tr.dust) { const a = (t - d.t0) / 2.6; const c = iso.P(d.x + a * 3, d.y - a * 1, d.z + 1 + a * 3); ds += `<ellipse cx="${f1(c[0])}" cy="${f1(c[1])}" rx="${f1((2.5 + a * 6) * k)}" ry="${f1((1.6 + a * 3.6) * k)}" fill="#d8a676" opacity="${f1((1 - a) * 0.42 * 100) / 100}"/>`; }
+        tr.g.innerHTML = ds + truckSVG(iso, p.x, p.y, p.z, p.th, { loaded });
+      }
+      for (const l of lvs) {
+        const p = lvPath.at(l.s0 + t * 7);
+        l.g.innerHTML = iso.obox(p.x, p.y, p.th, -2.7, 2.7, -1.05, 1.05, 0, 1.9, '#f2f0ea') + iso.obox(p.x, p.y, p.th, 0.2, 1.6, -1.0, 1.0, 1.9, 2.4, '#5b6670');
+      }
+      // train
+      const head = (t * cfg.trainSpeed) / LOOP.r;
+      const items = [];
+      train.cars.forEach((c, i) => {
+        const a = head - c.off / LOOP.r; const x = LOOP.cx + LOOP.r * Math.cos(a), y = LOOP.cy + LOOP.r * Math.sin(a), th = a + PI / 2;
+        const m2 = v => ((v % (2 * PI)) + 2 * PI) % (2 * PI);
+        const loaded = !c.loco && m2(a - loadA) < m2(head - loadA);
+        let s;
+        if (c.loco) s = iso.obox(x, y, th, -11, 6.5, -1.55, 1.55, 0.9, 4.4, '#33373b') + iso.obox(x, y, th, 6.5, 11, -1.6, 1.6, 0.9, 4.9, '#e3a41f');
+        else { s = iso.obox(x, y, th, -5.2, 5.2, -1.5, 1.5, 0.8, 3.9, '#3d3532'); if (loaded) s += iso.obox(x, y, th, -4.6, 4.6, -1.35, 1.35, 3.9, 4.9, '#9a4224', { top: '#b9532c' }); }
+        items.push({ key: x + y, s });
+      });
+      // loadout bin over the loop: legs, bin, chute
+      {
+        const x = LOOP.cx + LOOP.r * Math.cos(loadA), y = LOOP.cy + LOOP.r * Math.sin(loadA), th = loadA + PI / 2;
+        let s = '';
+        for (const [u, v] of [[-6, -4.2], [6, -4.2], [-6, 4.2], [6, 4.2]]) s += iso.obox(x + u * Math.cos(th) + v * Math.sin(th), y + u * Math.sin(th) - v * Math.cos(th), th, -0.5, 0.5, -0.5, 0.5, 0, 14, '#8f969a');
+        s += iso.obox(x, y, th, -7, 7, -5, 5, 14, 27, '#c9cdcf') + iso.obox(x, y, th, -2, 2, -2, 2, 8, 14, '#9da3a6');
+        items.push({ key: x + y + 0.5, s });
+      }
+      items.sort((a, b) => a.key - b.key);
+      train.g.innerHTML = items.map(i => i.s).join('');
+    }
+
+    return { iso, frame, W, D, loop: LOOP, loadA, magTrack, P: (x, y, z) => iso.P(x, y, z), pit: PIT, ringPt, svgId: id, layer: lay, k };
+  }
+
+  function run(handle, still, t0 = 18) {
+    if (still) { handle.frame(t0); return; }
+    const start = performance.now();
+    let last = 0;
+    const loop = (now) => { const t = t0 + (now - start) / 1000; if (now - last > 30) { handle.frame(t); last = now; } requestAnimationFrame(loop); };
+    handle.frame(t0);
+    requestAnimationFrame(loop);
+  }
+
+  return { build, run, f1 };
+})();
+
+</script>
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('world');
+  const phone = () => innerWidth < 760;
+  const k = 0.83, ox = 36 + 480 * k, oy = 190;
+  const H = DIORAMA.build(svg, { id: 'w', k, ox, oy, scenario: true, trucksMoving: 5, phases: [0.03, 0.14, 0.27, 0.6, 0.86], parked: true, truckSpeed: 9, trainSpeed: 1.8, still: reduce });
+  svg.appendChild(document.getElementById('wires'));
+  const f1 = DIORAMA.f1, iso = H.iso;
+
+  // ---------- outside services and their link lines (the signature move)
+  const SVC = [
+    { name: 'Hosted ERP', cut: true, entry: 40, x: 146, bus: 124, icon: 'erp' },
+    { name: 'Cloud login', entry: 90, x: 404, bus: 100, icon: 'login' },
+    { name: 'Perth IROC link', entry: 140, x: 662, bus: 100, icon: 'iroc' },
+    { name: 'Vendor remote access', entry: 190, x: 920, bus: 124, icon: 'vendor' },
+  ];
+  const ICON = {
+    erp: '<rect x="8" y="5" width="15" height="20" rx="1.5" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.5"/><rect x="11.5" y="8.5" width="15" height="20" rx="1.5" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.5"/><path d="M15 14h8M15 18h8M15 22h5" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/>',
+    login: '<path d="M9 22h15a5 5 0 0 0 .6-10 7 7 0 0 0-13.5-1.6A5.8 5.8 0 0 0 9 22z" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.5" stroke-linejoin="round"/><circle cx="16.5" cy="16.2" r="2" fill="none" stroke="#1d1a17" stroke-width="1.5"/><path d="M16.5 18.2v2.3" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/>',
+    iroc: '<rect x="5" y="9" width="22" height="14" rx="1.5" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.5"/><path d="M12 27h8M16 23v4M9 18l3-3 3 2 4-5 4 3" fill="none" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 5.5a6 6 0 0 1 4.5 2" fill="none" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/>',
+    vendor: '<path d="M19.5 6.5a5 5 0 0 0-5.6 6.6l-7.4 7.4a2.1 2.1 0 0 0 3 3l7.4-7.4a5 5 0 0 0 6.6-5.6l-3.1 3.1-2.9-.6-.6-2.9z" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.5" stroke-linejoin="round"/>',
+  };
+  const SCISSORS = '<svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><circle cx="3.5" cy="10.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="10.5" cy="10.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.8 8.8L11 1.5M9.2 8.8L3 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+  const JOIN = '<svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 7h4M9 7h4M5 4v6M9 4v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  const sv = document.getElementById('services');
+  SVC.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'svc' + (s.cut ? ' cut' : '');
+    d.style.left = (s.x / 1068 * 100) + '%';
+    d.innerHTML = `<svg class="ico" viewBox="0 0 32 32" aria-hidden="true">${ICON[s.icon]}${s.cut ? '<path d="M4 28L28 4" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/>' : ''}</svg>
+      <div><b>${s.name}</b><span class="st">${s.cut ? '<svg width="12" height="10" viewBox="0 0 12 10" aria-hidden="true"><path d="M1 5h3.5M7.5 5H11M4.5 2v6M7.5 2v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Cut since day 0' : 'Up'}</span></div>
+      <button class="cutbtn${s.cut ? ' restore' : ''}" aria-pressed="${s.cut ? 'true' : 'false'}" aria-label="${s.cut ? 'Restore' : 'Cut'} ${s.name}">${s.cut ? JOIN + 'Restore' : SCISSORS + 'Cut'}</button>`;
+    sv.appendChild(d);
+  });
+
+  const wires = document.getElementById('wires');
+  const chamfer = (pts, r = 9) => { // octilinear corners: straight runs joined by short 45-degree cuts
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [a, b, c] = [pts[i - 1], pts[i], pts[i + 1]];
+      const u = [Math.sign(b[0] - a[0]), Math.sign(b[1] - a[1])], v = [Math.sign(c[0] - b[0]), Math.sign(c[1] - b[1])];
+      d += ` L${b[0] - u[0] * r},${b[1] - u[1] * r} L${b[0] + v[0] * r},${b[1] + v[1] * r}`;
+    }
+    const L = pts[pts.length - 1]; return d + ` L${L[0]},${L[1]}`;
+  };
+  let wireSVG = '';
+  SVC.forEach((s, i) => {
+    const e = iso.P(s.entry, 0, 0);
+    const ex = f1(e[0]), ey = f1(e[1]);
+    const top = 70;
+    if (s.cut) {
+      const gapA = s.bus + 26, gapB = gapA + 16;
+      wireSVG += `<path d="${chamfer([[s.x, top], [s.x, s.bus], [ex, s.bus], [ex, gapA]])}" fill="none" stroke="#1d1a17" stroke-width="1.5"/>`;
+      wireSVG += `<path d="M${ex - 5},${gapA} h10 M${ex - 5},${gapB} h10" stroke="#1d1a17" stroke-width="1.5" stroke-linecap="round"/>`;
+      wireSVG += `<path d="M${ex},${gapB} V${ey}" fill="none" stroke="#1d1a17" stroke-width="1.3" stroke-dasharray="3 3" opacity=".55"/>`;
+      wireSVG += `<circle class="${reduce ? '' : 'blink'}" cx="${ex}" cy="${gapA + 8}" r="3.2" fill="none" stroke="#b3261e" stroke-width="1.4"/>`;
+      wireSVG += `<g transform="translate(${ex - 72},${gapA + 8})"><rect x="0" y="-8" width="58" height="16" rx="3" fill="#faf8f4" stroke="#1d1a17" stroke-width="1"/><text x="6" y="4" font-size="10.5" font-weight="650" fill="#b3261e" font-family="Archivo">Link cut</text></g>`;
+    } else {
+      const d = chamfer([[s.x, top], [s.x, s.bus], [ex, s.bus], [ex, ey]]);
+      wireSVG += `<path id="wire${i}" d="${d}" fill="none" stroke="#1d1a17" stroke-width="1.5"/>`;
+      if (!reduce) wireSVG += `<circle r="2.4" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.2"><animateMotion dur="${5 + i}s" begin="-${i * 1.3}s" repeatCount="indefinite"><mpath href="#wire${i}"/></animateMotion></circle>`;
+      else wireSVG += `<circle cx="${s.x}" cy="${s.bus}" r="2.4" fill="#faf8f4" stroke="#1d1a17" stroke-width="1.2"/>`;
+    }
+    // entry post at the board edge
+    wireSVG += iso.box(s.entry - 1.5, -0.5, 0, 3, 3, 5, s.cut ? '#8a817a' : '#d9d5cc');
+  });
+  wires.innerHTML = wireSVG;
+
+  // ---------- the services' networks on the ground: the ERP one dead, the others live
+  const net = H.layer('net');
+  const G = (pts) => iso.pts(pts.map(p => [p[0], p[1], 0]));
+  const dead = (pts) => `<polyline points="${G(pts)}" fill="none" stroke="#f1e2cc" stroke-width="3.2" opacity=".5" stroke-linejoin="round"/><polyline points="${G(pts)}" fill="none" stroke="#1d1a17" stroke-width="1.4" stroke-dasharray="3.5 3" opacity=".9" stroke-linejoin="round"/>`;
+  const live = (pts) => `<polyline points="${G(pts)}" fill="none" stroke="#f3e6d2" stroke-width="3" opacity=".55" stroke-linejoin="round"/><polyline points="${G(pts)}" fill="none" stroke="#1d1a17" stroke-width="1.25" stroke-linejoin="round"/>`;
+  const node = (p, alive) => { const q = iso.P(p[0], p[1], 0); return `<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="2.6" fill="${alive ? '#1d1a17' : '#faf8f4'}" stroke="#1d1a17" stroke-width="1.1"/>`; };
+  const mt = H.magTrack.map(p => [p[0] + 6, p[1]]);
+  let n = '';
+  n += dead([[40, 0], [40, 28], [130, 28], [130, 58], [292, 58]]) + dead([[130, 28], [145, 28]]) + dead([[40, 28], [26, 28], [26, 96], [66, 100]].concat(mt.slice(4))) + dead([[40, 28], [40, 37]]);
+  n += node([40, 37], 0) + node([145, 28], 0) + node([292, 58], 0) + node(mt[mt.length - 1], 0);
+  n += live([[90, 0], [90, 10], [300, 10], [300, 21]]) + node([300, 21], 1);
+  n += live([[140, 0], [140, 6], [378, 6], [378, 33]]) + node([378, 33], 1) + live([[384, 40], [384, 120], [340, 180]]) + node([340, 180], 1);
+  n += live([[190, 0], [190, 2], [436, 2], [436, 176]]) + node([436, 176], 1);
+  net.innerHTML = n;
+
+  // ---------- survey flags and plaques for each process area
+  const PROCS = [
+    { name: 'Diesel ordering', st: 'stopped', note: 'Email orders ran out of road', at: [232, 30, 0], len: 98, side: 'r' },
+    { name: 'Explosives ordering', st: 'stopped', note: 'Ordered through the ERP', at: [46, 418, 0], len: 26, side: 'r' },
+    { name: 'Work orders', st: 'degraded', note: 'Paper work orders', at: [56, 38, 0], len: 52, side: 'l' },
+    { name: 'Payroll', st: 'degraded', note: 'Pay run delayed', at: [362, 34, 0], len: 30, side: 'r' },
+    { name: 'Haulage', st: 'degraded', note: 'Diesel rationed', at: [350, 196, 0], len: 34, side: 'r', sel: true },
+    { name: 'Drill & blast', st: 'degraded', note: 'No new blasts', at: H.pit.drill, len: 84, side: 'l' },
+    { name: 'Crushing', st: 'degraded', note: 'ROM pad running low', at: [470, 206, 0], len: 30, side: 'r' },
+    { name: 'Rail', st: 'normal', note: 'Stockpile buffering', at: [H.loop.cx + H.loop.r * Math.cos(H.loadA) - 2, H.loop.cy + H.loop.r * Math.sin(H.loadA) + 12, 0], len: 44, side: 'l' },
+  ];
+  const ST = { stopped: 'Stopped', degraded: 'Degraded', normal: 'Normal' };
+  const flagCloth = (st, x, y, dir) => {
+    const w = 12 * dir, h = 8.5;
+    if (st === 'stopped') return `<rect x="${dir > 0 ? x : x + w}" y="${y}" width="12" height="${h}" fill="#b3261e" stroke="#1d1a17" stroke-width="1"/><path d="M${x + w * .22},${y + 2} L${x + w * .78},${y + h - 2} M${x + w * .78},${y + 2} L${x + w * .22},${y + h - 2}" stroke="#fff" stroke-width="1.3"/>`;
+    if (st === 'degraded') return `<rect x="${dir > 0 ? x : x + w}" y="${y}" width="12" height="${h}" fill="#fff" stroke="#1d1a17" stroke-width="1"/><path d="M${x},${y + h} L${x},${y} L${x + w},${y + h} z" fill="#d4940a" stroke="#1d1a17" stroke-width="1" stroke-linejoin="round"/>`;
+    return `<path d="M${x},${y} L${x + w},${y + h / 2} L${x},${y + h} z" fill="#fff" stroke="#1d1a17" stroke-width="1" stroke-linejoin="round"/>`;
+  };
+  const fl = H.layer('flags');
+  PROCS.forEach(p => {
+    const a = iso.P(p.at[0], p.at[1], p.at[2] || 0);
+    const ax = f1(a[0]), ay = f1(a[1]), topY = f1(a[1] - p.len);
+    const dir = p.side === 'r' ? 1 : -1;
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'plq');
+    g.innerHTML = `<ellipse cx="${ax}" cy="${ay}" rx="3.4" ry="1.6" fill="#1d1a17" opacity=".45"/><line x1="${ax}" y1="${ay}" x2="${ax}" y2="${topY}" stroke="#1d1a17" stroke-width="${p.sel ? 1.6 : 1.1}"/>${flagCloth(p.st, +ax + dir * 0.6, +topY, dir)}
+      <g class="lbl"><rect rx="3" fill="${p.sel ? '#1d1a17' : '#faf8f4'}" stroke="#1d1a17" stroke-width="${p.sel ? 1.2 : .8}" opacity="${p.sel ? 1 : .96}"/>
+      <text font-size="11" font-weight="680" fill="${p.sel ? '#faf8f4' : '#1d1a17'}">${p.name.replace('&', '&amp;')}</text>
+      <text font-size="10.5" fill="${p.sel ? '#e9e2d6' : '#4f4842'}" style="font-stretch:92%"><tspan font-weight="700" fill="${p.sel ? '#faf8f4' : (p.st === 'stopped' ? '#9d1f18' : '#1d1a17')}">${ST[p.st]}</tspan> · ${p.note}</text></g>`;
+    fl.appendChild(g);
+    const [t1, t2] = g.querySelectorAll('text');
+    const tx = dir > 0 ? +ax + 17 : +ax - 17;
+    t1.setAttribute('y', +topY + 7); t2.setAttribute('y', +topY + 20);
+    const wdt = Math.max(t1.getComputedTextLength(), t2.getComputedTextLength()) + 14;
+    const x0 = dir > 0 ? tx - 4 : tx - wdt + 4;
+    t1.setAttribute('x', x0 + 7); t2.setAttribute('x', x0 + 7);
+    const r = g.querySelector('rect[rx]'); r.setAttribute('x', x0); r.setAttribute('y', +topY - 5); r.setAttribute('width', wdt); r.setAttribute('height', 31);
+  });
+
+  // ---------- day timeline (drawn at its real width so text is never stretched)
+  const tl = document.getElementById('tl');
+  const drawTL = () => {
+    const Wt = tl.parentNode.clientWidth || 600; tl.setAttribute('viewBox', `0 0 ${Wt} 92`);
+    const X = d => 14 + d / 12 * (Wt - 34);
+    const T = (x, y, str, o = {}) => `<text x="${x}" y="${y}" font-size="${o.fs || 11}" text-anchor="${o.a || 'start'}" font-weight="${o.w || 500}" fill="${o.c || '#1d1a17'}" font-family="Archivo" style="font-stretch:${o.st || 92}%">${str}</text>`;
+    const tg = s => `<tspan fill="#6c645c" font-size="9.5" font-weight="500"> ${s}</tspan>`;
+    let t = '';
+    t += `<line x1="${X(0)}" y1="46" x2="${X(6)}" y2="46" stroke="#1d1a17" stroke-width="3" stroke-linecap="round"/>`;
+    t += `<line x1="${X(6)}" y1="46" x2="${X(12)}" y2="46" stroke="#1d1a17" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+    for (let d = 0; d <= 12; d++) t += `<line x1="${X(d)}" y1="${d % 6 ? 42 : 39}" x2="${X(d)}" y2="${d % 6 ? 50 : 53}" stroke="#1d1a17" stroke-width="1"/>` + T(X(d), 66, d, { fs: 10.5, a: 'middle', c: '#6c645c' });
+    const mark = (d, up) => `<line x1="${X(d)}" y1="${up ? 26 : 70}" x2="${X(d)}" y2="${up ? 40 : 52}" stroke="#6c645c" stroke-width="1" stroke-dasharray="2 2"/>`;
+    t += mark(0, 1).replace('y1="26"', 'y1="18"') + T(X(0) + 3, 14, 'Hosted ERP cut');
+    t += mark(12, 1).replace('y1="26"', 'y1="18"') + T(X(12) - 3, 14, 'Full restore ≈ 12' + tg('sourced'), { a: 'end' });
+    t += T(X(6) - 12, 31, 'Now: email orders run out', { a: 'end', w: 700 });
+    t += mark(7.4, 1).replace('y1="26"', 'y1="34"') + T(X(7.4) + 3, 31, 'Diesel runs out ≈ 7.4' + tg('computed'));
+    t += mark(6.6, 0) + T(X(6.6) - 3, 84, 'ROM pad empty ≈ 6.6' + tg('computed'), { a: 'end' });
+    t += mark(8.1, 0) + (Wt < 520 ? T(X(12), 84, 'Stockpile dry ≈ 8.1' + tg('computed'), { a: 'end' }) : T(X(8.1) + 3, 84, 'Stockpile dry ≈ 8.1: revenue at risk' + tg('computed')));
+    t += `<rect x="${X(6.6)}" y="44" width="${X(8.1) - X(6.6)}" height="4" fill="#d4940a" opacity=".0"/>`;
+    t += `<g transform="translate(${X(6)},46)"><circle r="8" fill="#faf8f4" stroke="#1d1a17" stroke-width="2"/><circle r="3" fill="#1d1a17"/></g>`;
+    tl.innerHTML = t;
+  };
+  drawTL(); addEventListener('resize', drawTL);
+
+  // ---------- fleet glyphs in the panel
+  const fleet = document.getElementById('fleet');
+  let fg = '';
+  for (let i = 0; i < 8; i++) {
+    const parked = i >= 5;
+    fg += `<svg width="30" height="22" viewBox="0 0 30 22" aria-hidden="true"><path d="M2 8h17v6H2z" fill="${parked ? '#cfc4ad' : '#f2b01e'}" stroke="#1d1a17" stroke-width="1"/><path d="M19 10h6.5l2 4H19z" fill="${parked ? '#cfc4ad' : '#f2b01e'}" stroke="#1d1a17" stroke-width="1"/><circle cx="7" cy="16.5" r="3" fill="#1d1a17"/><circle cx="23" cy="16.5" r="3" fill="#1d1a17"/>${parked ? '<rect x="9.5" y="0.5" width="9" height="6.5" rx="1" fill="#fbf8f2" stroke="#1d1a17"/><rect x="11.8" y="2" width="1.4" height="3.5" fill="#1d1a17"/><rect x="14.8" y="2" width="1.4" height="3.5" fill="#1d1a17"/>' : ''}</svg>`;
+  }
+  fleet.innerHTML = fg;
+
+  // ---------- phone framing and run
+  // keep the HTML chips locked to the SVG wires at any stage size (the SVG letterboxes with 'meet')
+  const chips = [...sv.children];
+  const pin = () => {
+    if (phone()) { chips.forEach(c => { c.style.left = ''; c.style.top = ''; c.style.transform = ''; }); return; }
+    const st = svg.parentNode.getBoundingClientRect();
+    const sc = Math.min(st.width / 1068, st.height / 748), offX = (st.width - 1068 * sc) / 2, offY = (st.height - 748 * sc) / 2;
+    chips.forEach((c, i) => { c.style.left = (offX + SVC[i].x * sc) + 'px'; c.style.top = (offY + 10 * sc - 10) + 'px'; c.style.transform = `translateX(-50%) scale(${Math.min(1, sc)})`; });
+  };
+  const frame = () => { svg.setAttribute('viewBox', phone() ? '20 150 1030 560' : '0 0 1068 748'); wires.style.display = phone() ? 'none' : ''; pin(); };
+  frame(); addEventListener('resize', frame);
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => document.querySelectorAll('.seg button').forEach(o => o.setAttribute('aria-pressed', o === b))));
+  document.querySelector('.sw').addEventListener('click', e => { const b = e.currentTarget; b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); });
+  DIORAMA.run(H, reduce, 26);
+})();
+</script>
+</body>
+</html>
