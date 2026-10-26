@@ -12,6 +12,49 @@ const registerPath = 'register/pilbara-model-site.yaml';
 const register = loadRegisterYaml(readFileSync(join(root, registerPath), 'utf8'));
 const pack = renderContinuityPack(register, '2026-10-26');
 
+const LABEL_START = /\((sourced|measured|assumed|computed)\b/g;
+const QUANTITY = /(?<![\w.-])\d+(\.\d+)?\s*(h|hours?|days?|t|tonnes?|USD|AUD)\b/g;
+
+/** Replaces each display label, including any parentheses inside it, with a marker. */
+function maskLabels(segment: string): string {
+  let out = '';
+  let i = 0;
+  for (const m of segment.matchAll(LABEL_START)) {
+    if (m.index < i) continue;
+    out += segment.slice(i, m.index);
+    let depth = 0;
+    let j = m.index;
+    do {
+      if (segment[j] === '(') depth++;
+      else if (segment[j] === ')') depth--;
+      j++;
+    } while (depth > 0 && j < segment.length);
+    out += '\u0000';
+    i = j;
+  }
+  return out + segment.slice(i);
+}
+
+/**
+ * Quantities (hours, days, tonnes, USD) not immediately followed by a display label. Lines are split
+ * into table cells on unescaped `|`, and cells into sentences, so a label elsewhere on the line
+ * cannot cover a number.
+ */
+function unlabelledQuantities(text: string): string[] {
+  const found: string[] = [];
+  for (const line of text.split('\n')) {
+    for (const cell of line.split(/(?<!\\)\|/)) {
+      for (const sentence of cell.split(/(?<=\.)\s+/)) {
+        const masked = maskLabels(sentence);
+        for (const m of masked.matchAll(QUANTITY)) {
+          if (!/^\s*\u0000/.test(masked.slice(m.index + m[0].length))) found.push(`${m[0]} in: ${line}`);
+        }
+      }
+    }
+  }
+  return found;
+}
+
 function cli(...args: string[]) {
   const run = spawnSync('npx', ['tsx', 'engine/src/cli.ts', ...args], { cwd: root, encoding: 'utf8' });
   return { status: run.status, stdout: run.stdout, stderr: run.stderr };
@@ -27,7 +70,8 @@ describe('renderContinuityPack', () => {
     for (const p of register.processes) {
       expect(pack, p.name).toContain(p.name);
       expect(pack, p.id).toContain(p.continuity.owner);
-      expect(pack, p.id).toContain(`${p.continuity.maxTolerableOutage.value} hours`);
+      const mto = p.continuity.maxTolerableOutage.value;
+      expect(pack, p.id).toContain(mto === 1 ? '1 hour (' : `${mto} hours (`);
     }
   });
 
@@ -43,12 +87,29 @@ describe('renderContinuityPack', () => {
   });
 
   test('pack tags every number with its display label', () => {
-    const unlabelled = pack
-      .split('\n')
-      .filter((line) => /\d+(\.\d+)?\s*(h|hours|days)\b(?!.*\((sourced|measured|assumed|computed))/.test(line));
-    expect(unlabelled).toEqual([]);
+    expect(unlabelledQuantities(pack)).toEqual([]);
     expect(pack).toMatch(/\(assumed\)/);
     expect(pack).toMatch(/\(computed\)/);
+  });
+
+  test('pack labels a 1-hour limit in the singular', () => {
+    const doc = structuredClone(register);
+    const process = doc.processes[0]!;
+    process.continuity.maxTolerableOutage.value = 1;
+    process.continuity.recoveryTarget.value = 1;
+    const text = renderContinuityPack(parseRegister(doc), '2026-10-26');
+    expect(text).toContain('- Maximum tolerable outage: 1 hour (assumed)');
+    expect(text).toContain('- Recovery target: 1 hour (assumed)');
+    expect(text).toContain('limit 1 hour (assumed)');
+    expect(unlabelledQuantities(text)).toEqual([]);
+  });
+
+  test('label checker rejects numbers a later label on the same line would have covered', () => {
+    expect(unlabelledQuantities('| 3 hours | 4 hours (assumed) |')).toHaveLength(1);
+    expect(unlabelledQuantities('Holds for 3 days, then 4 hours (assumed).')).toHaveLength(1);
+    expect(unlabelledQuantities('- Output: 1 hour then 5 t (computed)')).toHaveLength(1);
+    expect(unlabelledQuantities('Revenue 12 USD (computed) and 1 hour')).toHaveLength(1);
+    expect(unlabelledQuantities('| 1 hour (assumed) | 7 days (sourced: Foo (May 2026)) | 2.5 tonnes (computed) |')).toEqual([]);
   });
 
   test('pack renders sourced and measured labels with the source title and run', () => {

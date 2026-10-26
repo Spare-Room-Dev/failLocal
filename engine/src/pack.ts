@@ -29,9 +29,11 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
         return '(assumed)';
     }
   };
-  const hours = (value: number): string => `${value} ${value === 1 ? 'hour' : 'hours'}`;
+  const unitName = (value: number, unit: string): string =>
+    value === 1 && (unit === 'hours' || unit === 'days') ? unit.slice(0, -1) : unit;
+  const hours = (value: number): string => `${value} ${unitName(value, 'hours')}`;
   const shown = (q: Pick<Quantity, 'value' | 'unit' | 'provenance'>): string =>
-    `${q.value} ${q.unit} ${label(q.provenance)}`;
+    `${q.value} ${unitName(q.value, q.unit)} ${label(q.provenance)}`;
   const cell = (text: string): string => text.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
   const table = (head: string[], rows: string[][]): string[] => [
     `| ${head.join(' | ')} |`,
