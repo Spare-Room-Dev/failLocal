@@ -74,7 +74,7 @@ processes:
           holdFor:
             value: 24
             unit: hours
-            provenance: { kind: assumed, reasoning: 'Scope''s customers reconciled one to two days of transactions by hand after the restore; that sizes the job, not its length. A day before new orders go out, so none duplicates an emailed one (D-094).' }
+            provenance: { kind: assumed, reasoning: 'Scope told customers to expect a gap of up to one to two days of transactions to reconcile by hand; that sizes the job, not its length. A day before new orders go out, so none duplicates an emailed one (D-094).' }
     status:
       degraded: Fuel orders going by phone and email
       stopped: No fuel orders going out
@@ -111,7 +111,7 @@ processes:
           holdFor:
             value: 24
             unit: hours
-            provenance: { kind: assumed, reasoning: 'Same judgement as diesel ordering: Scope''s one to two days of hand-reconciled transactions size the job (D-095).' }
+            provenance: { kind: assumed, reasoning: 'Same judgement as diesel ordering: Scope told customers to expect a gap of up to one to two days of transactions to reconcile by hand, which sizes the job (D-095).' }
     status:
       degraded: Explosives orders going by phone and email
       stopped: No explosives orders going out
@@ -662,7 +662,8 @@ scenarios:
       from 5 May, and Scope restored client servers in stages (about 20% by 10 May, 53% by 12 May,
       80% by 14 May and 100% by 17 May). The model site is placed in the last group, so it waits the
       full 12 days. Manual workarounds hold throughout, and no physical process stops, which matches
-      the public record.
+      the public record. Ordering stays on its workaround for a further 24 hours after the restore
+      (assumed, D-094); this tail is not from the public record.
     basis: [scope-incident-updates, miningcom-scope-oped]
     projection: false
     workaroundsHold: true

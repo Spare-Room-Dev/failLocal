@@ -11,6 +11,8 @@ These items came out of the Plan 1 reviews (26 Oct 2026). They were deliberately
 
    **Update, 26 Oct 2026:** the owner chose (a), and it is now merged. Diesel has a 36 h lead time and explosives 72 h (D-091, D-092). The delay moves the S1 outage later without deepening it: the fleet parks at h276, and revenue at risk is still $0. Two options remain: add Scope's sourced recovery tail (one to two days of transactions reconciled by hand after the restore), or go with (c).
 
+   **Done, 26 Oct 2026:** the owner chose the recovery tail. Diesel and explosives ordering hold new purchase orders for 24 h after the ERP is back (assumed, D-094, D-095), and the prepared site's duplicate rejection lifts the hold (D-096). S1 projection now has about $6.0M at risk unprepared and $0 prepared. The figure rests entirely on the assumed hold: it is $0 below a 10-hour hold (D-079).
+
    Separately, decide whether rail under site authority (S2, prepared) should earn shipping credit (D-040).
 2. **Vendor jump host tier (I2).** The asset that keeps the crusher safe in S3 derives a `low` tier (D-011), and the tier table prints it that way. Fixing this needs a schema field, such as `protects: [process ids]` on controls, or the processes and assets a vendor-access service reaches. Make the change before Plan 2 freezes the register shape.
 3. **Variant-aware independent copy (I3).** `independentCopy` describes the baseline site, so it reads "no" even with the prepared toggle on. The pack now documents this convention. Plan 2's side panel needs either a derived prepared-variant value or the same explanation.

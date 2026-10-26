@@ -84,9 +84,9 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Source / provenance:** sourced: scope-incident-updates (Northern Star: unverified, not cited)
 - **Owner change:**
 
-## D-093 A post-restore hold keeps a dependency lost after its service is back
+## D-093 A post-restore hold can keep a dependency lost after its service is back
 - **Decision:** A service dependency can carry a post-restore hold. After each outage of the service ends, that dependency alone stays lost for the hold's length, and gives what it gave during the outage: stop, the manual workaround (timed from the outage start), or a fallback. The service itself shows as back. A working `reconcile` control removes the hold. A hold that runs into the next outage joins the two.
-- **Reasoning:** A restored system is not yet a usable one: Scope's customers reconciled transactions by hand after their servers came back (D-094). Putting the hold on the dependency, not the service, keeps the restore time as the source reports it and applies the hold only where the owner chose: purchasing.
+- **Reasoning:** A restored system may not be usable at once: Scope told customers to expect a gap of up to one to two days of transactions to reconcile by hand (D-094). Putting the hold on the dependency, not the service, keeps the restore time as the source reports it and applies the hold only where the owner chose: purchasing.
 - **Source / provenance:** modelling rule (engine, `simulate.ts`)
 - **Owner change:** 26 Oct 2026: the owner chose to model Scope's recovery tail as a hold on new purchase orders (Plan 1 follow-up 1).
 
@@ -325,7 +325,7 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 ## D-094 Diesel orders are held for 24 hours after the ERP is back
 - **Path:** processes.diesel-ordering.dependsOn.hosted-erp.afterRestore.holdFor
 - **Decision:** 24 hours
-- **Reasoning:** Scope's customers reconciled one to two days of transactions by hand after the restore. That is the size of the job, not how long it takes, so the 24 hours is a judgement: a day to match the orders placed by phone and email against what the restored ERP holds. Until that is done, a new purchase order could repeat one already sent, so the unprepared site holds new orders. Work orders and payroll have no hold: the owner scoped this to purchasing.
+- **Reasoning:** Scope told customers to expect a gap of up to one to two days of transactions to reconcile by hand. That is the size of the job, not how long it takes, so the 24 hours is a judgement: a day to match the orders placed by phone and email against what the restored ERP holds. Until that is done, a new purchase order could repeat one already sent, so the unprepared site holds new orders. Work orders and payroll have no hold: the owner scoped this to purchasing.
 - **Source / provenance:** assumed (size of the job from sourced: scope-incident-updates)
 - **Owner change:** 26 Oct 2026: the owner chose a 24-hour hold on purchasing only.
 
@@ -605,14 +605,22 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Path:** scenarios.s1-as-reported.events[0].at
 - **Path:** scenarios.s1-as-reported.horizon
 - **Decision:** the cut at hour 0; a 14-day run
-- **Reasoning:** The timeline starts with the cut. Two days after the restore show the site settling.
+- **Reasoning:** The timeline starts with the cut. Two days after the restore show the site settling. Ordering stays on its workaround for a further 24 hours after the restore (assumed, D-094); this tail is not from the public record.
 - **Source / provenance:** assumed
 - **Owner change:**
 
 ## D-079 S1 projection: the same 12 days; only the workarounds change
 - **Path:** scenarios.s1-projection.events[0].restoreAfter
 - **Decision:** 288 hours (12 days), the same sourced restore as S1 as reported. The only counterfactual is that the manual workarounds run out (D-041 to D-044).
-- **Reasoning:** With the values above, the workarounds end on day 3 (hour 72) and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276 (day 11.5), 12 hours before the restore, and the crusher stops at hour 288 as the ROM pad runs out. The ERP is back at hour 288, but new orders are held for 24 hours while transactions are reconciled by hand (D-094, D-095), so ordering restarts at hour 312. The first diesel ordered then arrives 36 hours later: the fleet restarts at hour 349, still rationed, and is not back to normal when the run ends; the crusher restarts at hour 350. The fleet is parked for 73 hours and the crusher for 62. The product stockpile falls below its one-day low mark at hour 336, so trains are cut back for 43 hours, to a low of about 0.4 days; rail never stops. Revenue at risk is about $6.0M unprepared and $0 prepared, where duplicate rejection (D-096) lets ordering restart with the ERP. Explosives in transit keep the magazine full until hour 144; it runs out at hour 312, and the first explosives ordered after the hold arrive at hour 384, the run's last hour, so blasting is stopped at the end. Before the hold the fleet was parked for 49 hours, the crusher for 38, the stockpile held at about 1.4 days and revenue at risk was $0, so the whole dollar figure comes from the assumed 24-hour hold. Revenue at risk appears once the hold reaches 10 hours; at 48 hours, the top of Scope's one to two days, rail also stops for 15 hours. The fleet parks before the restore only while the diesel lead time is under 48 hours; at 48 hours, the top of D-091's range, it parks in the restore hour. An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. Neither the restore nor the run length was changed for the hold.
+- **Reasoning:** Revenue at risk ($6.0M) comes entirely from the assumed 24-hour hold (D-094); it is $0 below a 10-hour hold.
+  - Outage: the workarounds end at hour 72 and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276, 12 hours before the restore; the crusher stops at hour 288 as the ROM pad runs out.
+  - Recovery: the ERP is back at hour 288, but new orders are held for 24 hours (D-094, D-095), so ordering restarts at hour 312. The first diesel arrives 36 hours later: the fleet restarts at hour 349, still rationed, and is not back to normal when the run ends; the crusher restarts at hour 350. The fleet is parked for 73 hours and the crusher for 62.
+  - Shipping: the product stockpile falls below its one-day mark at hour 336, so trains are cut back for 43 hours, to a low of about 0.4 days; rail never stops. About $6.0M is at risk unprepared and $0 prepared: the independent restore and offline ordering keep fuel coming; duplicate rejection also lifts the hold.
+  - Explosives: the magazine stays full until hour 144 and runs out at hour 312; the first explosives ordered after the hold arrive in hour 384, the run's last, so blasting is stopped at the end.
+  - Before the hold: the fleet was parked for 49 hours, the crusher for 38, the stockpile held at about 1.4 days, and revenue at risk was $0.
+  - Sensitivity of the hold (run after the result, no value changed): $0 up to 9 hours; revenue at risk from 10 hours; at 48 hours, rail also stops for 15 hours.
+  - Lead-time margin: the fleet parks before the restore only while the diesel lead time is under 48 hours; at 48 hours, the top of D-091's range, it parks in the restore hour.
+  - An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. Neither the restore nor the run length was changed for the hold.
 - **Source / provenance:** sourced: scope-incident-updates
 - **Owner change:**
 
