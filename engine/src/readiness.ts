@@ -6,7 +6,11 @@ export interface ReadinessRow {
   processId: string;
   scenarioId: string;
   variant: Variant;
-  longestOutageHours: number; // longest contiguous non-normal run (computed)
+  /**
+   * The longest contiguous run of non-normal samples (computed). It counts samples, so an outage
+   * still running at the final sample counts up to that sample.
+   */
+  longestOutageHours: number;
   maxTolerableOutageHours: number;
   recoveryTargetHours: number;
   withinTolerance: boolean; // longestOutageHours <= maxTolerableOutageHours

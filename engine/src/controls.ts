@@ -5,9 +5,13 @@
  * A control applies only if its capability works, and only at a sample where none of the assets it
  * relies on is down. Only effect durations are read: `capability.measurements` and
  * `capability.observations` never feed the simulation.
+ *
+ * When several applicable controls cover the same thing, the shortest duration wins (D-005): the
+ * earliest detection, the shortest fallback delay, and the shortest restore.
  */
+import { quantityPaths } from './paths.js';
 import { toHours } from './quantity.js';
-import type { Control } from './schema.js';
+import type { Control, Register } from './schema.js';
 
 /** Whether `asset` is down at sample `hour`. */
 export type AssetDown = (asset: string, hour: number) => boolean;
@@ -17,12 +21,13 @@ export function workingControls(controls: Control[]): Control[] {
   return controls.filter((c) => c.capability.works);
 }
 
-/** The id-keyed paths of every effect duration and delay of `controls`, as `quantityPaths` names them. */
-export function effectPaths(controls: Control[]): Set<string> {
+/** The `quantityPaths` of `r` that are an effect duration or delay of one of `controls`. */
+export function effectPaths(r: Register, controls: Control[]): Set<string> {
+  const prefixes = controls.map((c) => `controls.${c.id}.effects[`);
   return new Set(
-    controls.flatMap((c) =>
-      c.effects.map((e, i) => `controls.${c.id}.effects[${i}].${e.kind === 'fallback' ? 'delay' : 'duration'}`),
-    ),
+    quantityPaths(r)
+      .map((e) => e.path)
+      .filter((path) => prefixes.some((prefix) => path.startsWith(prefix))),
   );
 }
 

@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { effectPaths } from '../src/controls.js';
 import type { Control, ControlEffect, Register, Scenario, ScenarioEvent } from '../src/schema.js';
 import { simulate, simulateScenario } from '../src/simulate.js';
 import type { Sample, Timeline } from '../src/simulate.js';
@@ -228,6 +229,46 @@ test('a restore does not wait for an asset that was down only before the restore
   expect(t.events.filter((e) => e.subject === 'erp').map((e) => [e.hour, e.kind])).toEqual([
     [0, 'service-down'],
     [6, 'service-up'],
+  ]);
+});
+
+test('the shortest of two overlapping restores wins (D-005)', () => {
+  const r = withControls(control('slow-restore', [restore(12)]), control('fast-restore', [restore(6)]));
+  const t = simulate(r, 'cut-erp', 'prepared');
+  expect(at(t, 5).services.erp).toBe('down');
+  expect(at(t, 6).services.erp).toBe('up');
+  expect(t.events.filter((e) => e.subject === 'erp').map((e) => [e.hour, e.kind])).toEqual([
+    [0, 'service-down'],
+    [6, 'service-up'],
+  ]);
+});
+
+test('effectPaths names only effect quantities that exist', () => {
+  const r = withControls(control('offline-orders', [fallback(), fallback(3)]), control('independent-erp-restore', [restore(6)]));
+  expect([...effectPaths(r, r.controls)]).toEqual([
+    'controls.offline-orders.effects[1].delay',
+    'controls.independent-erp-restore.effects[0].duration',
+  ]);
+  expect([...effectPaths(r, r.controls.slice(1))]).toEqual(['controls.independent-erp-restore.effects[0].duration']);
+});
+
+test('a restored service goes down again while an asset its restore relies on is down', () => {
+  // Intended: the restored ERP runs on the plc for as long as the original 288-hour cut lasts.
+  const r = withControls(control('independent-erp-restore', [restore(6)], { assets: ['plc'] }));
+  const t = simulateScenario(
+    r,
+    scenario([cut('erp', 0, 288), compromise('erp', 'plc', 50, 3)], { horizon: q(3, 'days') }),
+    'prepared',
+  );
+  expect(t.samples.filter((x) => x.services.erp === 'down').map((x) => x.hour)).toEqual([0, 1, 2, 3, 4, 5, 50, 51, 52]);
+  expect(t.events.filter((e) => e.subject === 'erp' || e.subject === 'plc')).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'erp' },
+    { hour: 6, kind: 'service-up', subject: 'erp' },
+    { hour: 50, kind: 'compromise-started', subject: 'plc', from: 'erp' },
+    { hour: 50, kind: 'service-down', subject: 'erp' },
+    { hour: 50, kind: 'asset-down', subject: 'plc' },
+    { hour: 53, kind: 'service-up', subject: 'erp' },
+    { hour: 53, kind: 'asset-up', subject: 'plc' },
   ]);
 });
 

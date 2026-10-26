@@ -3,7 +3,8 @@
  *
  * - Time moves in 1-hour steps. There is one sample per hour, from hour 0 to the horizon inclusive.
  * - Something that happens at a fractional time t takes effect from the first whole hour >= t.
- *   Timeline events record t itself. Events after the horizon are left out.
+ *   Timeline events record t itself, so `TimelineEvent.hour` may be fractional. Events after the
+ *   horizon are left out.
  * - Outages are merged first: windows that overlap, touch, or leave no whole hour between them
  *   become one continuous outage, from the earliest start to the latest end. So two overlapping
  *   cuts give one outage that ends at the later restore. A window too short to cover a whole
@@ -12,7 +13,8 @@
  *   or revoked. Both are merged into its outages, and each outage gives exactly one `service-down`
  *   (at its start) and one `service-up` (at its end), so the events always agree with the samples.
  *   When an outage begins because a required service went down, `service-down` names that service
- *   in `from`. Hours in which the service's own access is revoked are taken out of its outages
+ *   in `from`. If its own cut and a required service's outage start at the same time, its own cut
+ *   wins and `from` is left out. Hours in which the service's own access is revoked are taken out of its outages
  *   (it shows `revoked`, not `down`), and an outage cut short by a revocation has no `service-up`.
  * - Assets: a compromise takes its target asset down for `downFor` hours.
  * - Processes are worked out each hour, dependencies first. A process takes the worst result over
@@ -23,8 +25,8 @@
  *   workarounds hold, otherwise for `holdsFor`, counted from the start of the outage.
  * - Stocks are kept in hours of normal consumption: day values are multiplied by 24 once, at the
  *   start, and a refill rate of r days/day adds r hours each hour. Inputs that come to whole hours
- *   therefore keep the level a whole number, with no floating-point drift. A sample reports a stock in days, as the
- *   level at the START of its hour, which is the level that hour's processes saw.
+ *   therefore keep the level a whole number, with no floating-point drift. A sample reports a stock
+ *   in days, as the level at the START of its hour, which is the level that hour's processes saw.
  * - A process that depends on a stock gets `onLoss` when the stock is empty, `degraded` when it is
  *   at or below its low threshold, and `normal` otherwise.
  * - After the processes are worked out, each stock moves by one hour: if its replenishing process
@@ -46,9 +48,11 @@
  *   down. Only effect durations feed the run; lab measurements and observations never do.
  * - Restore: a service's own cuts are merged first, then each merged outage is cut short to
  *   `duration` hours from its start, except for the hours after that in which an asset the control
- *   relies on is down: the service stays down through those. This happens before outages of
- *   required services are added, so a restore cannot bring a service back while a service it
- *   requires is still down.
+ *   relies on is down: the service stays down through those. This is intended: the restored
+ *   service runs on those assets for as long as the original outage lasts, so losing one of them
+ *   in that time takes it down again, with a second `service-down` and `service-up`. This happens
+ *   before outages of required services are added, so a restore cannot bring a service back while
+ *   a service it requires is still down.
  * - Fallback: it covers one dependency of one process on one service. For the first `delay` hours
  *   of the service's outage (default 0) the dependency gives its normal result (`onLoss`, or the
  *   manual workaround while it holds); after that it gives `degraded`. A fallback never makes a
@@ -61,6 +65,20 @@
  *   compromise (`duration >= downFor`) nothing was prevented: the asset goes down as it would
  *   unprepared, and the access is still revoked. Compromises are taken in order of `at`, and the
  *   control's assets are checked at its detection hour against the compromises taken so far.
+ *
+ * What a run reports:
+ * - Events at the same hour come in this order: `compromise-started`; then `compromise-detected`
+ *   and `access-revoked`; then service events; then asset events; then `stock-low` and
+ *   `stock-empty`; then `process-state`, with processes in dependency order.
+ * - `assumptionsUsed` records each input quantity the run read, by its id-keyed path: the
+ *   scenario's own quantities, every stock and production input, and every manual workaround's
+ *   `holdsFor`. A prepared run adds the effect durations and delays of each control whose
+ *   capability works (a fallback with no delay has none); an unprepared run has no control paths.
+ *   An overridden input keeps its original provenance and is marked `overridden: true`.
+ * - Free play: Plan 2 builds a free-play scenario from template events with a fixed provenance,
+ *   and applies the values a visitor chooses through `overrides` (for example
+ *   `scenarios.free-play.events[0].restoreAfter`). They arrive in `assumptionsUsed` with
+ *   `overridden: true`, so the UI can label them "chosen by you".
  */
 import type { Provenance, Unit } from './quantity.js';
 import { toHours } from './quantity.js';
@@ -360,7 +378,7 @@ function assumptionsUsed(
   overrides: Record<string, number>,
 ): Record<string, UsedInput> {
   const used: Record<string, UsedInput> = {};
-  const controlInputs = effectPaths(controls);
+  const controlInputs = effectPaths(reg, controls);
   for (const { path, quantity } of quantityPaths(reg)) {
     const read =
       path.startsWith(`scenarios.${scenario.id}.`) ||

@@ -54,7 +54,10 @@ function collect(r: Register): Entry[] {
   return out;
 }
 
-/** Every Quantity in the register with its id-keyed path. */
+/**
+ * Every Quantity in the register with its id-keyed path. The quantities are the register's own
+ * live objects: do not mutate them (`applyOverrides` works on a clone).
+ */
 export function quantityPaths(r: Register): { path: string; quantity: Quantity }[] {
   return collect(r);
 }
