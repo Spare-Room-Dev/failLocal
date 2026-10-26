@@ -52,6 +52,7 @@ describe('out-of-range overrides are rejected with the offending path', () => {
     ['cut-erp', 'scenarios.cut-erp.events[0].at', -1],
     ['cut-erp', 'scenarios.cut-erp.events[0].restoreAfter', -1],
     ['cut-erp', 'scenarios.cut-erp.events[0].restoreAfter', 0],
+    ['hit-plc', 'scenarios.hit-plc.events[0].at', -1],
     ['hit-plc', 'scenarios.hit-plc.events[0].downFor', -1],
     ['hit-plc', 'scenarios.hit-plc.events[0].downFor', 0],
     ['cut-erp', 'controls.ctl.effects[0].duration', -1],
