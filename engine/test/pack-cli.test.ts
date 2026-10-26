@@ -142,12 +142,37 @@ describe('renderContinuityPack', () => {
       for (const e of c.effects) {
         expect(block, c.id).toContain(`  - ${e.kind}: `);
         expect(block, c.id).toContain(`[${e.service}]`);
-        const time = e.kind === 'fallback' ? e.delay : e.duration;
+        const time = e.kind === 'fallback' ? e.delay : e.kind === 'reconcile' ? undefined : e.duration;
         if (time) expect(block, c.id).toMatch(new RegExp(`${time.value} hours? \\((assumed|sourced|measured)`));
       }
       for (const a of c.assets ?? []) expect(block, c.id).toContain(`[${a}]`);
       expect(block, c.id).toContain(`- Capability: ${c.capability.works ? 'works' : 'does not work'} (`);
     }
+  });
+
+  test('pack shows a post-restore hold and the reconcile control that removes it, with labelled numbers', () => {
+    const doc = structuredClone(register);
+    const ordering = doc.processes.find((p) => p.id === 'diesel-ordering')!;
+    ordering.dependsOn.find((d) => d.on === 'hosted-erp')!.afterRestore = {
+      description: 'New purchase orders held while transactions are reconciled by hand',
+      holdFor: { value: 24, unit: 'hours', provenance: { kind: 'assumed', reasoning: 'test' } },
+    };
+    doc.controls = doc.controls.filter((c) => c.id !== 'duplicate-rejection');
+    doc.controls.push({
+      id: 'duplicate-rejection',
+      name: 'Duplicate rejection',
+      description: 'Stale and duplicate transactions are rejected automatically.',
+      effects: [{ kind: 'reconcile', process: 'diesel-ordering', service: 'hosted-erp' }],
+      capability: { works: true, provenance: { kind: 'assumed', reasoning: 'test' }, measurements: [] },
+    });
+    const text = renderContinuityPack(parseRegister(doc), '2026-10-26');
+    expect(text).toContain(
+      'New purchase orders held while transactions are reconciled by hand. Held for 24 hours (assumed) after the service is back.',
+    );
+    expect(text).toContain(
+      '  - reconcile: Diesel ordering [diesel-ordering] recovers as soon as Hosted ERP (finance, purchasing, maintenance, payroll) [hosted-erp] is back, without its 24 hours (assumed) post-restore hold.',
+    );
+    expect(unlabelledQuantities(text)).toEqual([]);
   });
 
   test('pack states the site is fictional', () => {

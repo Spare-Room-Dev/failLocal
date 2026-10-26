@@ -59,7 +59,7 @@ export function deriveAssetTiers(r: Register): Record<string, Tier> {
 
   for (const control of r.controls) {
     const protectedProcesses = control.effects.flatMap((e) =>
-      e.kind === 'fallback' ? [e.process] : dependents(e.service),
+      e.kind === 'fallback' || e.kind === 'reconcile' ? [e.process] : dependents(e.service),
     );
     for (const assetId of control.assets ?? []) {
       for (const processId of protectedProcesses) raise(assetId, effective[processId] ?? 'low');

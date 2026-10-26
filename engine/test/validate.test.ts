@@ -365,3 +365,70 @@ describe('paths', () => {
     expect(applyOverrides(r, overrides)).toEqual(r);
   });
 });
+
+describe('post-restore hold and reconcile', () => {
+  const hold = (provenance: any = { kind: 'assumed', reasoning: 'test' }, value = 24) => ({
+    description: 'orders held while reconciling',
+    holdFor: { value, unit: 'hours', provenance },
+  });
+
+  test('a measured holdFor is rejected (spec §5.3)', () => {
+    const r: any = minimalRegister();
+    r.processes[0].dependsOn[0].afterRestore = hold(measured);
+    expect(() => parseRegister(r)).toThrow(/§5\.3/);
+  });
+
+  test('a negative holdFor is rejected', () => {
+    const r: any = minimalRegister();
+    r.processes[0].dependsOn[0].afterRestore = hold(undefined, -1);
+    expect(issuesOf(r).join('\n')).toMatch(/processes\.ordering\.dependsOn\.erp\.afterRestore\.holdFor\.value/);
+  });
+
+  test('a post-restore hold is only allowed on a service dependency', () => {
+    const r: any = minimalRegister();
+    r.processes[1].dependsOn[0].afterRestore = hold();
+    expect(issuesOf(r)).toEqual([
+      'processes.haulage.dependsOn.diesel: a post-restore hold is only allowed on a service dependency',
+    ]);
+    const ok: any = minimalRegister();
+    ok.processes[0].dependsOn[0].afterRestore = hold();
+    expect(() => parseRegister(ok)).not.toThrow();
+  });
+
+  test('a reconcile effect must name a process and a service', () => {
+    const ok = withControl((c) => {
+      c.effects = [{ kind: 'reconcile', process: 'ordering', service: 'erp' } as any];
+    });
+    expect(() => parseRegister(ok)).not.toThrow();
+    const dangling = withControl((c) => {
+      c.effects = [{ kind: 'reconcile', process: 'ghost', service: 'phantom' } as any];
+    });
+    expect(issuesOf(dangling)).toEqual([
+      "controls.ctl.effects[0].service: unknown service 'phantom'",
+      "controls.ctl.effects[0].process: unknown process 'ghost'",
+    ]);
+    const wrongKind = withControl((c) => {
+      c.effects = [{ kind: 'reconcile', process: 'erp', service: 'ordering' } as any];
+    });
+    expect(issuesOf(wrongKind)).toEqual([
+      "controls.ctl.effects[0].service: 'ordering' is a process, expected a service",
+      "controls.ctl.effects[0].process: 'erp' is a service, expected a process",
+    ]);
+  });
+
+  test('a reconcile effect has no duration', () => {
+    const r: any = withControl((c) => {
+      c.effects = [{ kind: 'reconcile', process: 'ordering', service: 'erp', duration: q(1, 'hours') } as any];
+    });
+    expect(() => parseRegister(r)).toThrow(RegisterError);
+  });
+
+  test('quantityPaths names the holdFor and applyOverrides changes it', () => {
+    const r: any = minimalRegister();
+    r.processes[0].dependsOn[0].afterRestore = hold();
+    const reg = parseRegister(r);
+    expect(quantityPaths(reg).map((p) => p.path)).toContain('processes.ordering.dependsOn.erp.afterRestore.holdFor');
+    const o = applyOverrides(reg, { 'processes.ordering.dependsOn.erp.afterRestore.holdFor': 12 });
+    expect(o.processes[0]!.dependsOn[0]!.afterRestore!.holdFor.value).toBe(12);
+  });
+});

@@ -330,3 +330,118 @@ test('a service that requires a cut and revoked service is down throughout, with
   expect(t.samples.every((x) => x.services.erp === 'down')).toBe(true);
   expect(t.events.filter((e) => e.subject === 'erp')).toEqual([{ hour: 0, kind: 'service-down', subject: 'erp', from: 'vendor-a' }]);
 });
+
+/** The minimal register with a 24-hour post-restore hold on ordering's ERP dependency, and the given controls. */
+function withHold(...controls: Control[]): Register {
+  const r = minimalRegister();
+  r.processes.find((p) => p.id === 'ordering')!.dependsOn[0]!.afterRestore = {
+    description: 'orders held while transactions are reconciled by hand',
+    holdFor: q(24, 'hours'),
+  };
+  r.controls = controls;
+  return r;
+}
+
+const reconcile: ControlEffect = { kind: 'reconcile', process: 'ordering', service: 'erp' };
+
+test('a post-restore hold keeps the dependency lost for holdFor hours after the service is back', () => {
+  const t = simulate(parseRegister(withHold()), 'cut-erp', 'unprepared');
+  expect(at(t, 287).processes.ordering).toBe('stopped');
+  expect(at(t, 311).processes.ordering).toBe('stopped');
+  expect(at(t, 312).processes.ordering).toBe('normal');
+  // The service itself is back: only the dependency is held.
+  expect(at(t, 288).services.erp).toBe('up');
+  expect(t.events.filter((e) => e.subject === 'erp')).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'erp' },
+    { hour: 288, kind: 'service-up', subject: 'erp' },
+  ]);
+});
+
+test('during the hold a workaround that holds keeps the dependency degraded', () => {
+  const r = withHold();
+  r.processes.find((p) => p.id === 'ordering')!.dependsOn[0]!.manualWorkaround = {
+    description: 'paper orders',
+    holdsFor: q(2, 'days'),
+  };
+  r.scenarios[0]!.workaroundsHold = true;
+  const t = simulate(parseRegister(r), 'cut-erp', 'unprepared');
+  for (const h of [0, 287, 288, 311]) expect(at(t, h).processes.ordering).toBe('degraded');
+  expect(at(t, 312).processes.ordering).toBe('normal');
+  expect(t.totals.stoppedHours.ordering).toBe(0);
+});
+
+test('during the hold a workaround that has run out still counts from the outage start', () => {
+  const r = withHold();
+  r.processes.find((p) => p.id === 'ordering')!.dependsOn[0]!.manualWorkaround = {
+    description: 'paper orders',
+    holdsFor: q(2, 'days'),
+  };
+  const t = simulate(parseRegister(r), 'cut-erp', 'unprepared');
+  expect(at(t, 47).processes.ordering).toBe('degraded');
+  expect(at(t, 48).processes.ordering).toBe('stopped');
+  expect(at(t, 311).processes.ordering).toBe('stopped');
+  expect(at(t, 312).processes.ordering).toBe('normal');
+});
+
+test('a fallback still covers the dependency during the hold', () => {
+  const t = simulate(parseRegister(withHold(control('offline-orders', [fallback()]))), 'cut-erp', 'prepared');
+  expect(at(t, 288).processes.ordering).toBe('degraded');
+  expect(at(t, 311).processes.ordering).toBe('degraded');
+  expect(at(t, 312).processes.ordering).toBe('normal');
+});
+
+test('a reconcile control removes the post-restore hold in the prepared run only', () => {
+  const r = parseRegister(withHold(control('duplicate-rejection', [reconcile])));
+  const t = simulate(r, 'cut-erp', 'prepared');
+  expect(at(t, 287).processes.ordering).toBe('stopped');
+  expect(at(t, 288).processes.ordering).toBe('normal');
+
+  const u = simulate(r, 'cut-erp', 'unprepared');
+  expect(at(u, 311).processes.ordering).toBe('stopped');
+  expect(at(u, 312).processes.ordering).toBe('normal');
+});
+
+test('a reconcile control whose capability does not work leaves the hold in place', () => {
+  const failed = control('duplicate-rejection', [reconcile], {
+    capability: { works: false, provenance: { kind: 'assumed', reasoning: 'test' }, measurements: [] },
+  });
+  const t = simulate(parseRegister(withHold(failed)), 'cut-erp', 'prepared');
+  expect(at(t, 311).processes.ordering).toBe('stopped');
+  expect(at(t, 312).processes.ordering).toBe('normal');
+});
+
+test('a reconcile control does not apply while an asset it relies on is down', () => {
+  const r = parseRegister(withHold(control('duplicate-rejection', [reconcile], { assets: ['plc'] })));
+  const s = scenario([cut('erp', 0, 24), compromise('erp', 'plc', 24, 6)], { horizon: q(3, 'days') });
+  const t = simulateScenario(r, s, 'prepared');
+  for (const h of [24, 29]) expect(at(t, h).processes.ordering).toBe('stopped');
+  expect(at(t, 30).processes.ordering).toBe('normal');
+});
+
+test('a hold that runs into the next outage merges with it', () => {
+  const r = parseRegister(withHold());
+  const t = simulateScenario(r, scenario([cut('erp', 0, 10), cut('erp', 20, 10)], { horizon: q(3, 'days') }), 'unprepared');
+  for (const h of [0, 10, 19, 20, 29, 30, 53]) expect(at(t, h).processes.ordering).toBe('stopped');
+  expect(at(t, 54).processes.ordering).toBe('normal');
+  expect(at(t, 10).services.erp).toBe('up');
+});
+
+test('without a post-restore hold the dependency recovers with the service', () => {
+  const t = simulate(parseRegister(minimalRegister()), 'cut-erp', 'unprepared');
+  expect(at(t, 287).processes.ordering).toBe('stopped');
+  expect(at(t, 288).processes.ordering).toBe('normal');
+  expect(Object.keys(t.assumptionsUsed).some((p) => p.includes('afterRestore'))).toBe(false);
+});
+
+test('assumptionsUsed records the post-restore hold', () => {
+  const r = parseRegister(withHold(control('duplicate-rejection', [reconcile])));
+  for (const variant of ['unprepared', 'prepared'] as const) {
+    expect(simulate(r, 'cut-erp', variant).assumptionsUsed['processes.ordering.dependsOn.erp.afterRestore.holdFor']).toEqual({
+      value: 24,
+      unit: 'hours',
+      provenance: { kind: 'assumed', reasoning: 'test' },
+      overridden: false,
+    });
+  }
+  expect(Object.keys(simulate(r, 'cut-erp', 'prepared').assumptionsUsed).filter((p) => p.startsWith('controls.'))).toEqual([]);
+});

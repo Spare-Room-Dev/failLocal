@@ -7,7 +7,8 @@
  * `capability.observations` never feed the simulation.
  *
  * When several applicable controls cover the same thing, the shortest duration wins (D-005): the
- * earliest detection, the shortest fallback delay, and the shortest restore.
+ * earliest detection, the shortest fallback delay, and the shortest restore. A reconcile has no
+ * duration: it applies or it does not.
  */
 import { quantityPaths } from './paths.js';
 import { toHours } from './quantity.js';
@@ -85,5 +86,23 @@ export function takeoverDelay(
           e.kind === 'fallback' && e.process === process && e.service === service ? [e.delay ? toHours(e.delay) : 0] : [],
         ),
       ),
+  );
+}
+
+/**
+ * Whether a reconcile control removes the post-restore hold on the dependency of `process` on
+ * `service` at sample `hour`.
+ */
+export function reconcileApplies(
+  controls: Control[],
+  process: string,
+  service: string,
+  hour: number,
+  assetDown: AssetDown,
+): boolean {
+  return controls.some(
+    (c) =>
+      assetsUp(c, hour, assetDown) &&
+      c.effects.some((e) => e.kind === 'reconcile' && e.process === process && e.service === service),
   );
 }

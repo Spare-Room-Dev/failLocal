@@ -50,6 +50,11 @@ export const dependencySchema = z
       .object({ description: text, holdsFor: quantity('days') })
       .strict()
       .optional(), // service dependencies only
+    // Service dependencies only: after each outage the dependency stays lost for `holdFor` more hours.
+    afterRestore: z
+      .object({ description: text, holdFor: quantity('hours') })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -119,6 +124,8 @@ export const controlEffectSchema = z.discriminatedUnion('kind', [
     .object({ kind: z.literal('fallback'), process: text, service: text, delay: quantity('hours').optional() })
     .strict(),
   z.object({ kind: z.literal('restore'), service: text, duration: quantity('hours') }).strict(),
+  // Removes the post-restore hold (`afterRestore`) on the dependency of `process` on `service`. No duration.
+  z.object({ kind: z.literal('reconcile'), process: text, service: text }).strict(),
   // The only real-world duration a lab run may supply (spec §5.3).
   z
     .object({

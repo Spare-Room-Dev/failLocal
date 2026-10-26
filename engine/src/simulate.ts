@@ -23,6 +23,13 @@
  *   `degraded`.
  * - A manual workaround keeps a lost service dependency at `degraded`: for ever if the scenario says
  *   workarounds hold, otherwise for `holdsFor`, counted from the start of the outage.
+ * - Post-restore hold: a service dependency with `afterRestore` stays lost for `holdFor` hours after
+ *   each outage of its service ends, for that dependency only. The service itself is back: its state
+ *   and its events do not change. During the hold the dependency gives exactly what it would give if
+ *   the outage were still going on: `onLoss`, the manual workaround (timed from the outage start, so
+ *   with workarounds that hold it is just more degraded time), and any fallback. Each outage is
+ *   lengthened before outages are merged, so a hold that runs into the next outage joins the two, and
+ *   the workaround clock then runs from the first outage's start.
  * - Stocks are kept in hours of normal consumption: day values are multiplied by 24 once, at the
  *   start, and a refill rate of r days/day adds r hours each hour. Inputs that come to whole hours
  *   therefore keep the level a whole number, with no floating-point drift. A sample reports a stock
@@ -60,6 +67,8 @@
  *   in that time takes it down again, with a second `service-down` and `service-up`. This happens
  *   before outages of required services are added, so a restore cannot bring a service back while
  *   a service it requires is still down.
+ * - Reconcile: it removes the post-restore hold of one dependency of one process on one service, at
+ *   every sample where it applies, so the dependency recovers with the service. It has no duration.
  * - Fallback: it covers one dependency of one process on one service. For the first `delay` hours
  *   of the service's outage (default 0) the dependency gives its normal result (`onLoss`, or the
  *   manual workaround while it holds); after that it gives `degraded`. A fallback never makes a
@@ -78,9 +87,10 @@
  *   and `access-revoked`; then service events; then asset events; then `stock-low` and
  *   `stock-empty`; then `process-state`, with processes in dependency order.
  * - `assumptionsUsed` records each input quantity the run read, by its id-keyed path: the
- *   scenario's own quantities, every stock and production input, and every manual workaround's
- *   `holdsFor`. A prepared run adds the effect durations and delays of each control whose
- *   capability works (a fallback with no delay has none); an unprepared run has no control paths.
+ *   scenario's own quantities, every stock and production input, every manual workaround's
+ *   `holdsFor`, and every post-restore hold's `holdFor` (in both variants, like `holdsFor`). A
+ *   prepared run adds the effect durations and delays of each control whose capability works (a
+ *   fallback with no delay, and a reconcile, have none); an unprepared run has no control paths.
  *   An overridden input keeps its original provenance and is marked `overridden: true`.
  * - Free play: Plan 2 builds a free-play scenario from template events with a fixed provenance,
  *   and applies the values a visitor chooses through `overrides` (for example
@@ -92,7 +102,14 @@ import { toHours } from './quantity.js';
 import { applyOverrides, quantityPaths } from './paths.js';
 import { tonnesPerHour } from './production.js';
 import type { AssetDown } from './controls.js';
-import { detectionDelay, effectPaths, restoreEffects, takeoverDelay, workingControls } from './controls.js';
+import {
+  detectionDelay,
+  effectPaths,
+  reconcileApplies,
+  restoreEffects,
+  takeoverDelay,
+  workingControls,
+} from './controls.js';
 import type { Control, Dependency, Register, Scenario, ScenarioEvent, Stock } from './schema.js';
 import { checkScenario, processOrder, RegisterError } from './validate.js';
 
@@ -386,6 +403,14 @@ function prepare(r: Register, scenario: Scenario, overrides: Record<string, numb
 }
 
 /**
+ * The windows in which a service dependency is lost: the service's lost windows, each lengthened by
+ * `holdHours` and merged again. With no hold they are the service's own.
+ */
+function heldWindows(lost: Window[], holdHours: number): Window[] {
+  return holdHours > 0 ? merge(lost.map((w) => ({ ...w, end: w.end + holdHours }))) : lost;
+}
+
+/**
  * The scenario's own quantities, every workaround duration, stock and production input, and the
  * effect durations of the applied controls, as the run used them.
  */
@@ -402,6 +427,7 @@ function assumptionsUsed(
       path.startsWith(`scenarios.${scenario.id}.`) ||
       controlInputs.has(path) ||
       path.endsWith('.manualWorkaround.holdsFor') ||
+      path.endsWith('.afterRestore.holdFor') ||
       path.startsWith('stocks.') ||
       path.startsWith('production.');
     if (read) {
@@ -491,7 +517,9 @@ export function simulateScenario(
     const processStates: Record<string, ProcessState> = {};
     const dependencyResult = (process: string, d: Dependency): ProcessState => {
       if (services.has(d.on)) {
-        const outage = covering(lost.get(d.on) ?? [], hour);
+        const held = d.afterRestore && !reconcileApplies(controls, process, d.on, hour, assetDown);
+        const hold = held && d.afterRestore ? toHours(d.afterRestore.holdFor) : 0;
+        const outage = covering(heldWindows(lost.get(d.on) ?? [], hold), hour);
         if (!outage) return 'normal';
         const w = d.manualWorkaround;
         if (w && (s.workaroundsHold || hour < Math.ceil(outage.start + toHours(w.holdsFor)))) return 'degraded';

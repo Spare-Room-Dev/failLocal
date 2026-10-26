@@ -62,6 +62,9 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
         d.manualWorkaround
           ? `${d.manualWorkaround.description.replace(/\.?\s*$/, '.')} Holds for ${shown(d.manualWorkaround.holdsFor)}.`
           : 'none',
+        d.afterRestore
+          ? `${d.afterRestore.description.replace(/\.?\s*$/, '.')} Held for ${shown(d.afterRestore.holdFor)} after the service is back.`
+          : 'none',
       ];
     });
 
@@ -103,7 +106,7 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
       '### Dependencies',
       '',
       ...(p.dependsOn.length
-        ? table(['Id', 'Name', 'Kind', 'On loss', 'Workaround'], dependencyRows(p))
+        ? table(['Id', 'Name', 'Kind', 'On loss', 'Workaround', 'After restore'], dependencyRows(p))
         : ['This process depends on nothing else in the model.']),
       '',
       '### Readiness',
@@ -129,6 +132,12 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
         return `  - fallback: ${named(e.process)} keeps running, degraded, without ${named(e.service)}, taking over ${
           e.delay ? `${shown(e.delay)} after the outage starts` : 'at once'
         }.`;
+      case 'reconcile': {
+        const hold = processById.get(e.process)?.dependsOn.find((d) => d.on === e.service)?.afterRestore?.holdFor;
+        return `  - reconcile: ${named(e.process)} recovers as soon as ${named(e.service)} is back, without ${
+          hold ? `its ${shown(hold)} post-restore hold` : 'a post-restore hold'
+        }.`;
+      }
       case 'detect-and-revoke':
         return `  - detect-and-revoke: a compromise via ${named(e.service)} is detected and that access cut ${shown(e.duration)} after it starts.`;
     }

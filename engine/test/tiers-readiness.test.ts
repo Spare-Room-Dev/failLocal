@@ -76,6 +76,22 @@ describe('deriveAssetTiers', () => {
     });
     expect(deriveAssetTiers(parseRegister(r))['backup-box']).toBe('high');
   });
+
+  test("a reconcile control's relied-on asset takes only the reconciled process's tier", () => {
+    const r = minimalRegister();
+    r.processes.push({ ...structuredClone(process(r, 'ordering')), id: 'billing', tier: 'high' });
+    r.assets.push({ id: 'dedupe-box', name: 'Dedupe box', type: 'server', zone: 'test' });
+    r.controls.push({
+      id: 'duplicate-rejection',
+      name: 'Duplicate rejection',
+      description: 'Reject stale and duplicate orders.',
+      effects: [{ kind: 'reconcile', process: 'ordering', service: 'erp' }],
+      assets: ['dedupe-box'],
+      capability: { works: true, provenance: { kind: 'assumed', reasoning: 'test' }, measurements: [] },
+    });
+    // billing (high) also needs the ERP, but the control protects only ordering (medium via diesel)
+    expect(deriveAssetTiers(parseRegister(r))['dedupe-box']).toBe('medium');
+  });
 });
 
 describe('deriveAssetTiers fixpoint', () => {

@@ -22,7 +22,10 @@ function collect(r: Register): Entry[] {
     const base = `processes.${p.id}`;
     add(`${base}.continuity.maxTolerableOutage`, p.continuity.maxTolerableOutage);
     add(`${base}.continuity.recoveryTarget`, p.continuity.recoveryTarget);
-    for (const d of p.dependsOn) add(`${base}.dependsOn.${d.on}.manualWorkaround.holdsFor`, d.manualWorkaround?.holdsFor);
+    for (const d of p.dependsOn) {
+      add(`${base}.dependsOn.${d.on}.manualWorkaround.holdsFor`, d.manualWorkaround?.holdsFor);
+      add(`${base}.dependsOn.${d.on}.afterRestore.holdFor`, d.afterRestore?.holdFor);
+    }
   }
   for (const s of r.stocks) {
     const base = `stocks.${s.id}`;
@@ -36,7 +39,7 @@ function collect(r: Register): Entry[] {
     const base = `controls.${c.id}`;
     c.effects.forEach((e, i) => {
       if (e.kind === 'fallback') add(`${base}.effects[${i}].delay`, e.delay);
-      else add(`${base}.effects[${i}].duration`, e.duration);
+      else if (e.kind !== 'reconcile') add(`${base}.effects[${i}].duration`, e.duration);
     });
     c.capability.measurements.forEach((m, i) => add(`${base}.capability.measurements[${i}].quantity`, m.quantity));
   }

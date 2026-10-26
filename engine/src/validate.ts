@@ -171,6 +171,9 @@ function semanticIssues(r: Register): string[] {
       if (d.manualWorkaround && ix.kinds.has(d.on) && ix.kinds.get(d.on) !== 'service') {
         issues.push(`${where}: a manual workaround is only allowed on a service dependency`);
       }
+      if (d.afterRestore && ix.kinds.has(d.on) && ix.kinds.get(d.on) !== 'service') {
+        issues.push(`${where}: a post-restore hold is only allowed on a service dependency`);
+      }
     });
   }
 
@@ -193,7 +196,7 @@ function semanticIssues(r: Register): string[] {
     c.effects.forEach((e, i) => {
       const at = `controls.${c.id}.effects[${i}]`;
       ref(ix, issues, `${at}.service`, e.service, 'service');
-      if (e.kind === 'fallback') ref(ix, issues, `${at}.process`, e.process, 'process');
+      if (e.kind === 'fallback' || e.kind === 'reconcile') ref(ix, issues, `${at}.process`, e.process, 'process');
     });
     for (const a of c.assets ?? []) ref(ix, issues, `controls.${c.id}.assets`, a, 'asset');
   }
