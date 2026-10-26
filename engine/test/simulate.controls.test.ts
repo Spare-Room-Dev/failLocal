@@ -219,3 +219,73 @@ test('assumptionsUsed lists effect durations only for controls the prepared run 
   });
   expect(controlPaths(simulate(r, 'cut-erp', 'unprepared'))).toEqual([]);
 });
+
+test('a restore does not wait for an asset that was down only before the restore time', () => {
+  const r = withControls(control('independent-erp-restore', [restore(6)], { assets: ['plc'] }));
+  const t = simulateScenario(r, scenario([cut('erp', 0, 288), compromise('erp', 'plc', 0, 1)]), 'prepared');
+  expect(at(t, 5).services.erp).toBe('down');
+  expect(at(t, 6).services.erp).toBe('up');
+  expect(t.events.filter((e) => e.subject === 'erp').map((e) => [e.hour, e.kind])).toEqual([
+    [0, 'service-down'],
+    [6, 'service-up'],
+  ]);
+});
+
+test('a restore waits while an asset it relies on is down', () => {
+  const r = withControls(control('independent-erp-restore', [restore(6)], { assets: ['plc'] }));
+  const t = simulateScenario(r, scenario([cut('erp', 0, 288), compromise('erp', 'plc', 5, 3)]), 'prepared');
+  for (const h of [5, 6, 7]) expect(at(t, h).services.erp).toBe('down');
+  expect(at(t, 8).services.erp).toBe('up');
+  expect(t.events.filter((e) => e.subject === 'erp').map((e) => [e.hour, e.kind])).toEqual([
+    [0, 'service-down'],
+    [8, 'service-up'],
+  ]);
+});
+
+test('detect-and-revoke applies only if its assets are up at the detection hour', () => {
+  const sensorRegister = () => {
+    const r = minimalRegister();
+    r.assets.push({ id: 'sensor', name: 'Sensor', type: 'network', zone: 'test' });
+    r.services.push({ id: 'vendor-a', name: 'vendor-a', provider: 'test', hosting: 'test', kind: 'vendor-access' });
+    r.controls = [control('brokered-vendor-access', [detect(0.25)], { assets: ['sensor'] })];
+    return parseRegister(r);
+  };
+  const run = (sensorDownFor: number) =>
+    simulateScenario(
+      sensorRegister(),
+      scenario([compromise('erp', 'sensor', 0, sensorDownFor), compromise('vendor-a', 'plc', 2, 8)], { horizon: q(1, 'days') }),
+      'prepared',
+    );
+
+  const blind = run(4); // the sensor is still down at hour 3, the detection hour
+  for (let h = 2; h <= 9; h++) expect(at(blind, h).assets.plc).toBe('down');
+  expect(blind.events.filter((e) => e.kind === 'access-revoked' || e.kind === 'compromise-detected')).toEqual([]);
+  expect(at(blind, 3).services['vendor-a']).toBe('up');
+
+  const seen = run(3); // the sensor is back up at hour 3
+  expect(seen.samples.every((x) => x.assets.plc === 'up')).toBe(true);
+  expect(seen.events).toContainEqual({ hour: 2.25, kind: 'access-revoked', subject: 'vendor-a' });
+  expect(at(seen, 3).services['vendor-a']).toBe('revoked');
+});
+
+test('a cut service that is revoked shows revoked, and its events match the samples', () => {
+  const r = withVendors(control('brokered-vendor-access', [detect(0.25)]));
+  const t = simulateScenario(r, scenario([cut('vendor-a', 0, 24), compromise('vendor-a', 'plc', 2, 8)], { horizon: q(1, 'days') }), 'prepared');
+  expect(t.events.filter((e) => e.subject === 'vendor-a')).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'vendor-a' },
+    { hour: 2.25, kind: 'access-revoked', subject: 'vendor-a' },
+  ]);
+  for (let h = 0; h <= 2; h++) expect(at(t, h).services['vendor-a']).toBe('down');
+  for (let h = 3; h <= 24; h++) expect(at(t, h).services['vendor-a']).toBe('revoked');
+});
+
+test('a service that requires a cut and revoked service is down throughout, with one down event', () => {
+  const r = minimalRegister();
+  r.services.push({ id: 'vendor-a', name: 'vendor-a', provider: 'test', hosting: 'test', kind: 'vendor-access' });
+  r.services.find((x) => x.id === 'erp')!.requires = ['vendor-a'];
+  r.controls = [control('brokered-vendor-access', [detect(0.25)])];
+  const s = scenario([cut('vendor-a', 0, 24), compromise('vendor-a', 'plc', 2, 8)], { horizon: q(1, 'days') });
+  const t = simulateScenario(parseRegister(r), s, 'prepared');
+  expect(t.samples.every((x) => x.services.erp === 'down')).toBe(true);
+  expect(t.events.filter((e) => e.subject === 'erp')).toEqual([{ hour: 0, kind: 'service-down', subject: 'erp', from: 'vendor-a' }]);
+});

@@ -8,10 +8,12 @@
  *   become one continuous outage, from the earliest start to the latest end. So two overlapping
  *   cuts give one outage that ends at the later restore. A window too short to cover a whole
  *   hour is ignored, because no sample would see it.
- * - Services: a service is down during its own cuts and while any service it requires is down.
- *   Both are merged into its outages, and each outage gives exactly one `service-down` (at its
- *   start) and one `service-up` (at its end), so the events always agree with the samples. When an
- *   outage begins because a required service went down, `service-down` names that service in `from`.
+ * - Services: a service is down during its own cuts and while any service it requires is down
+ *   or revoked. Both are merged into its outages, and each outage gives exactly one `service-down`
+ *   (at its start) and one `service-up` (at its end), so the events always agree with the samples.
+ *   When an outage begins because a required service went down, `service-down` names that service
+ *   in `from`. Hours in which the service's own access is revoked are taken out of its outages
+ *   (it shows `revoked`, not `down`), and an outage cut short by a revocation has no `service-up`.
  * - Assets: a compromise takes its target asset down for `downFor` hours.
  * - Processes are worked out each hour, dependencies first. A process takes the worst result over
  *   its dependencies. A lost dependency (service down, asset down, upstream process stopped) gives
@@ -43,9 +45,10 @@
  *   `capability.works` is true, and only at a sample where none of the assets it relies on is
  *   down. Only effect durations feed the run; lab measurements and observations never do.
  * - Restore: a service's own cuts are merged first, then each merged outage is cut short to
- *   `duration` hours from its start. This happens before outages of required services are added,
- *   so a restore cannot bring a service back while a service it requires is still down. The
- *   control's assets are checked at the outage's start hour.
+ *   `duration` hours from its start, except for the hours after that in which an asset the control
+ *   relies on is down: the service stays down through those. This happens before outages of
+ *   required services are added, so a restore cannot bring a service back while a service it
+ *   requires is still down.
  * - Fallback: it covers one dependency of one process on one service. For the first `delay` hours
  *   of the service's outage (default 0) the dependency gives its normal result (`onLoss`, or the
  *   manual workaround while it holds); after that it gives `degraded`. A fallback never makes a
@@ -64,7 +67,7 @@ import { toHours } from './quantity.js';
 import { applyOverrides, quantityPaths } from './paths.js';
 import { tonnesPerHour } from './production.js';
 import type { AssetDown } from './controls.js';
-import { detectionDelay, effectPaths, restoreDuration, takeoverDelay, workingControls } from './controls.js';
+import { detectionDelay, effectPaths, restoreEffects, takeoverDelay, workingControls } from './controls.js';
 import type { Control, Dependency, Register, Scenario, ScenarioEvent, Stock } from './schema.js';
 import { checkScenario, processOrder, RegisterError } from './validate.js';
 
@@ -158,6 +161,29 @@ function merge(windows: Window[]): Window[] {
   return merged;
 }
 
+/** The parts of `windows` that fall inside some window of `within`. Each part keeps its own `cause`. */
+function intersect(windows: Window[], within: Window[]): Window[] {
+  return windows.flatMap((w) =>
+    within
+      .map((x) => ({ ...w, start: Math.max(w.start, x.start), end: Math.min(w.end, x.end) }))
+      .filter((part) => part.end > part.start),
+  );
+}
+
+/** The parts of `windows` that fall outside every window of `removed`. Each part keeps its own `cause`. */
+function subtract(windows: Window[], removed: Window[]): Window[] {
+  return removed.reduce(
+    (rest, x) =>
+      rest.flatMap((w) =>
+        [
+          { ...w, end: Math.min(w.end, x.start) },
+          { ...w, start: Math.max(w.start, x.end) },
+        ].filter((part) => part.end > part.start),
+      ),
+    windows,
+  );
+}
+
 /** Groups windows by subject id. */
 function bySubject(entries: { subject: string; window: Window }[]): Map<string, Window[]> {
   const grouped = new Map<string, Window[]>();
@@ -166,15 +192,15 @@ function bySubject(entries: { subject: string; window: Window }[]): Map<string, 
 }
 
 /**
- * Each service's outages and the windows in which it is lost. Its outages are its own cuts (merged,
- * then shortened by `restore`) plus the lost windows of every service it requires, merged. It is
- * lost while it is down or revoked.
+ * Each service's outages and the windows in which it is lost. It is lost during its own cuts
+ * (merged, then shortened by `restore`), while any service it requires is lost, and while its own
+ * access is revoked. Its outages are the lost windows that are not revoked: the hours it is `down`.
  */
 function serviceOutages(
   reg: Register,
   cuts: Map<string, Window[]>,
   revocations: Map<string, Window[]>,
-  restore: (service: string, outage: Window) => Window,
+  restore: (service: string, outage: Window) => Window[],
 ): { outages: Map<string, Window[]>; lost: Map<string, Window[]> } {
   const requires = new Map(reg.services.map((x) => [x.id, x.requires ?? []]));
   const outages = new Map<string, Window[]>();
@@ -182,13 +208,14 @@ function serviceOutages(
   const resolve = (id: string): Window[] => {
     const known = lost.get(id);
     if (known) return known;
-    const own = merge(cuts.get(id) ?? []).map((w) => restore(id, w));
+    const own = merge(cuts.get(id) ?? []).flatMap((w) => restore(id, w));
     const inherited = (requires.get(id) ?? []).flatMap((req) =>
       resolve(req).map((w) => ({ start: w.start, end: w.end, cause: req })),
     );
     const merged = merge([...own, ...inherited]);
-    outages.set(id, merged);
-    lost.set(id, merge([...merged, ...(revocations.get(id) ?? [])]));
+    const revoked = revocations.get(id) ?? [];
+    outages.set(id, merge(subtract(merged, revoked)));
+    lost.set(id, merge([...merged, ...revoked]));
     return lost.get(id)!;
   };
   for (const id of requires.keys()) resolve(id);
@@ -229,12 +256,23 @@ function resolveCompromises(
   return { assetOutages: merged(downs), revocations: merged(revoked), events };
 }
 
-function outageEvents(outages: Map<string, Window[]>, down: TimelineEventKind, up: TimelineEventKind): TimelineEvent[] {
+/**
+ * One `down` event at the start of each outage and one `up` event at its end, except that an outage
+ * ending where a revocation begins has no `up`: the subject goes straight to revoked, which
+ * `access-revoked` reports.
+ */
+function outageEvents(
+  outages: Map<string, Window[]>,
+  down: TimelineEventKind,
+  up: TimelineEventKind,
+  revocations: Map<string, Window[]> = new Map(),
+): TimelineEvent[] {
   return [...outages].flatMap(([subject, windows]) =>
-    windows.flatMap((w): TimelineEvent[] => [
-      w.cause ? { hour: w.start, kind: down, subject, from: w.cause } : { hour: w.start, kind: down, subject },
-      { hour: w.end, kind: up, subject },
-    ]),
+    windows.flatMap((w): TimelineEvent[] => {
+      const start: TimelineEvent = { hour: w.start, kind: down, subject, ...(w.cause ? { from: w.cause } : {}) };
+      const revokedAtEnd = covering(revocations.get(subject) ?? [], Math.ceil(w.end));
+      return revokedAtEnd ? [start] : [start, { hour: w.end, kind: up, subject }];
+    }),
   );
 }
 
@@ -374,14 +412,19 @@ export function simulateScenario(
   const resolved = resolveCompromises(compromises, controls, horizonHours + 1);
   const { assetOutages, revocations } = resolved;
   const assetDown: AssetDown = (asset, hour) => covering(assetOutages.get(asset) ?? [], hour) !== undefined;
-  const restore = (service: string, w: Window): Window => {
-    const duration = restoreDuration(controls, service, w.start, assetDown);
-    return duration === undefined ? w : { ...w, end: Math.min(w.end, w.start + duration) };
-  };
+  // Each restore leaves the outage only for its first `hours`, and while an asset it relies on is down.
+  const restore = (service: string, w: Window): Window[] =>
+    restoreEffects(controls, service).reduce(
+      (down, r) => {
+        const kept = [{ start: w.start, end: w.start + r.hours }, ...r.assets.flatMap((a) => assetOutages.get(a) ?? [])];
+        return intersect(down, kept);
+      },
+      [w],
+    );
   const { outages, lost } = serviceOutages(reg, bySubject(cuts), revocations, restore);
   events.push(
     ...resolved.events,
-    ...outageEvents(outages, 'service-down', 'service-up'),
+    ...outageEvents(outages, 'service-down', 'service-up', revocations),
     ...outageEvents(assetOutages, 'asset-down', 'asset-up'),
   );
 

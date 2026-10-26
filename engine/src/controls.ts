@@ -52,12 +52,12 @@ export function detectionDelay(controls: Control[], service: string, at: number,
   );
 }
 
-/** The restore time for an outage of `service` that starts at `start`, or undefined if no control restores it. */
-export function restoreDuration(controls: Control[], service: string, start: number, assetDown: AssetDown): number | undefined {
-  return shortest(
-    controls
-      .filter((c) => assetsUp(c, Math.ceil(start), assetDown))
-      .flatMap((c) => c.effects.flatMap((e) => (e.kind === 'restore' && e.service === service ? [toHours(e.duration)] : []))),
+/** Each restore of `service`: its restore time and the assets its control relies on. */
+export function restoreEffects(controls: Control[], service: string): { hours: number; assets: string[] }[] {
+  return controls.flatMap((c) =>
+    c.effects.flatMap((e) =>
+      e.kind === 'restore' && e.service === service ? [{ hours: toHours(e.duration), assets: c.assets ?? [] }] : [],
+    ),
   );
 }
 
