@@ -1,3 +1,4 @@
+import { independentCopyFor } from './continuity.js';
 import type { DisplayKind, Provenance, Quantity } from './quantity.js';
 import { assessReadiness } from './readiness.js';
 import type { ReadinessRow } from './readiness.js';
@@ -82,6 +83,15 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
       ];
     });
 
+  const independentCopy = (p: Process): string => {
+    const baseline = independentCopyFor(r, p.id, 'unprepared');
+    const prepared = independentCopyFor(r, p.id, 'prepared');
+    const yesNo = (value: boolean): string => (value ? 'yes' : 'no');
+    if (baseline.value === prepared.value) return `${yesNo(baseline.value)} (baseline and prepared)`;
+    const via = typeof prepared.source === 'string' ? '' : ` (${prepared.source.control})`;
+    return `${yesNo(baseline.value)} on the baseline site; ${yesNo(prepared.value)} on the prepared site${via}`;
+  };
+
   const processSection = (p: Process): string[] => {
     const c = p.continuity;
     const tier =
@@ -100,7 +110,7 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
       `- Maximum tolerable outage: ${shown(c.maxTolerableOutage)}`,
       `- Recovery target: ${shown(c.recoveryTarget)}`,
       `- Owner: ${c.owner}`,
-      `- Independent copy: ${c.independentCopy ? 'yes' : 'no'}`,
+      `- Independent copy: ${independentCopy(p)}`,
       `- Last restore test: ${test}`,
       '',
       '### Dependencies',
@@ -167,7 +177,7 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     '',
     'Every number is followed by where it comes from: sourced (a published source), measured (a lab run), assumed (a modelling choice, recorded in the decision log) or computed (worked out by the simulation).',
     'Readiness compares the longest time a process was not running normally in each scenario with its limits. Each scenario is run unprepared (no continuity controls) and prepared (controls applied).',
-    'The continuity fields of each process (maximum tolerable outage, recovery target, owner, independent copy, last restore test) describe the baseline (unprepared) site. The controls the prepared site adds are listed under Resilience controls.',
+    'The continuity fields of each process (maximum tolerable outage, recovery target, owner, last restore test) describe the baseline (unprepared) site. Independent copy is shown for both sites: on the prepared site, a working control that restores a service the process relies on is its independent copy. The controls the prepared site adds are listed under Resilience controls.',
     '',
     ...ordered.flatMap(processSection),
     '## Resilience controls (prepared site)',

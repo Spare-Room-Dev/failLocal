@@ -19,6 +19,8 @@ These items came out of the Plan 1 reviews (26 Oct 2026). They were deliberately
    **Done, 26 Oct 2026:** services take an optional `reaches` list of asset ids. A detect-and-revoke control also protects the processes that depend on what its service reaches. Vendor A reaches the crusher PLC and vendor B the conveyor PLC (D-097, D-098), so the jump host derives `high` (D-011). A compromise must target an asset its service reaches. Plan 3's network overlay can draw the lists.
 3. **Variant-aware independent copy (I3).** `independentCopy` describes the baseline site, so it reads "no" even with the prepared toggle on. The pack now documents this convention. Plan 2's side panel needs either a derived prepared-variant value or the same explanation.
 
+   **Done, 26 Oct 2026:** `independentCopyFor(register, processId, variant)` derives it. Unprepared, it is the register value. Prepared, a working restore of a service the process depends on (or one that service requires) gives the process a copy, named as the source. The four ERP-backed processes read no on the baseline site and yes on the prepared site through `independent-erp-restore` (D-072); the pack shows both. Plan 2's side panel can call the function.
+
 ## Plan 2 (website) notes
 - Out-of-range values are rejected as a `RegisterError` that names the path. A run is rejected if any override in the set is invalid, not only the overrides for the active scenario.
 - Free play: build scenarios from template events with fixed provenance, and apply the visitor's values through `overrides`, so they arrive as `overridden: true` ("chosen by you"). See the `simulate.ts` doc comment.

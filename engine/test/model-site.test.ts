@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
+import { independentCopyFor } from '../src/continuity.js';
 import { judgementPaths, quantityPaths } from '../src/paths.js';
 import { toHours } from '../src/quantity.js';
 import type { ControlEffect, ScenarioEvent } from '../src/schema.js';
@@ -123,6 +124,11 @@ test('the vendor jump host is high: vendor access reaches the crusher and convey
   const tiers = deriveAssetTiers(reg);
   expect(tiers['vendor-jump-host']).toBe('high');
   expect(tiers['site-historian']).toBe('low');
+});
+
+test('diesel ordering has no independent copy unprepared, and one prepared through the independent ERP restore', () => {
+  expect(independentCopyFor(reg, 'diesel-ordering', 'unprepared')).toEqual({ value: false, source: 'register' });
+  expect(independentCopyFor(reg, 'diesel-ordering', 'prepared')).toEqual({ value: true, source: { control: 'independent-erp-restore' } });
 });
 
 test('S4 unprepared: isolation takes down the hosted ERP and the Perth link', () => {

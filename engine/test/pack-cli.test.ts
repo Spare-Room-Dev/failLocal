@@ -131,6 +131,20 @@ describe('renderContinuityPack', () => {
     expect(pack).toContain('describe the baseline (unprepared) site');
   });
 
+  test('pack shows the independent copy on the baseline and the prepared site', () => {
+    const section = (name: string) => pack.slice(pack.indexOf(`## ${name}\n`)).split('\n## ')[0]!;
+    expect(section('Diesel ordering')).toContain(
+      '- Independent copy: no on the baseline site; yes on the prepared site (independent-erp-restore)',
+    );
+    expect(section('Haulage')).toContain('- Independent copy: no (baseline and prepared)');
+
+    const doc = structuredClone(register);
+    doc.processes.find((p) => p.id === 'diesel-ordering')!.continuity.independentCopy = true;
+    const text = renderContinuityPack(parseRegister(doc), '2026-10-26');
+    expect(text.slice(text.indexOf('## Diesel ordering\n'))).toContain('- Independent copy: yes (baseline and prepared)');
+    expect(unlabelledQuantities(text)).toEqual([]);
+  });
+
   test('pack lists each resilience control with its effects, assets and capability', () => {
     const start = pack.indexOf('## Resilience controls (prepared site)');
     expect(start).toBeGreaterThan(pack.indexOf(`## ${register.processes[0]!.name}`));
