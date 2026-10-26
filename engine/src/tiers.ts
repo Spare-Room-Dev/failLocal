@@ -40,6 +40,11 @@ export function effectiveProcessTiers(r: Register): Record<string, Tier> {
 /**
  * Tier of every asset: the highest effective tier of any process that depends on it directly,
  * or that a control relying on it protects. An asset nothing depends on is `low`.
+ *
+ * A fallback or reconcile control protects its process. A restore control protects the processes
+ * that depend directly on its service. A detect-and-revoke control protects those, plus the
+ * processes that depend directly on any asset the service `reaches`: remote access matters because
+ * of what it can reach, even when no process needs the access itself.
  */
 export function deriveAssetTiers(r: Register): Record<string, Tier> {
   const effective = effectiveProcessTiers(r);
@@ -52,15 +57,18 @@ export function deriveAssetTiers(r: Register): Record<string, Tier> {
   };
   const dependents = (target: string): string[] =>
     r.processes.filter((p) => p.dependsOn.some((d) => d.on === target)).map((p) => p.id);
+  const reaches = new Map(r.services.map((s) => [s.id, s.reaches ?? []]));
 
   for (const p of r.processes) {
     for (const dep of p.dependsOn) raise(dep.on, effective[p.id] as Tier);
   }
 
   for (const control of r.controls) {
-    const protectedProcesses = control.effects.flatMap((e) =>
-      e.kind === 'fallback' || e.kind === 'reconcile' ? [e.process] : dependents(e.service),
-    );
+    const protectedProcesses = control.effects.flatMap((e) => {
+      if (e.kind === 'fallback' || e.kind === 'reconcile') return [e.process];
+      if (e.kind === 'restore') return dependents(e.service);
+      return [...dependents(e.service), ...(reaches.get(e.service) ?? []).flatMap(dependents)];
+    });
     for (const assetId of control.assets ?? []) {
       for (const processId of protectedProcesses) raise(assetId, effective[processId] ?? 'low');
     }

@@ -66,11 +66,11 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Source / provenance:** assumed
 - **Owner change:**
 
-## D-011 Two assets support no process directly
-- **Decision:** No process depends on `site-historian` or `vendor-jump-host`, so both derive a low tier.
-- **Reasoning:** The historian records plant data; the crusher keeps running without it. It is in the register for S4's list of what keeps running on site, and for the lab. The vendor jump host carries the `vendor-monitoring` control, but the tier rules only raise an asset for the processes that depend on the service a control watches, and no process depends on vendor access. So the jump host shows as low even though, in S3, it is what keeps the crusher safe. That is a limit of the tier rules worth saying out loud in review. If a practitioner says either asset should rank higher, record it here.
-- **Source / provenance:** assumed
-- **Owner change:**
+## D-011 The historian supports no process; the jump host takes the tier of what vendors can reach
+- **Decision:** No process depends on `site-historian`, so it derives a low tier. No process depends on `vendor-jump-host` either, but the `vendor-monitoring` control relies on it. A detect-and-revoke control protects the processes that depend on the vendor service it watches, and also those that depend on any asset that service can reach (`reaches`: D-097, D-098). So the jump host takes the highest effective tier among the processes that depend on the crusher PLC or the conveyor PLC. Both are needed by crushing, which is high, so the jump host is high.
+- **Reasoning:** The historian records plant data; the crusher keeps running without it. It is in the register for S4's list of what keeps running on site, and for the lab. No process needs vendor access to run, so a rule that counted only the processes depending on the watched service left the jump host low, even though in S3 it is what keeps the crusher safe. A vendor connection matters because of what it can reach on the site network, so the tier now follows that reach. Which assets each vendor reaches is a judgement, recorded per service. If a practitioner says the historian should rank higher, record it here.
+- **Source / provenance:** assumed (tier rule: engine, `tiers.ts`)
+- **Owner change:** 26 Oct 2026: the owner asked for service reach, so the jump host is no longer low. Before this, D-011 recorded both assets as low and named the jump host as a limit of the tier rules.
 
 ## D-012 Which scenarios hold their workarounds, and which are projections
 - **Decision:** Only `s1-as-reported` sets `workaroundsHold: true` (the manual workarounds last the whole outage, as reported). Only `s1-projection` is labelled a projection. S2, S3 and S4 are model scenarios with a public basis: workarounds last as long as the register says, and they are not labelled projections.
@@ -282,6 +282,22 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** Trains on the model site are controlled from Perth, as Rio Tinto's Pilbara trains are. The model assumes a local fallback that keeps trains running more slowly, so losing Perth slows rail rather than stopping it.
 - **Source / provenance:** assumed (Perth control of trains: sourced: rio-tinto-wa-operations)
 - **Owner change:**
+
+# Vendor reach
+
+## D-097 Vendor A reaches only the crusher PLC
+- **Path:** services.vendor-a-access.reaches
+- **Decision:** `crusher-plc`
+- **Reasoning:** Vendor A is the crusher control vendor. A vendor typically reaches the plant equipment it maintains, and MM-ISAC asks for vendor access to be "brokered, named and temporary". So the site jump host brokers vendor A to the crusher PLC and nothing else (D-009). S3's compromise comes through vendor A and targets the crusher PLC, so the list must include it. Vendor A does not maintain the conveyor PLC or the control-room HMI, so it is not given them. A flatter network, where any vendor on the jump host can reach every PLC, would give both vendors both PLCs. The model site is assumed to broker each vendor to its own equipment.
+- **Source / provenance:** assumed (practice from sourced: mmisac-ref-arch)
+- **Owner change:** 26 Oct 2026: the owner asked for service reach (D-011).
+
+## D-098 Vendor B reaches only the conveyor PLC
+- **Path:** services.vendor-b-access.reaches
+- **Decision:** `conveyor-plc`
+- **Reasoning:** Vendor B is the conveyor drives vendor. The drives run under the overland conveyor PLC, the only conveyor equipment the register models, so that is what vendor B reaches. As for vendor A (D-097), the jump host brokers it to the equipment it maintains and nothing else. No scenario sends a compromise through vendor B; S3 shows it staying connected while vendor A is cut.
+- **Source / provenance:** assumed (practice from sourced: mmisac-ref-arch)
+- **Owner change:** 26 Oct 2026: the owner asked for service reach (D-011).
 
 # Manual workarounds (unprepared site)
 

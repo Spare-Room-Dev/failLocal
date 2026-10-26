@@ -84,6 +84,7 @@ describe('dangling references', () => {
       )],
     ['ghost10', 'production shippingProcess', (r) => (r.production.shippingProcess = 'ghost10')],
     ['ghost11', 'scenario basis', (r) => r.scenarios[0].basis.push('ghost11')],
+    ['ghost12', 'service reaches', (r) => (r.services[0].reaches = ['ghost12'])],
   ];
   test.each(cases)('%s (%s) is rejected and named', (ghost, _label, mutate) => {
     const r: any = minimalRegister();
@@ -281,6 +282,57 @@ test('processOrder puts dependencies first', () => {
   const order = processOrder(parseRegister(minimalRegister()));
   expect(order.indexOf('haulage')).toBeLessThan(order.indexOf('crushing'));
   expect([...order].sort()).toEqual(['crushing', 'haulage', 'ordering', 'rail']);
+});
+
+describe('service reach', () => {
+  /** minimalRegister plus a vendor service that reaches only `plc`, and a second asset it does not reach. */
+  function withVendor(): Register {
+    const r = minimalRegister();
+    r.assets.push({ id: 'hmi', name: 'HMI', type: 'hmi', zone: 'test' });
+    r.services.push({ id: 'vendor', name: 'Vendor', provider: 'test', hosting: 'test', kind: 'vendor-access', reaches: ['plc'] });
+    return r;
+  }
+  const compromise = (via: string, target: string) =>
+    ({ kind: 'compromise', via, target, at: q(0, 'hours'), downFor: q(1, 'hours') }) as const;
+
+  test('a reach must name an asset', () => {
+    const r = withVendor();
+    r.services[1]!.reaches = ['erp'];
+    expect(issuesOf(r)).toContain("services.vendor.reaches: 'erp' is a service, expected an asset");
+  });
+
+  test('a compromise inside the via service reach is accepted', () => {
+    const r = withVendor();
+    r.scenarios[0]!.events.push(compromise('vendor', 'plc'));
+    expect(() => parseRegister(r)).not.toThrow();
+  });
+
+  test('a compromise outside the via service reach is rejected, naming both ids', () => {
+    const r = withVendor();
+    r.scenarios[0]!.events.push(compromise('vendor', 'hmi'));
+    expect(issuesOf(r)).toEqual(["scenarios.cut-erp.events[1].target: 'vendor' cannot reach 'hmi'"]);
+  });
+
+  test('an ad-hoc compromise outside the via service reach is rejected', () => {
+    const r = parseRegister(withVendor());
+    const s = structuredClone(r.scenarios[0]!);
+    s.events = [compromise('vendor', 'hmi')];
+    expect(() => checkScenario(r, s)).toThrow("scenarios.cut-erp.events[0].target: 'vendor' cannot reach 'hmi'");
+    s.events = [compromise('vendor', 'plc')];
+    expect(() => checkScenario(r, s)).not.toThrow();
+  });
+
+  test('a via service without reaches is unconstrained', () => {
+    const r = withVendor();
+    r.scenarios[0]!.events.push(compromise('erp', 'hmi'));
+    expect(() => parseRegister(r)).not.toThrow();
+  });
+
+  test('judgementPaths names each declared reach', () => {
+    const j = judgementPaths(parseRegister(withVendor()));
+    expect(j).toContain('services.vendor.reaches');
+    expect(j).not.toContain('services.erp.reaches');
+  });
 });
 
 describe('checkScenario', () => {

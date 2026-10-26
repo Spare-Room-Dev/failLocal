@@ -4,6 +4,7 @@ import { judgementPaths, quantityPaths } from '../src/paths.js';
 import { toHours } from '../src/quantity.js';
 import type { ControlEffect, ScenarioEvent } from '../src/schema.js';
 import { simulate } from '../src/simulate.js';
+import { deriveAssetTiers } from '../src/tiers.js';
 import type { Timeline } from '../src/simulate.js';
 import { loadRegisterYaml } from '../src/validate.js';
 
@@ -116,6 +117,12 @@ test('S3: crusher trips unprepared; prepared revokes vendor A only', () => {
     expect(s.services['vendor-a-access']).toBe(s.hour >= Math.ceil(detected!.hour) ? 'revoked' : 'up');
     expect(s.services['vendor-b-access']).toBe('up');
   }
+});
+
+test('the vendor jump host is high: vendor access reaches the crusher and conveyor PLCs, which crushing (high) needs', () => {
+  const tiers = deriveAssetTiers(reg);
+  expect(tiers['vendor-jump-host']).toBe('high');
+  expect(tiers['site-historian']).toBe('low');
 });
 
 test('S4 unprepared: isolation takes down the hosted ERP and the Perth link', () => {

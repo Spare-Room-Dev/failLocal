@@ -66,9 +66,12 @@ export function quantityPaths(r: Register): { path: string; quantity: Quantity }
   return collect(r);
 }
 
-/** Every domain judgement that is not a number: each process tier and each dependency. */
+/** Every domain judgement that is not a number: each process tier, each dependency and each declared service reach. */
 export function judgementPaths(r: Register): string[] {
-  return r.processes.flatMap((p) => [`processes.${p.id}.tier`, ...p.dependsOn.map((d) => `processes.${p.id}.dependsOn.${d.on}`)]);
+  return [
+    ...r.processes.flatMap((p) => [`processes.${p.id}.tier`, ...p.dependsOn.map((d) => `processes.${p.id}.dependsOn.${d.on}`)]),
+    ...r.services.filter((s) => s.reaches).map((s) => `services.${s.id}.reaches`),
+  ];
 }
 
 /** Returns a copy with each path's value replaced (provenance untouched), re-validated. */

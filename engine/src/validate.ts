@@ -15,6 +15,8 @@ type Kind = 'process' | 'asset' | 'service' | 'stock';
 interface Index {
   kinds: Map<string, Kind>;
   sources: Set<string>;
+  /** The declared `reaches` of each service that has one. */
+  reaches: Map<string, string[]>;
   duplicates: string[];
 }
 
@@ -109,17 +111,20 @@ function buildIndex(r: Register): Index {
   unique('source', r.sources);
   unique('control', r.controls);
   unique('scenario', r.scenarios);
-  return { kinds, sources: new Set(r.sources.map((s) => s.id)), duplicates };
+  const reaches = new Map(r.services.flatMap((s) => (s.reaches ? [[s.id, s.reaches] as const] : [])));
+  return { kinds, sources: new Set(r.sources.map((s) => s.id)), reaches, duplicates };
 }
 
 function refAny(ix: Index, issues: string[], where: string, id: string): void {
   if (!ix.kinds.has(id)) issues.push(`${where}: unknown id '${id}'`);
 }
 
+const article = (kind: Kind): string => (kind === 'asset' ? 'an' : 'a');
+
 function ref(ix: Index, issues: string[], where: string, id: string, expected: Kind): void {
   const found = ix.kinds.get(id);
   if (!found) issues.push(`${where}: unknown ${expected} '${id}'`);
-  else if (found !== expected) issues.push(`${where}: '${id}' is ${found === 'asset' ? 'an' : 'a'} ${found}, expected a ${expected}`);
+  else if (found !== expected) issues.push(`${where}: '${id}' is ${article(found)} ${found}, expected ${article(expected)} ${expected}`);
 }
 
 /** Every provenance in the register sits under a `provenance` key; check each `sourced` one cites a listed source. */
@@ -152,6 +157,8 @@ function checkScenarioRefs(s: Scenario, where: string, ix: Index, issues: string
     } else {
       ref(ix, issues, `${at}.via`, e.via, 'service');
       ref(ix, issues, `${at}.target`, e.target, 'asset');
+      const reach = ix.reaches.get(e.via);
+      if (reach && !reach.includes(e.target)) issues.push(`${at}.target: '${e.via}' cannot reach '${e.target}'`);
     }
   });
   checkSourcedProvenance(s, where, ix, issues);
@@ -179,6 +186,7 @@ function semanticIssues(r: Register): string[] {
 
   for (const s of r.services) {
     for (const req of s.requires ?? []) ref(ix, issues, `services.${s.id}.requires`, req, 'service');
+    for (const a of s.reaches ?? []) ref(ix, issues, `services.${s.id}.reaches`, a, 'asset');
   }
 
   for (const s of r.stocks) {

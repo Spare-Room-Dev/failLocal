@@ -15,6 +15,8 @@ These items came out of the Plan 1 reviews (26 Oct 2026). They were deliberately
 
    Separately, decide whether rail under site authority (S2, prepared) should earn shipping credit (D-040).
 2. **Vendor jump host tier (I2).** The asset that keeps the crusher safe in S3 derives a `low` tier (D-011), and the tier table prints it that way. Fixing this needs a schema field, such as `protects: [process ids]` on controls, or the processes and assets a vendor-access service reaches. Make the change before Plan 2 freezes the register shape.
+
+   **Done, 26 Oct 2026:** services take an optional `reaches` list of asset ids. A detect-and-revoke control also protects the processes that depend on what its service reaches. Vendor A reaches the crusher PLC and vendor B the conveyor PLC (D-097, D-098), so the jump host derives `high` (D-011). A compromise must target an asset its service reaches. Plan 3's network overlay can draw the lists.
 3. **Variant-aware independent copy (I3).** `independentCopy` describes the baseline site, so it reads "no" even with the prepared toggle on. The pack now documents this convention. Plan 2's side panel needs either a derived prepared-variant value or the same explanation.
 
 ## Plan 2 (website) notes

@@ -427,11 +427,13 @@ services:
     provider: Crusher control vendor (fictional)
     hosting: Through the site vendor jump host, not the corporate network
     kind: vendor-access
+    reaches: [crusher-plc]
   - id: vendor-b-access
     name: Vendor B remote access
     provider: Conveyor drives vendor (fictional)
     hosting: Through the site vendor jump host, not the corporate network
     kind: vendor-access
+    reaches: [conveyor-plc]
 
 stocks:
   - id: diesel

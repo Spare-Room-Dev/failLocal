@@ -102,6 +102,8 @@ export const serviceSchema = z
     hosting: text,
     kind: z.enum(['enterprise-app', 'identity', 'remote-ops', 'vendor-access', 'network-link']),
     requires: z.array(text).optional(), // service ids; down if any required service is down
+    // Remote access only: the asset ids on site this service can reach. A compromise through it must target one.
+    reaches: z.array(text).optional(),
   })
   .strict();
 

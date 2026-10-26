@@ -94,6 +94,54 @@ describe('deriveAssetTiers', () => {
   });
 });
 
+describe('service reach', () => {
+  /** minimalRegister plus a vendor service reaching `plc`, and a monitoring control that relies on `jump`. */
+  function withVendor(reaches?: string[]): Register {
+    const r = minimalRegister();
+    r.assets.push({ id: 'jump', name: 'Jump host', type: 'server', zone: 'test' });
+    r.services.push({
+      id: 'vendor',
+      name: 'Vendor access',
+      provider: 'test',
+      hosting: 'test',
+      kind: 'vendor-access',
+      ...(reaches ? { reaches } : {}),
+    });
+    r.controls.push({
+      id: 'vendor-monitoring',
+      name: 'Vendor monitoring',
+      description: 'Watch vendor sessions.',
+      effects: [{ kind: 'detect-and-revoke', service: 'vendor', duration: { value: 0.5, unit: 'hours', provenance: { kind: 'assumed', reasoning: 'test' } } }],
+      assets: ['jump'],
+      capability: { works: true, provenance: { kind: 'assumed', reasoning: 'test' }, measurements: [] },
+    });
+    return r;
+  }
+
+  test("a detect-and-revoke control's asset takes the tier of the processes using what the service reaches", () => {
+    const r = withVendor(['plc']);
+    // nothing depends on the vendor service; crushing (medium) depends on the plc it reaches
+    expect(deriveAssetTiers(parseRegister(r))['jump']).toBe('medium');
+
+    process(r, 'rail').tier = 'high';
+    // rail (high) -> ore stock -> crushing -> plc
+    expect(deriveAssetTiers(parseRegister(r))['jump']).toBe('high');
+  });
+
+  test('without reaches, the asset takes only the processes depending on the service itself', () => {
+    expect(deriveAssetTiers(parseRegister(withVendor()))['jump']).toBe('low');
+    const r = withVendor();
+    process(r, 'rail').tier = 'high';
+    expect(deriveAssetTiers(parseRegister(r))['jump']).toBe('low');
+  });
+
+  test('reach does not change the tiers of other assets', () => {
+    const base = deriveAssetTiers(parseRegister(withVendor()));
+    const reached = deriveAssetTiers(parseRegister(withVendor(['plc'])));
+    expect({ ...reached, jump: base['jump'] }).toEqual(base);
+  });
+});
+
 describe('deriveAssetTiers fixpoint', () => {
   const works = { works: true, provenance: { kind: 'assumed' as const, reasoning: 'test' }, measurements: [] };
 
