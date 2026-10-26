@@ -1,7 +1,7 @@
 import type { DisplayKind, Provenance, Quantity } from './quantity.js';
 import { assessReadiness } from './readiness.js';
 import type { ReadinessRow } from './readiness.js';
-import type { Process, Register, Tier } from './schema.js';
+import type { Control, ControlEffect, Process, Register, Tier } from './schema.js';
 import { deriveAssetTiers, effectiveProcessTiers } from './tiers.js';
 
 const TIER_ORDER: Tier[] = ['high', 'medium', 'low'];
@@ -119,6 +119,32 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     ];
   };
 
+  const named = (id: string): string => `${describe(id).name} [${id}]`;
+
+  const effectLine = (e: ControlEffect): string => {
+    switch (e.kind) {
+      case 'restore':
+        return `  - restore: ${named(e.service)} is back ${shown(e.duration)} after its outage starts.`;
+      case 'fallback':
+        return `  - fallback: ${named(e.process)} keeps running, degraded, without ${named(e.service)}, taking over ${
+          e.delay ? `${shown(e.delay)} after the outage starts` : 'at once'
+        }.`;
+      case 'detect-and-revoke':
+        return `  - detect-and-revoke: a compromise via ${named(e.service)} is detected and that access cut ${shown(e.duration)} after it starts.`;
+    }
+  };
+
+  const controlSection = (c: Control): string[] => [
+    `### ${c.name}`,
+    '',
+    `- Id: ${c.id}`,
+    '- Effects:',
+    ...c.effects.map(effectLine),
+    `- Relies on assets: ${c.assets?.length ? c.assets.map(named).join(', ') : 'none'}`,
+    `- Capability: ${c.capability.works ? 'works' : 'does not work'} ${label(c.capability.provenance)}`,
+    '',
+  ];
+
   const ordered = TIER_ORDER.flatMap((tier) => r.processes.filter((p) => effective[p.id] === tier));
   const assetTiers = deriveAssetTiers(r);
   const orderedAssets = TIER_ORDER.flatMap((tier) => r.assets.filter((a) => assetTiers[a.id] === tier));
@@ -132,8 +158,14 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     '',
     'Every number is followed by where it comes from: sourced (a published source), measured (a lab run), assumed (a modelling choice, recorded in the decision log) or computed (worked out by the simulation).',
     'Readiness compares the longest time a process was not running normally in each scenario with its limits. Each scenario is run unprepared (no continuity controls) and prepared (controls applied).',
+    'The continuity fields of each process (maximum tolerable outage, recovery target, owner, independent copy, last restore test) describe the baseline (unprepared) site. The controls the prepared site adds are listed under Resilience controls.',
     '',
     ...ordered.flatMap(processSection),
+    '## Resilience controls (prepared site)',
+    '',
+    'The prepared run applies each control whose capability works, and only while the assets it relies on are up. The unprepared run applies none of them.',
+    '',
+    ...(r.controls.length ? r.controls.flatMap(controlSection) : ['The register has no resilience controls.', '']),
     '## Asset tiers',
     '',
     'An asset takes the highest tier of any process that depends on it, or that a control relying on it protects.',

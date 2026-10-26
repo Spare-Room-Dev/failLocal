@@ -127,6 +127,29 @@ describe('renderContinuityPack', () => {
     expect(text).toContain('pass on 2026-09-01 (measured: lab-run-7, 2026-09-01)');
   });
 
+  test('pack states that the continuity fields describe the baseline site', () => {
+    expect(pack).toContain('describe the baseline (unprepared) site');
+  });
+
+  test('pack lists each resilience control with its effects, assets and capability', () => {
+    const start = pack.indexOf('## Resilience controls (prepared site)');
+    expect(start).toBeGreaterThan(pack.indexOf(`## ${register.processes[0]!.name}`));
+    const section = pack.slice(start, pack.indexOf('## Asset tiers'));
+    expect(register.controls.length).toBeGreaterThan(0);
+    for (const c of register.controls) {
+      const block = section.slice(section.indexOf(`### ${c.name}\n`)).split('\n### ')[0]!;
+      expect(block, c.id).toContain(`- Id: ${c.id}`);
+      for (const e of c.effects) {
+        expect(block, c.id).toContain(`  - ${e.kind}: `);
+        expect(block, c.id).toContain(`[${e.service}]`);
+        const time = e.kind === 'fallback' ? e.delay : e.duration;
+        if (time) expect(block, c.id).toMatch(new RegExp(`${time.value} hours? \\((assumed|sourced|measured)`));
+      }
+      for (const a of c.assets ?? []) expect(block, c.id).toContain(`[${a}]`);
+      expect(block, c.id).toContain(`- Capability: ${c.capability.works ? 'works' : 'does not work'} (`);
+    }
+  });
+
   test('pack states the site is fictional', () => {
     expect(pack).toMatch(/^Fictional model site\. Generated 2026-10-26/m);
   });
