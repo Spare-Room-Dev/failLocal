@@ -45,14 +45,35 @@ describe('independentCopyFor', () => {
     expect(independentCopyFor(r, 'ordering', 'prepared')).toEqual({ value: true, source: 'register' });
   });
 
-  test('prepared: a restore of a service that a dependency requires counts, through the whole requires chain', () => {
-    const doc = withControls(restore('dc-restore', 'dc'));
+  test('prepared: a restore of a required network link does not count', () => {
+    const doc = withControls(restore('net-restore', 'net'));
+    doc.services.push({ id: 'net', name: 'Network', provider: 'test', hosting: 'test', kind: 'network-link' });
+    doc.services[0]!.requires = ['net'];
+    expect(independentCopyFor(parseRegister(doc), 'ordering', 'prepared')).toEqual({ value: false, source: 'register' });
+  });
+
+  test('prepared: a direct restore of a service that is not a business application does not count', () => {
+    const doc = withControls(restore('id-restore', 'idp'));
+    doc.services.push({ id: 'idp', name: 'Logins', provider: 'test', hosting: 'test', kind: 'identity' });
+    doc.processes.find((p) => p.id === 'haulage')!.dependsOn.push({ on: 'idp', onLoss: 'stop' });
+    expect(independentCopyFor(parseRegister(doc), 'haulage', 'prepared')).toEqual({ value: false, source: 'register' });
+  });
+
+  test('prepared: a business application reached through another business application counts', () => {
+    const doc = withControls(restore('ledger-restore', 'ledger'));
+    doc.services.push({ id: 'ledger', name: 'Ledger', provider: 'test', hosting: 'test', kind: 'enterprise-app' });
+    doc.services[0]!.requires = ['ledger'];
+    expect(independentCopyFor(parseRegister(doc), 'ordering', 'prepared')).toEqual({ value: true, source: { control: 'ledger-restore' } });
+  });
+
+  test('prepared: a business application reached only through a network link does not count', () => {
+    const doc = withControls(restore('ledger-restore', 'ledger'));
     doc.services.push(
-      { id: 'net', name: 'Network', provider: 'test', hosting: 'test', kind: 'network-link', requires: ['dc'] },
-      { id: 'dc', name: 'Data centre', provider: 'test', hosting: 'test', kind: 'network-link' },
+      { id: 'net', name: 'Network', provider: 'test', hosting: 'test', kind: 'network-link', requires: ['ledger'] },
+      { id: 'ledger', name: 'Ledger', provider: 'test', hosting: 'test', kind: 'enterprise-app' },
     );
     doc.services[0]!.requires = ['net'];
-    expect(independentCopyFor(parseRegister(doc), 'ordering', 'prepared')).toEqual({ value: true, source: { control: 'dc-restore' } });
+    expect(independentCopyFor(parseRegister(doc), 'ordering', 'prepared')).toEqual({ value: false, source: 'register' });
   });
 
   test('prepared: when several controls qualify, the first in register order is the source', () => {

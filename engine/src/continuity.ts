@@ -10,10 +10,13 @@ export interface IndependentCopy {
 
 /**
  * Whether a process has an independent copy in a variant. The register value describes the baseline
- * site. Prepared, a process without one has one when a working control restores a service it depends
- * on directly, or a service those services require (followed down the whole `requires` chain): the
- * site's own restore is an independent, tested copy. The first such control in register order is the
- * source. A control with `works: false` never counts.
+ * site. Prepared, a process without one has one when a working control restores a business
+ * application (`enterprise-app`) whose data the process depends on: one it depends on directly, or one
+ * reached from such an application through `requires` hops that pass only through business
+ * applications. The site's own restore of that application is an independent, tested copy of its
+ * data. A restored network link, identity, remote-ops or vendor-access service is not a copy of
+ * anyone's data, and nothing reached through one counts. The first such control in register order is
+ * the source. A control with `works: false` never counts.
  */
 export function independentCopyFor(r: Register, processId: string, variant: Variant): IndependentCopy {
   const process = r.processes.find((p) => p.id === processId);
@@ -24,9 +27,10 @@ export function independentCopyFor(r: Register, processId: string, variant: Vari
   const services = new Map(r.services.map((s) => [s.id, s]));
   const used = new Set<string>();
   const visit = (id: string): void => {
-    if (used.has(id) || !services.has(id)) return;
+    const service = services.get(id);
+    if (used.has(id) || service?.kind !== 'enterprise-app') return;
     used.add(id);
-    for (const req of services.get(id)?.requires ?? []) visit(req);
+    for (const req of service.requires ?? []) visit(req);
   };
   for (const d of process.dependsOn) visit(d.on);
 

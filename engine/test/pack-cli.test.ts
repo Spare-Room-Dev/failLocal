@@ -131,10 +131,14 @@ describe('renderContinuityPack', () => {
     expect(pack).toContain('describe the baseline (unprepared) site');
   });
 
+  test('pack explains that vendor monitoring protects what the vendor can reach', () => {
+    expect(pack).toContain('a vendor-monitoring control protects the processes that depend on the assets that vendor can reach');
+  });
+
   test('pack shows the independent copy on the baseline and the prepared site', () => {
     const section = (name: string) => pack.slice(pack.indexOf(`## ${name}\n`)).split('\n## ')[0]!;
     expect(section('Diesel ordering')).toContain(
-      '- Independent copy: no on the baseline site; yes on the prepared site (independent-erp-restore)',
+      '- Independent copy: no on the baseline site; yes on the prepared site (independent-erp-restore, assumed)',
     );
     expect(section('Haulage')).toContain('- Independent copy: no (baseline and prepared)');
 

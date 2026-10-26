@@ -88,7 +88,9 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     const prepared = independentCopyFor(r, p.id, 'prepared');
     const yesNo = (value: boolean): string => (value ? 'yes' : 'no');
     if (baseline.value === prepared.value) return `${yesNo(baseline.value)} (baseline and prepared)`;
-    const via = typeof prepared.source === 'string' ? '' : ` (${prepared.source.control})`;
+    const source = prepared.source;
+    const control = typeof source === 'string' ? undefined : r.controls.find((c) => c.id === source.control);
+    const via = control ? ` (${control.id}, ${control.capability.provenance.kind})` : '';
     return `${yesNo(baseline.value)} on the baseline site; ${yesNo(prepared.value)} on the prepared site${via}`;
   };
 
@@ -177,7 +179,7 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     '',
     'Every number is followed by where it comes from: sourced (a published source), measured (a lab run), assumed (a modelling choice, recorded in the decision log) or computed (worked out by the simulation).',
     'Readiness compares the longest time a process was not running normally in each scenario with its limits. Each scenario is run unprepared (no continuity controls) and prepared (controls applied).',
-    'The continuity fields of each process (maximum tolerable outage, recovery target, owner, last restore test) describe the baseline (unprepared) site. Independent copy is shown for both sites: on the prepared site, a working control that restores a service the process relies on is its independent copy. The controls the prepared site adds are listed under Resilience controls.',
+    'The continuity fields of each process (maximum tolerable outage, recovery target, owner, last restore test) describe the baseline (unprepared) site. Independent copy is shown for both sites: on the prepared site, a working control that restores the business application whose data the process depends on is its independent copy. The controls the prepared site adds are listed under Resilience controls.',
     '',
     ...ordered.flatMap(processSection),
     '## Resilience controls (prepared site)',
@@ -187,7 +189,7 @@ export function renderContinuityPack(r: Register, generatedOn: string): string {
     ...(r.controls.length ? r.controls.flatMap(controlSection) : ['The register has no resilience controls.', '']),
     '## Asset tiers',
     '',
-    'An asset takes the highest tier of any process that depends on it, or that a control relying on it protects.',
+    'An asset takes the highest tier of any process that depends on it, or that a control relying on it protects. Besides any process that depends on the vendor access itself, a vendor-monitoring control protects the processes that depend on the assets that vendor can reach.',
     '',
     ...table(
       ['Id', 'Name', 'Type', 'Zone', 'Tier'],
