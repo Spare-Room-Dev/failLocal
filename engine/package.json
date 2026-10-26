@@ -2,6 +2,7 @@
   "name": "@faillocal/engine",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "main": "src/index.ts",
   "bin": { "faillocal": "src/cli.ts" },

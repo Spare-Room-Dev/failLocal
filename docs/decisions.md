@@ -638,7 +638,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-088 The site ships 25 million tonnes a year
 - **Path:** production.annualTonnes
 - **Decision:** 25 Mt/a
-- **Reasoning:** A mid-size Pilbara mine: smaller than the largest hubs, larger than a single small pit.
+- **Reasoning:** A mid-size Pilbara mine: smaller than the largest hubs, larger than a single small pit. These are wet tonnes, as Pilbara producers report them, while the price (D-089) is per dry tonne, so revenue at risk is on the high side.
 - **Source / provenance:** assumed
 - **Owner change:**
 
