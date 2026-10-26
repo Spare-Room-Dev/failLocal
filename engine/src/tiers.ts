@@ -12,7 +12,7 @@ function higher(a: Tier, b: Tier): Tier {
  * changes how soon an outage bites, not whether it does). Stock-mediated loops are
  * possible, so this iterates to a fixpoint.
  */
-function effectiveProcessTiers(r: Register): Record<string, Tier> {
+export function effectiveProcessTiers(r: Register): Record<string, Tier> {
   const effective: Record<string, Tier> = {};
   for (const p of r.processes) effective[p.id] = p.tier;
   const replenisher = new Map(r.stocks.map((s) => [s.id, s.replenishedBy]));

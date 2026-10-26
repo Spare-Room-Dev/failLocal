@@ -7,6 +7,6 @@
   "scripts": {
     "test": "npm test -w engine",
     "typecheck": "tsc --noEmit -p engine",
-    "cli": "npm run cli -w engine --"
+    "cli": "tsx engine/src/cli.ts"
   }
 }

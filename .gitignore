@@ -4,3 +4,4 @@ dist/
 .DS_Store
 .impeccable/mocks/decision/
 .impeccable/questions/
+out/

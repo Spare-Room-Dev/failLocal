@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "main": "src/index.ts",
+  "bin": { "faillocal": "src/cli.ts" },
   "scripts": {
     "test": "vitest run",
     "cli": "tsx src/cli.ts"
