@@ -1,0 +1,783 @@
+# The model Pilbara iron ore site. Fictional: not any company's site.
+# Every judgement and assumed number here has an entry in docs/decisions.md (D-nnn).
+schemaVersion: 1
+
+site:
+  id: pilbara-model-site
+  name: Model Pilbara iron ore site (fictional)
+  fictional: true
+  description: >-
+    A fictional, mid-size iron ore mine in the Pilbara, Western Australia, built to show what stops
+    when an outside service disappears. Model assumption: the haul fleet is autonomous (AHS),
+    supervised from a Perth remote operations centre. Trains load at the site and are controlled
+    from Perth with local fallback. Distances are compressed to model scale. Real companies appear
+    only as public sources for the scenarios.
+
+sources:
+  - id: scope-incident-updates
+    title: Scope Systems, Cyber incident updates (May 2026)
+    url: https://www.scopesystems.com.au/cyberincident/
+    accessed: '2026-10-26'
+  - id: mmisac-ref-arch
+    title: MM-ISAC, Mining OT Reference Architecture v1.02 (August 2026)
+    url: https://mmisac.org/hubfs/MM-ISAC_Mining_OT_Reference_Architecture_Public_White_Paper_v1.0-2.pdf?hsLang=en
+    accessed: '2026-10-26'
+  - id: miningcom-scope-oped
+    title: 'MINING.COM, Op-ed: What the Scope Systems cyber attack reveals about mining''s digital fragility (2026)'
+    url: https://www.mining.com/op-ed-what-the-scope-systems-cyber-attack-reveals-about-minings-digital-fragility/
+    accessed: '2026-10-26'
+  - id: record-copper-mountain
+    title: The Record, Canadian copper mine suffers ransomware attack, shuts down mills (30 December 2022)
+    url: https://therecord.media/canadian-copper-mine-suffers-ransomware-attack-shuts-down-mills
+    accessed: '2026-10-26'
+  - id: kitco-copper-mountain
+    title: Kitco News, Copper Mountain resumes production after ransomware attack (6 January 2023)
+    url: https://www.kitco.com/news/article/2023-01-06/copper-mountain-resumes-production-after-ransomware-attack
+    accessed: '2026-10-26'
+  - id: claroty-mining-survey
+    title: 'Claroty, The Global State of CPS Security 2024: Mining & Materials (survey, n=46)'
+    url: https://web-assets.claroty.com/resource-downloads/cps-security-survey-mining-materials.pdf
+    accessed: '2026-10-26'
+  - id: waterfall-2025
+    title: Waterfall Security, 2025 OT Cyber Threat Report
+    url: https://waterfall-security.com/wp-content/uploads/2025/03/threat-report-2025-S.pdf
+    accessed: '2026-10-26'
+  - id: rio-tinto-wa-operations
+    title: Rio Tinto, Western Australia operations (Operations Centre in Perth; autonomous haul fleet)
+    url: https://www.riotinto.com/en/operations/anz/western-australia
+    accessed: '2026-10-26'
+  - id: worldbank-pink-sheet-oct-2026
+    title: World Bank Commodities Price Data (The Pink Sheet), October 2026
+    url: https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Pink-Sheet-October-2026.pdf
+    accessed: '2026-10-26'
+
+processes:
+  # Back office
+  - id: diesel-ordering
+    name: Diesel ordering
+    area: Supply
+    kind: back-office
+    tier: medium
+    safetyFunction: Keeps fuel available for emergency and safety vehicles
+    productionConsequence: The fuel farm runs down; the haul fleet slows, then parks
+    dependsOn:
+      - on: hosted-erp
+        onLoss: stop
+        manualWorkaround:
+          description: Orders placed with the fuel supplier by phone and email, entered later
+          holdsFor:
+            value: 3
+            unit: days
+            provenance: { kind: assumed, reasoning: 'How long suppliers keep delivering on emailed orders while invoices and payments cannot be processed (D-041).' }
+    status:
+      degraded: Fuel orders going by phone and email
+      stopped: No fuel orders going out
+    continuity:
+      maxTolerableOutage:
+        value: 120
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Seven days of fuel less the two-day rationing mark (D-046).' }
+      recoveryTarget:
+        value: 48
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Leaves margin inside the five tolerable days (D-046).' }
+      owner: Supply superintendent
+      independentCopy: true
+
+  - id: explosives-ordering
+    name: Explosives ordering
+    area: Supply
+    kind: back-office
+    tier: medium
+    safetyFunction: Keeps explosives stock accounted for and ordered from licensed suppliers
+    productionConsequence: The magazine runs down; blasting stops, then haulage runs out of blasted ore
+    dependsOn:
+      - on: hosted-erp
+        onLoss: stop
+        manualWorkaround:
+          description: Explosives orders placed by phone and email, entered later
+          holdsFor:
+            value: 3
+            unit: days
+            provenance: { kind: assumed, reasoning: 'Same judgement as diesel ordering (D-042).' }
+    status:
+      degraded: Explosives orders going by phone and email
+      stopped: No explosives orders going out
+    continuity:
+      maxTolerableOutage:
+        value: 120
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Seven days in the magazine less the two-day low mark (D-047).' }
+      recoveryTarget:
+        value: 48
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Leaves margin inside the five tolerable days (D-047).' }
+      owner: Drill and blast superintendent
+      independentCopy: true
+
+  - id: work-orders
+    name: Maintenance work orders
+    area: Maintenance
+    kind: back-office
+    tier: medium
+    safetyFunction: Records isolations, permits and completed safety-critical maintenance
+    productionConsequence: Planned maintenance slips; breakdowns take longer to fix
+    dependsOn:
+      - on: hosted-erp
+        onLoss: stop
+        manualWorkaround:
+          description: Paper job cards for breakdown work
+          holdsFor:
+            value: 3
+            unit: days
+            provenance: { kind: assumed, reasoning: 'After a few days planners lose track of planned work, parts and history (D-043).' }
+    status:
+      degraded: Maintenance running offline
+      stopped: Maintenance planning stopped
+    continuity:
+      maxTolerableOutage:
+        value: 72
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Matches how long paper job cards hold (D-048).' }
+      recoveryTarget:
+        value: 24
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'A day to get planning back (D-048).' }
+      owner: Maintenance planning superintendent
+      independentCopy: true
+
+  - id: payroll
+    name: Payroll
+    area: People
+    kind: back-office
+    tier: low
+    safetyFunction: None directly
+    productionConsequence: None within weeks; people go unpaid
+    dependsOn:
+      - on: hosted-erp
+        onLoss: stop
+        manualWorkaround:
+          description: Urgent pay keyed by hand in the bank portal
+          holdsFor:
+            value: 7
+            unit: days
+            provenance: { kind: assumed, reasoning: 'One hand-keyed pay run is possible; with fortnightly pay that covers about a week (D-044).' }
+    status:
+      degraded: Pay run done manually
+      stopped: Pay run stalled
+    continuity:
+      maxTolerableOutage:
+        value: 168
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'The next fortnightly pay day is on average a week away (D-049).' }
+      recoveryTarget:
+        value: 72
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Time to run and check a pay run (D-049).' }
+      owner: Payroll manager
+      independentCopy: true
+
+  # Control
+  - id: remote-operations
+    name: Remote operations from Perth
+    area: Remote operations centre
+    kind: physical
+    tier: high
+    safetyFunction: Supervises the autonomous haul fleet and controls trains on the network
+    productionConsequence: Without it the haul fleet parks and trains slow
+    dependsOn:
+      - on: iroc-link
+        onLoss: stop
+    status:
+      degraded: Fleet run from the site control room
+      stopped: 'Fleet parked: no supervision from Perth'
+    continuity:
+      maxTolerableOutage:
+        value: 4
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'The fleet parks at once without supervision (D-050).' }
+      recoveryTarget:
+        value: 2
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Matches the site handover time (D-050).' }
+      owner: Remote operations centre manager
+      independentCopy: false
+
+  - id: control-room
+    name: Site control room
+    area: Processing plant
+    kind: physical
+    tier: high
+    safetyFunction: Operators run the crushing plant and can stop it safely
+    productionConsequence: The crusher stops
+    dependsOn:
+      - on: control-room-hmi
+        onLoss: stop
+      - on: cloud-identity
+        onLoss: stop
+        manualWorkaround:
+          description: The current shift stays logged in; the next shift cannot log on
+          holdsFor:
+            value: 0.5
+            unit: days
+            provenance: { kind: assumed, reasoning: 'One 12-hour shift already logged in (D-045).' }
+    status:
+      degraded: Control room running, logins limited
+      stopped: Control room locked out
+    continuity:
+      maxTolerableOutage:
+        value: 4
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'A few hours of lost crushing is absorbed by the stockpile (D-051).' }
+      recoveryTarget:
+        value: 1
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Get operators back on the plant within the hour (D-051).' }
+      owner: Processing plant superintendent
+      independentCopy: false
+
+  # Mine to rail
+  - id: drill-and-blast
+    name: Drill and blast
+    area: Pit
+    kind: physical
+    tier: medium
+    safetyFunction: Controlled blasting with exclusion zones
+    productionConsequence: No new ore is broken; haulage runs on the blasted ore already in the pit
+    dependsOn:
+      - on: explosives
+        onLoss: stop
+    status:
+      degraded: 'Blasting rationed: explosives low'
+      stopped: 'No blasting: magazine empty'
+    continuity:
+      maxTolerableOutage:
+        value: 120
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'A week of blasted ore less the two-day low mark (D-052).' }
+      recoveryTarget:
+        value: 48
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Leaves margin inside the five tolerable days (D-052).' }
+      owner: Drill and blast superintendent
+      independentCopy: false
+
+  - id: haulage
+    name: Haulage
+    area: Pit
+    kind: physical
+    tier: high
+    safetyFunction: Keeps autonomous trucks, crewed vehicles and people apart
+    productionConsequence: Ore stops reaching the ROM pad; the crusher runs out within hours
+    dependsOn:
+      - on: diesel
+        onLoss: stop
+      - on: broken-ore
+        onLoss: stop
+      - on: remote-operations
+        onLoss: stop
+    status:
+      degraded: Haul fleet running at a reduced rate
+      stopped: Haul fleet parked
+    continuity:
+      maxTolerableOutage:
+        value: 12
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'The ROM pad holds half a day of crusher feed (D-053).' }
+      recoveryTarget:
+        value: 4
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Back well before the ROM pad empties (D-053).' }
+      owner: Mine production superintendent
+      independentCopy: false
+
+  - id: crushing
+    name: Crushing and conveying
+    area: Processing plant
+    kind: physical
+    tier: high
+    safetyFunction: Crusher and conveyor interlocks and emergency stops
+    productionConsequence: Nothing reaches the product stockpile; trains start drawing it down
+    dependsOn:
+      - on: rom-pad
+        onLoss: stop
+      - on: crusher-plc
+        onLoss: stop
+      - on: conveyor-plc
+        onLoss: stop
+      - on: control-room
+        onLoss: stop
+    status:
+      degraded: Crusher running on reduced feed
+      stopped: Crusher stopped
+    continuity:
+      maxTolerableOutage:
+        value: 48
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Three days on the stockpile less the one-day low mark (D-054).' }
+      recoveryTarget:
+        value: 12
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Back within a shift (D-054).' }
+      owner: Processing plant superintendent
+      independentCopy: false
+
+  - id: rail
+    name: Rail loading and haul to port
+    area: Rail
+    kind: physical
+    tier: high
+    safetyFunction: Train control and protection on the network
+    productionConsequence: Tonnes are not shipped; production is deferred and revenue is at risk
+    dependsOn:
+      - on: ore-stockpile
+        onLoss: stop
+      - on: remote-operations
+        onLoss: degrade
+    status:
+      degraded: Fewer trains running
+      stopped: No trains loading
+    continuity:
+      maxTolerableOutage:
+        value: 24
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Missed train paths become missed ship loadings within about a day (D-055).' }
+      recoveryTarget:
+        value: 12
+        unit: hours
+        provenance: { kind: assumed, reasoning: 'Back within a shift (D-055).' }
+      owner: Rail operations manager
+      independentCopy: false
+
+assets:
+  - id: crusher-plc
+    name: Primary crusher PLC
+    type: plc
+    zone: Level 1 - plant control
+    area: Processing plant
+  - id: conveyor-plc
+    name: Overland conveyor PLC
+    type: plc
+    zone: Level 1 - plant control
+    area: Processing plant
+  - id: control-room-hmi
+    name: Control room HMI
+    type: hmi
+    zone: Level 2 - supervisory control
+    area: Processing plant
+  - id: site-historian
+    name: Site historian
+    type: historian
+    zone: Level 3 - site operations
+    area: Processing plant
+  - id: site-identity
+    name: Site login server
+    type: server
+    zone: Level 3.5 - site DMZ
+    area: Site services
+  - id: offline-wo-app
+    name: Offline work-order app
+    type: server
+    zone: Level 3 - site operations
+    area: Maintenance
+  - id: vendor-jump-host
+    name: Vendor jump host
+    type: server
+    zone: Level 3.5 - site DMZ
+    area: Vendor access
+
+services:
+  - id: corporate-network
+    name: Corporate network
+    provider: Owner's corporate IT (fictional)
+    hosting: Corporate WAN between Perth and site
+    kind: network-link
+  - id: hosted-erp
+    name: Hosted ERP (finance, purchasing, maintenance, payroll)
+    provider: Third-party ERP host (fictional)
+    hosting: Vendor-hosted, reached over the corporate network
+    kind: enterprise-app
+    requires: [corporate-network]
+  - id: cloud-identity
+    name: Cloud logins
+    provider: Cloud identity provider (fictional)
+    hosting: Cloud, reached over the corporate network
+    kind: identity
+    requires: [corporate-network]
+  - id: iroc-link
+    name: Perth operations link
+    provider: Owner's remote operations centre (fictional)
+    hosting: Perth, carried on the corporate network
+    kind: remote-ops
+    requires: [corporate-network]
+  - id: vendor-a-access
+    name: Vendor A remote access
+    provider: Crusher control vendor (fictional)
+    hosting: Through the site vendor jump host, not the corporate network
+    kind: vendor-access
+  - id: vendor-b-access
+    name: Vendor B remote access
+    provider: Conveyor drives vendor (fictional)
+    hosting: Through the site vendor jump host, not the corporate network
+    kind: vendor-access
+
+stocks:
+  - id: diesel
+    name: Diesel in the fuel farm
+    capacity:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'About a week of fuel: supplied by road from the coast, with wet-season closures (D-056).' }
+    initial:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'A running site keeps its fuel topped up (D-056).' }
+    lowThreshold:
+      value: 2
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Below two days fuel is rationed and the fleet slows (D-057).' }
+    refillRate:
+      value: 1
+      unit: days/day
+      provenance: { kind: assumed, reasoning: 'Deliveries bring about twice daily use (D-058).' }
+    replenishedBy: diesel-ordering
+    consumedBy: [haulage]
+  - id: explosives
+    name: Explosives in the magazine
+    capacity:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'About a week of blasting, as for diesel (D-059).' }
+    initial:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Starts full (D-059).' }
+    lowThreshold:
+      value: 2
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Below two days blasting is rationed (D-059).' }
+    refillRate:
+      value: 1
+      unit: days/day
+      provenance: { kind: assumed, reasoning: 'Same delivery logic as diesel (D-059).' }
+    replenishedBy: explosives-ordering
+    consumedBy: [drill-and-blast]
+  - id: broken-ore
+    name: Blasted ore in the pit
+    capacity:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'About a week of blasted ore kept ahead of the diggers (D-060).' }
+    initial:
+      value: 7
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Starts full (D-060).' }
+    lowThreshold:
+      value: 2
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Below two days diggers wait on blasts (D-061).' }
+    refillRate:
+      value: 0.5
+      unit: days/day
+      provenance: { kind: assumed, reasoning: 'Blasting runs only modestly ahead of haulage (D-062).' }
+    replenishedBy: drill-and-blast
+    consumedBy: [haulage]
+  - id: rom-pad
+    name: Ore on the ROM pad
+    capacity:
+      value: 0.5
+      unit: days
+      provenance: { kind: assumed, reasoning: 'A short buffer between trucks and crusher: half a day (D-063).' }
+    initial:
+      value: 0.5
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Starts full (D-063).' }
+    lowThreshold:
+      value: 0.125
+      unit: days
+      provenance: { kind: assumed, reasoning: 'With three hours left the crusher is slowed (D-064).' }
+    refillRate:
+      value: 0.5
+      unit: days/day
+      provenance: { kind: assumed, reasoning: 'The fleet hauls somewhat faster than the crusher eats (D-065).' }
+    replenishedBy: haulage
+    consumedBy: [crushing]
+  - id: ore-stockpile
+    name: Product stockpile at the train load-out
+    capacity:
+      value: 3
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Three days of train loading, a judgement for the model site (D-066).' }
+    initial:
+      value: 3
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Starts full (D-066).' }
+    lowThreshold:
+      value: 1
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Below a day, loadings are cut back (D-067).' }
+    refillRate:
+      value: 0.5
+      unit: days/day
+      provenance: { kind: assumed, reasoning: 'The crusher has some spare capacity over rail (D-068).' }
+    replenishedBy: crushing
+    consumedBy: [rail]
+
+controls:
+  - id: offline-ordering
+    name: Offline emergency ordering
+    description: >-
+      Approved suppliers, specifications, lead times and authority to place emergency orders kept on
+      site, with offline order numbering and a way to reconcile the orders once the ERP is back.
+    effects:
+      - { kind: fallback, process: diesel-ordering, service: hosted-erp }
+      - { kind: fallback, process: explosives-ordering, service: hosted-erp }
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet exercised; the lab will test it (D-007).' }
+      measurements: []
+  - id: offline-work-orders
+    name: Offline work orders
+    description: A site work-order app with open and planned work, parts locations and history, synced back to the ERP later.
+    effects:
+      - { kind: fallback, process: work-orders, service: hosted-erp }
+    assets: [offline-wo-app]
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet exercised; the lab will test it (D-007).' }
+      measurements: []
+  - id: payroll-continuity
+    name: Payroll continuity
+    description: The last pay run is reused so staff are paid on time; differences are corrected in the next run.
+    effects:
+      - { kind: fallback, process: payroll, service: hosted-erp }
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet exercised (D-007).' }
+      measurements: []
+  - id: independent-erp-restore
+    name: Independent ERP restore
+    description: >-
+      The site keeps its own tested backup of the ERP and can bring it back on standby hardware,
+      without waiting for the hosting provider.
+    effects:
+      - kind: restore
+        service: hosted-erp
+        duration:
+          value: 48
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'Two days to restore from the site''s own backup and check the data. A modelled time, not a lab timing (D-072).' }
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet tested; the lab will restore a mock ERP (D-007).' }
+      measurements: []
+  - id: site-authority
+    name: Site takes over from Perth
+    description: >-
+      A tested procedure hands control of the fleet and trains to trained site controllers when the
+      Perth link is lost, with only one authority active at a time.
+    effects:
+      - kind: fallback
+        process: remote-operations
+        service: iroc-link
+        delay:
+          value: 2
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'Time for site controllers to reach the console, confirm the fleet and take authority (D-073).' }
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet exercised; the lab will test the handover (D-007).' }
+      measurements: []
+  - id: local-identity
+    name: Local logins
+    description: A site login server lets control-room operators log on when the cloud logins are unavailable.
+    effects:
+      - { kind: fallback, process: control-room, service: cloud-identity }
+    assets: [site-identity]
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet exercised; the lab will test it (D-007).' }
+      measurements: []
+  - id: vendor-monitoring
+    name: Vendor session monitoring
+    description: >-
+      Vendor sessions go through the site jump host and are watched. An unexpected change to plant
+      control is flagged, and that vendor's access is cut while other vendors stay connected.
+    effects:
+      - kind: detect-and-revoke
+        service: vendor-a-access
+        duration:
+          value: 0.5
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'Flag an out-of-hours write and cut one vendor within half an hour (D-075).' }
+      - kind: detect-and-revoke
+        service: vendor-b-access
+        duration:
+          value: 0.5
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'Same monitoring for both vendors (D-076).' }
+    assets: [vendor-jump-host]
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'Not yet tested; the lab will measure detection and revocation (D-007).' }
+      measurements: []
+
+scenarios:
+  - id: s1-as-reported
+    title: Hosted ERP lost (as reported)
+    summary: >-
+      Based on the Scope Systems incident, Perth, May 2026: hosted ERP customers lost their system
+      from 5 May, and Scope restored client servers in stages (about 20% by 10 May, 53% by 12 May,
+      80% by 14 May and 100% by 17 May). The model site is placed in the last group, so it waits the
+      full 12 days. Manual workarounds hold throughout, and no physical process stops, which matches
+      the public record.
+    basis: [scope-incident-updates, miningcom-scope-oped]
+    projection: false
+    workaroundsHold: true
+    horizon:
+      value: 14
+      unit: days
+      provenance: { kind: assumed, reasoning: 'The 12-day outage plus two days of recovery (D-078).' }
+    events:
+      - kind: cut-service
+        service: hosted-erp
+        at:
+          value: 0
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'The timeline starts at the cut (D-078).' }
+        restoreAfter:
+          value: 288
+          unit: hours
+          provenance:
+            kind: sourced
+            source: scope-incident-updates
+            note: 'Disruption from early 5 May 2026; "As of Sunday 17 May, all client servers have been restored". 12 days.'
+
+  - id: s1-projection
+    title: 'Hosted ERP lost: what if the workarounds ran out'
+    summary: >-
+      A projection, not what happened: the same ERP loss as the Scope Systems incident, asking what if
+      restore took longer and the workarounds ran out. The restore here takes three weeks rather than
+      Scope's 12 days, and the phone-and-email workarounds stop after a few days. No real company is
+      shown or implied to have stopped production.
+    basis: [scope-incident-updates, mmisac-ref-arch]
+    projection: true
+    workaroundsHold: false
+    horizon:
+      value: 28
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Long enough to show the restore and recovery (D-080).' }
+    events:
+      - kind: cut-service
+        service: hosted-erp
+        at:
+          value: 0
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'The timeline starts at the cut (D-080).' }
+        restoreAfter:
+          value: 504
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'What-if: a three-week restore, longer than Scope''s 12 days (D-079).' }
+
+  - id: s2-iroc-lost
+    title: Perth operations link lost
+    summary: >-
+      The link to the Perth remote operations centre is lost for a day. Unprepared, the autonomous
+      fleet parks and trains slow. Prepared, trained site controllers take over after a short
+      handover, as MM-ISAC's fail-local rule asks. The duration is an assumption; no public incident
+      gives one.
+    basis: [mmisac-ref-arch, rio-tinto-wa-operations]
+    projection: false
+    workaroundsHold: false
+    horizon:
+      value: 3
+      unit: days
+      provenance: { kind: assumed, reasoning: 'The outage plus two days of recovery (D-082).' }
+    events:
+      - kind: cut-service
+        service: iroc-link
+        at:
+          value: 0
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'The timeline starts at the cut (D-082).' }
+        restoreAfter:
+          value: 24
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'A day: no public incident gives a duration (D-081).' }
+
+  - id: s3-vendor-setpoint
+    title: Vendor changes a crusher setting out of hours
+    summary: >-
+      At 2 am a change to the crusher's control settings arrives through vendor A's remote access.
+      Unprepared, nobody notices and the crusher trips. Prepared, monitoring flags it and vendor A's
+      access is cut, while vendor B stays connected. Claroty's mining survey found 76% of respondents
+      had attacks originate from third-party supplier access; MM-ISAC asks for vendor access to be
+      "brokered, named and temporary".
+    basis: [claroty-mining-survey, mmisac-ref-arch]
+    projection: false
+    workaroundsHold: false
+    horizon:
+      value: 2
+      unit: days
+      provenance: { kind: assumed, reasoning: 'The outage plus recovery (D-085).' }
+    events:
+      - kind: compromise
+        via: vendor-a-access
+        target: crusher-plc
+        at:
+          value: 2
+          unit: hours
+          provenance: { kind: assumed, reasoning: '2 am, out of hours (D-083).' }
+        downFor:
+          value: 12
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'Find the cause, restore known-good settings and recommission: about a shift (D-084).' }
+
+  - id: s4-precautionary-isolation
+    title: Precautionary isolation from the corporate network
+    summary: >-
+      After ransomware on the corporate side, the site is cut off from the corporate network as a
+      precaution for five days, which also cuts the hosted ERP, cloud logins and the Perth link. The
+      length comes from Copper Mountain, December 2022, which shut its mill as a precaution after an
+      IT ransomware attack and restarted its primary crusher five days later. Waterfall's 2025 report
+      found that, where the attack pattern could be determined, nearly 90% of 2024 attacks with
+      physical consequences caused them indirectly, as here.
+    basis: [kitco-copper-mountain, record-copper-mountain, waterfall-2025]
+    projection: false
+    workaroundsHold: false
+    horizon:
+      value: 8
+      unit: days
+      provenance: { kind: assumed, reasoning: 'Copper Mountain''s mill was back at full production eight days after the attack (D-087).' }
+    events:
+      - kind: cut-service
+        service: corporate-network
+        at:
+          value: 0
+          unit: hours
+          provenance: { kind: assumed, reasoning: 'The timeline starts at the cut (D-087).' }
+        restoreAfter:
+          value: 120
+          unit: hours
+          provenance:
+            kind: sourced
+            source: kitco-copper-mountain
+            note: 'Attack on 27 December 2022; primary crusher restarted on 1 January 2023. The model applies this five-day shutdown to the isolation.'
+
+production:
+  annualTonnes:
+    value: 25
+    unit: Mt/a
+    provenance: { kind: assumed, reasoning: 'A mid-size Pilbara iron ore mine (D-088).' }
+  price:
+    value: 97.7
+    unit: USD/t
+    provenance:
+      kind: sourced
+      source: worldbank-pink-sheet-oct-2026
+      note: 'Iron ore fines 62% Fe, spot CFR China, September 2026 monthly average, US$/dmt. A China benchmark, not a mine-gate price, so revenue at risk per tonne is on the high side.'
+  shippingProcess: rail
+  degradedOutput:
+    value: 0.5
+    unit: fraction
+    provenance: { kind: assumed, reasoning: 'About half the usual trains run when rail is degraded (D-090).' }
