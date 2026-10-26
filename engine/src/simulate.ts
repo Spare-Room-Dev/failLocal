@@ -36,12 +36,36 @@
  *   stopped, and `1 - degradedOutput` of it while degraded. Revenue at risk is the tonnes deferred
  *   times the price. Both are cumulative to the end of each hour, and the totals are the last
  *   sample's values.
+ *
+ * Prepared and unprepared:
+ * - "Prepared" is the same register with its `controls` applied. There is no second register.
+ *   The unprepared run ignores every control. The prepared run applies each control whose
+ *   `capability.works` is true, and only at a sample where none of the assets it relies on is
+ *   down. Only effect durations feed the run; lab measurements and observations never do.
+ * - Restore: a service's own cuts are merged first, then each merged outage is cut short to
+ *   `duration` hours from its start. This happens before outages of required services are added,
+ *   so a restore cannot bring a service back while a service it requires is still down. The
+ *   control's assets are checked at the outage's start hour.
+ * - Fallback: it covers one dependency of one process on one service. For the first `delay` hours
+ *   of the service's outage (default 0) the dependency gives its normal result (`onLoss`, or the
+ *   manual workaround while it holds); after that it gives `degraded`. A fallback never makes a
+ *   dependency worse than it is without one.
+ * - Detect-and-revoke: a compromise via the control's service is detected at `at + duration`.
+ *   Then `compromise-detected` and `access-revoked` fire, and the service is `revoked` until the
+ *   horizon. A revoked service counts as lost, and services that require it are `down`. The target
+ *   asset is not taken down: this assumes detection and revocation happen before the write takes
+ *   effect, or that the write is reverted. If detection comes no earlier than the end of the
+ *   compromise (`duration >= downFor`) nothing was prevented: the asset goes down as it would
+ *   unprepared, and the access is still revoked. Compromises are taken in order of `at`, and the
+ *   control's assets are checked at its detection hour against the compromises taken so far.
  */
 import type { Provenance, Unit } from './quantity.js';
 import { toHours } from './quantity.js';
 import { applyOverrides, quantityPaths } from './paths.js';
 import { tonnesPerHour } from './production.js';
-import type { Dependency, Register, Scenario, Stock } from './schema.js';
+import type { AssetDown } from './controls.js';
+import { detectionDelay, effectPaths, restoreDuration, takeoverDelay, workingControls } from './controls.js';
+import type { Control, Dependency, Register, Scenario, ScenarioEvent, Stock } from './schema.js';
 import { checkScenario, processOrder, RegisterError } from './validate.js';
 
 export type Variant = 'unprepared' | 'prepared';
@@ -141,22 +165,68 @@ function bySubject(entries: { subject: string; window: Window }[]): Map<string, 
   return grouped;
 }
 
-/** Each service's outages: its own cuts plus the outages of every service it requires, merged. */
-function serviceOutages(reg: Register, cuts: Map<string, Window[]>): Map<string, Window[]> {
+/**
+ * Each service's outages and the windows in which it is lost. Its outages are its own cuts (merged,
+ * then shortened by `restore`) plus the lost windows of every service it requires, merged. It is
+ * lost while it is down or revoked.
+ */
+function serviceOutages(
+  reg: Register,
+  cuts: Map<string, Window[]>,
+  revocations: Map<string, Window[]>,
+  restore: (service: string, outage: Window) => Window,
+): { outages: Map<string, Window[]>; lost: Map<string, Window[]> } {
   const requires = new Map(reg.services.map((x) => [x.id, x.requires ?? []]));
   const outages = new Map<string, Window[]>();
+  const lost = new Map<string, Window[]>();
   const resolve = (id: string): Window[] => {
-    const known = outages.get(id);
+    const known = lost.get(id);
     if (known) return known;
+    const own = merge(cuts.get(id) ?? []).map((w) => restore(id, w));
     const inherited = (requires.get(id) ?? []).flatMap((req) =>
       resolve(req).map((w) => ({ start: w.start, end: w.end, cause: req })),
     );
-    const merged = merge([...(cuts.get(id) ?? []), ...inherited]);
+    const merged = merge([...own, ...inherited]);
     outages.set(id, merged);
-    return merged;
+    lost.set(id, merge([...merged, ...(revocations.get(id) ?? [])]));
+    return lost.get(id)!;
   };
   for (const id of requires.keys()) resolve(id);
-  return outages;
+  return { outages, lost };
+}
+
+type Compromise = Extract<ScenarioEvent, { kind: 'compromise' }>;
+
+/**
+ * Works through the compromises in order of `at`: the asset outages they cause, the services whose
+ * access is revoked from detection to `end`, and the detection and revocation events.
+ */
+function resolveCompromises(
+  compromises: Compromise[],
+  controls: Control[],
+  end: number,
+): { assetOutages: Map<string, Window[]>; revocations: Map<string, Window[]>; events: TimelineEvent[] } {
+  const downs: { subject: string; window: Window }[] = [];
+  const revoked: { subject: string; window: Window }[] = [];
+  const events: TimelineEvent[] = [];
+  const downSoFar: AssetDown = (asset, hour) => downs.some((d) => d.subject === asset && covering([d.window], hour));
+  for (const c of [...compromises].sort((a, b) => toHours(a.at) - toHours(b.at))) {
+    const start = toHours(c.at);
+    const downFor = toHours(c.downFor);
+    const delay = detectionDelay(controls, c.via, start, downSoFar);
+    if (delay !== undefined) {
+      const detected = start + delay;
+      events.push(
+        { hour: detected, kind: 'compromise-detected', subject: c.target, from: c.via },
+        { hour: detected, kind: 'access-revoked', subject: c.via },
+      );
+      revoked.push({ subject: c.via, window: { start: detected, end } });
+    }
+    if (delay === undefined || delay >= downFor) downs.push({ subject: c.target, window: { start, end: start + downFor } });
+  }
+  const merged = (entries: { subject: string; window: Window }[]) =>
+    new Map([...bySubject(entries)].map(([id, windows]) => [id, merge(windows)]));
+  return { assetOutages: merged(downs), revocations: merged(revoked), events };
 }
 
 function outageEvents(outages: Map<string, Window[]>, down: TimelineEventKind, up: TimelineEventKind): TimelineEvent[] {
@@ -241,12 +311,22 @@ function prepare(r: Register, scenario: Scenario, overrides: Record<string, numb
   return { reg, scenario: reg.scenarios.find((s) => s.id === scenario.id)! };
 }
 
-/** The scenario's own quantities, every workaround duration, stock and production input, as the run used them. */
-function assumptionsUsed(reg: Register, scenario: Scenario, overrides: Record<string, number>): Record<string, UsedInput> {
+/**
+ * The scenario's own quantities, every workaround duration, stock and production input, and the
+ * effect durations of the applied controls, as the run used them.
+ */
+function assumptionsUsed(
+  reg: Register,
+  scenario: Scenario,
+  controls: Control[],
+  overrides: Record<string, number>,
+): Record<string, UsedInput> {
   const used: Record<string, UsedInput> = {};
+  const controlInputs = effectPaths(controls);
   for (const { path, quantity } of quantityPaths(reg)) {
     const read =
       path.startsWith(`scenarios.${scenario.id}.`) ||
+      controlInputs.has(path) ||
       path.endsWith('.manualWorkaround.holdsFor') ||
       path.startsWith('stocks.') ||
       path.startsWith('production.');
@@ -277,9 +357,10 @@ export function simulateScenario(
   const { reg } = prepared;
   const s = prepared.scenario;
   const horizonHours = Math.floor(toHours(s.horizon));
+  const controls = variant === 'prepared' ? workingControls(reg.controls) : [];
 
   const cuts: { subject: string; window: Window }[] = [];
-  const compromises: { subject: string; window: Window }[] = [];
+  const compromises: Compromise[] = [];
   const events: TimelineEvent[] = [];
   for (const e of s.events) {
     const start = toHours(e.at);
@@ -287,12 +368,19 @@ export function simulateScenario(
       cuts.push({ subject: e.service, window: { start, end: start + toHours(e.restoreAfter) } });
     } else {
       events.push({ hour: start, kind: 'compromise-started', subject: e.target, from: e.via });
-      compromises.push({ subject: e.target, window: { start, end: start + toHours(e.downFor) } });
+      compromises.push(e);
     }
   }
-  const outages = serviceOutages(reg, bySubject(cuts));
-  const assetOutages = new Map([...bySubject(compromises)].map(([id, windows]) => [id, merge(windows)]));
+  const resolved = resolveCompromises(compromises, controls, horizonHours + 1);
+  const { assetOutages, revocations } = resolved;
+  const assetDown: AssetDown = (asset, hour) => covering(assetOutages.get(asset) ?? [], hour) !== undefined;
+  const restore = (service: string, w: Window): Window => {
+    const duration = restoreDuration(controls, service, w.start, assetDown);
+    return duration === undefined ? w : { ...w, end: Math.min(w.end, w.start + duration) };
+  };
+  const { outages, lost } = serviceOutages(reg, bySubject(cuts), revocations, restore);
   events.push(
+    ...resolved.events,
     ...outageEvents(outages, 'service-down', 'service-up'),
     ...outageEvents(assetOutages, 'asset-down', 'asset-up'),
   );
@@ -312,18 +400,23 @@ export function simulateScenario(
 
   for (let hour = 0; hour <= horizonHours; hour++) {
     const serviceStates: Record<string, ServiceState> = {};
-    for (const id of services) serviceStates[id] = covering(outages.get(id) ?? [], hour) ? 'down' : 'up';
+    for (const id of services) {
+      const revoked = covering(revocations.get(id) ?? [], hour);
+      serviceStates[id] = revoked ? 'revoked' : covering(outages.get(id) ?? [], hour) ? 'down' : 'up';
+    }
 
     const assetStates: Record<string, 'up' | 'down'> = {};
-    for (const id of assets) assetStates[id] = covering(assetOutages.get(id) ?? [], hour) ? 'down' : 'up';
+    for (const id of assets) assetStates[id] = assetDown(id, hour) ? 'down' : 'up';
 
     const processStates: Record<string, ProcessState> = {};
-    const dependencyResult = (d: Dependency): ProcessState => {
+    const dependencyResult = (process: string, d: Dependency): ProcessState => {
       if (services.has(d.on)) {
-        const outage = covering(outages.get(d.on) ?? [], hour);
+        const outage = covering(lost.get(d.on) ?? [], hour);
         if (!outage) return 'normal';
         const w = d.manualWorkaround;
         if (w && (s.workaroundsHold || hour < Math.ceil(outage.start + toHours(w.holdsFor)))) return 'degraded';
+        const delay = takeoverDelay(controls, process, d.on, hour, assetDown);
+        if (delay !== undefined && hour >= Math.ceil(outage.start + delay)) return 'degraded';
         return lossResult(d);
       }
       if (assets.has(d.on)) return assetStates[d.on] === 'down' ? lossResult(d) : 'normal';
@@ -335,7 +428,7 @@ export function simulateScenario(
       return stock ? stockResult(d, stock) : 'normal';
     };
     for (const id of order) {
-      const state = processes.get(id)!.dependsOn.map(dependencyResult).reduce(worst, 'normal');
+      const state = processes.get(id)!.dependsOn.map((d) => dependencyResult(id, d)).reduce(worst, 'normal');
       processStates[id] = state;
       if (state !== 'normal') nonNormalHours[id]! += 1;
       if (state === 'stopped') stoppedHours[id]! += 1;
@@ -370,7 +463,7 @@ export function simulateScenario(
     samples,
     events: events.filter((e) => e.hour <= horizonHours).sort((a, b) => a.hour - b.hour),
     totals: { tonnesDeferred: last.tonnesDeferred, revenueAtRisk: last.revenueAtRisk, nonNormalHours, stoppedHours },
-    assumptionsUsed: assumptionsUsed(reg, s, overrides),
+    assumptionsUsed: assumptionsUsed(reg, s, controls, overrides),
   };
 }
 
