@@ -78,6 +78,43 @@ describe('deriveAssetTiers', () => {
   });
 });
 
+describe('deriveAssetTiers fixpoint', () => {
+  const works = { works: true, provenance: { kind: 'assumed' as const, reasoning: 'test' }, measurements: [] };
+
+  test('a tier that needs several passes still reaches a control-relied-on asset', () => {
+    const r = minimalRegister();
+    process(r, 'rail').tier = 'high';
+    r.assets.push({ id: 'site-id', name: 'Site ID', type: 'server', zone: 'test' });
+    r.controls.push({
+      id: 'manual-ordering',
+      name: 'Manual ordering',
+      description: 'Order by phone.',
+      effects: [{ kind: 'fallback', process: 'ordering', service: 'erp' }],
+      assets: ['site-id'],
+      capability: works,
+    });
+    // rail (high) -> ore -> crushing -> haulage -> diesel -> ordering: the last hops need later passes
+    expect(deriveAssetTiers(parseRegister(r))['site-id']).toBe('high');
+  });
+
+  test('a stock-mediated loop terminates and every member takes the highest tier in it', () => {
+    const members = ['ordering', 'haulage', 'crushing'];
+    for (const raised of members) {
+      const r = minimalRegister();
+      // loop: ordering -> ore -> crushing -> haulage -> diesel -> ordering
+      process(r, 'ordering').dependsOn.push({ on: 'ore', onLoss: 'degrade' });
+      for (const id of members) {
+        const p = process(r, id);
+        p.tier = id === raised ? 'high' : 'low';
+        r.assets.push({ id: `probe-${id}`, name: id, type: 'workstation', zone: 'test' });
+        p.dependsOn.push({ on: `probe-${id}`, onLoss: 'stop' });
+      }
+      const tiers = deriveAssetTiers(parseRegister(r));
+      for (const id of members) expect(tiers[`probe-${id}`], `raised ${raised}, probe ${id}`).toBe('high');
+    }
+  });
+});
+
 describe('assessReadiness', () => {
   test('flags a process over its tolerance', () => {
     const r = parseRegister(minimalRegister());
