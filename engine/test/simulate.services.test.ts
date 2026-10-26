@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import type { Register, Scenario, ScenarioEvent } from '../src/schema.js';
 import { simulate, simulateScenario, simulateWith } from '../src/simulate.js';
-import type { Sample, Timeline } from '../src/simulate.js';
+import type { Sample, Timeline, TimelineEvent } from '../src/simulate.js';
 import { parseRegister, RegisterError } from '../src/validate.js';
 import { minimalRegister, q } from './fixtures.js';
 
@@ -127,16 +127,81 @@ test('events after the horizon are left out', () => {
   expect(t.events.filter((e) => e.subject === 'erp').map((e) => e.kind)).toEqual(['service-down']);
 });
 
-test('a service is down while a service it requires is down', () => {
+/** The minimal register with a 'net' service that 'erp' requires. */
+function withNet(): Register {
   const r = minimalRegister();
   r.services.push({ id: 'net', name: 'Network', provider: 'test', hosting: 'test', kind: 'network-link' });
   r.services.find((s) => s.id === 'erp')!.requires = ['net'];
-  const t = simulateScenario(parseRegister(r), scenario([cut('net', 0, 10)]), 'unprepared');
+  return parseRegister(r);
+}
+
+function serviceEvents(t: Timeline): TimelineEvent[] {
+  return t.events.filter((e) => e.kind === 'service-down' || e.kind === 'service-up');
+}
+
+/** Every hour at which the samples show `service` changing state, as service events would report it. */
+function sampledChanges(t: Timeline, service: string): { hour: number; kind: string }[] {
+  return t.samples.flatMap((s, h) => {
+    const before = h === 0 ? 'up' : t.samples[h - 1]!.services[service];
+    const now = s.services[service];
+    return now === before ? [] : [{ hour: h, kind: now === 'down' ? 'service-down' : 'service-up' }];
+  });
+}
+
+test('a service is down while a service it requires is down', () => {
+  const t = simulateScenario(withNet(), scenario([cut('net', 0, 10)]), 'unprepared');
   expect(at(t, 5).services.net).toBe('down');
   expect(at(t, 5).services.erp).toBe('down');
   expect(at(t, 5).processes.ordering).toBe('stopped');
   expect(at(t, 10).services.erp).toBe('up');
   expect(at(t, 10).processes.ordering).toBe('normal');
+  expect(serviceEvents(t)).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'net' },
+    { hour: 0, kind: 'service-down', subject: 'erp', from: 'net' },
+    { hour: 10, kind: 'service-up', subject: 'net' },
+    { hour: 10, kind: 'service-up', subject: 'erp' },
+  ]);
+});
+
+test('an own cut inside an inherited outage gives one outage, not a second down and up', () => {
+  const t = simulateScenario(withNet(), scenario([cut('net', 0, 10), cut('erp', 5, 10)]), 'unprepared');
+  for (const h of [0, 5, 10, 14]) expect(at(t, h).services.erp).toBe('down');
+  expect(at(t, 15).services.erp).toBe('up');
+  expect(serviceEvents(t)).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'net' },
+    { hour: 0, kind: 'service-down', subject: 'erp', from: 'net' },
+    { hour: 10, kind: 'service-up', subject: 'net' },
+    { hour: 15, kind: 'service-up', subject: 'erp' },
+  ]);
+});
+
+test('service events always match the sampled service states', () => {
+  const r = withNet();
+  const cases: ScenarioEvent[][] = [
+    [cut('net', 0, 10)],
+    [cut('net', 0, 10), cut('erp', 5, 10)],
+    [cut('erp', 0, 10), cut('net', 5, 10)],
+    [cut('erp', 0, 10.2), cut('erp', 10.5, 5)], // a gap shorter than an hour is not seen by the samples
+    [cut('erp', 3.2, 0.5)], // a cut that covers no whole hour is not seen either
+    [cut('net', 2.5, 3), cut('erp', 20, 4)],
+  ];
+  for (const events of cases) {
+    const t = simulateScenario(r, scenario(events), 'unprepared');
+    for (const service of ['net', 'erp']) {
+      const reported = serviceEvents(t)
+        .filter((e) => e.subject === service)
+        .map((e) => ({ hour: Math.ceil(e.hour), kind: e.kind }));
+      expect(reported).toEqual(sampledChanges(t, service));
+    }
+  }
+});
+
+test('an outage that begins with an own cut has no from, and ends at its latest end', () => {
+  const t = simulateScenario(withNet(), scenario([cut('erp', 0, 10), cut('net', 5, 10)]), 'unprepared');
+  expect(serviceEvents(t).filter((e) => e.subject === 'erp')).toEqual([
+    { hour: 0, kind: 'service-down', subject: 'erp' },
+    { hour: 15, kind: 'service-up', subject: 'erp' },
+  ]);
 });
 
 test('manual workaround degrades for holdsFor, then stops, unless workarounds hold', () => {

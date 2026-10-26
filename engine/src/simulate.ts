@@ -4,9 +4,14 @@
  * - Time moves in 1-hour steps. There is one sample per hour, from hour 0 to the horizon inclusive.
  * - Something that happens at a fractional time t takes effect from the first whole hour >= t.
  *   Timeline events record t itself. Events after the horizon are left out.
- * - Services: all cuts of one service are merged into continuous outages first, so two overlapping
- *   cuts give one outage that ends at the later restore. A service is down during an outage, and
- *   also while any service it requires is down.
+ * - Outages are merged first: windows that overlap, touch, or leave no whole hour between them
+ *   become one continuous outage, from the earliest start to the latest end. So two overlapping
+ *   cuts give one outage that ends at the later restore. A window too short to cover a whole
+ *   hour is ignored, because no sample would see it.
+ * - Services: a service is down during its own cuts and while any service it requires is down.
+ *   Both are merged into its outages, and each outage gives exactly one `service-down` (at its
+ *   start) and one `service-up` (at its end), so the events always agree with the samples. When an
+ *   outage begins because a required service went down, `service-down` names that service in `from`.
  * - Assets: a compromise takes its target asset down for `downFor` hours.
  * - Processes are worked out each hour, dependencies first. A process takes the worst result over
  *   its dependencies. A lost dependency (service down, asset down, upstream process stopped) gives
@@ -78,41 +83,68 @@ export interface Timeline {
   assumptionsUsed: Record<string, UsedInput>; // every input quantity the run used, keyed by path
 }
 
-/** A half-open time window [start, end) in hours. */
+/** A half-open time window [start, end) in hours. `cause` is the required service it came from, if any. */
 interface Window {
   start: number;
   end: number;
+  cause?: string;
 }
 
 const SEVERITY: Record<ProcessState, number> = { normal: 0, degraded: 1, stopped: 2 };
 
-/** Sorts windows and joins those that overlap or touch, so each result is one continuous outage. */
+/**
+ * A window covers sample `hour` from the first whole hour at or after its start, up to (not
+ * including) the first whole hour at or after its end.
+ */
+function covering(windows: Window[], hour: number): Window | undefined {
+  return windows.find((w) => hour >= Math.ceil(w.start) && hour < Math.ceil(w.end));
+}
+
+/**
+ * Sorts windows and joins any whose covered hours overlap or touch, so each result is one outage
+ * that the samples see as continuous. Windows that cover no whole hour are dropped. A merged
+ * outage keeps the `cause` of the window that started it.
+ */
 function merge(windows: Window[]): Window[] {
   const merged: Window[] = [];
-  for (const w of [...windows].filter((x) => x.end > x.start).sort((a, b) => a.start - b.start)) {
+  const visible = windows.filter((w) => Math.ceil(w.end) > Math.ceil(w.start));
+  for (const w of visible.sort((a, b) => a.start - b.start)) {
     const last = merged[merged.length - 1];
-    if (last && w.start <= last.end) last.end = Math.max(last.end, w.end);
+    if (last && Math.ceil(w.start) <= Math.ceil(last.end)) last.end = Math.max(last.end, w.end);
     else merged.push({ ...w });
   }
   return merged;
 }
 
-/** A window covers sample `hour` from the first whole hour at or after its start, up to (not including) the first at or after its end. */
-function covering(windows: Window[], hour: number): Window | undefined {
-  return windows.find((w) => hour >= Math.ceil(w.start) && hour < Math.ceil(w.end));
-}
-
-/** Groups windows by subject id and merges each group. */
-function outagesBySubject(entries: { subject: string; window: Window }[]): Map<string, Window[]> {
+/** Groups windows by subject id. */
+function bySubject(entries: { subject: string; window: Window }[]): Map<string, Window[]> {
   const grouped = new Map<string, Window[]>();
   for (const { subject, window } of entries) grouped.set(subject, [...(grouped.get(subject) ?? []), window]);
-  return new Map([...grouped].map(([subject, windows]) => [subject, merge(windows)]));
+  return grouped;
+}
+
+/** Each service's outages: its own cuts plus the outages of every service it requires, merged. */
+function serviceOutages(reg: Register, cuts: Map<string, Window[]>): Map<string, Window[]> {
+  const requires = new Map(reg.services.map((x) => [x.id, x.requires ?? []]));
+  const outages = new Map<string, Window[]>();
+  const resolve = (id: string): Window[] => {
+    const known = outages.get(id);
+    if (known) return known;
+    const inherited = (requires.get(id) ?? []).flatMap((req) =>
+      resolve(req).map((w) => ({ start: w.start, end: w.end, cause: req })),
+    );
+    const merged = merge([...(cuts.get(id) ?? []), ...inherited]);
+    outages.set(id, merged);
+    return merged;
+  };
+  for (const id of requires.keys()) resolve(id);
+  return outages;
 }
 
 function outageEvents(outages: Map<string, Window[]>, down: TimelineEventKind, up: TimelineEventKind): TimelineEvent[] {
   return [...outages].flatMap(([subject, windows]) =>
-    windows.flatMap((w) => [
-      { hour: w.start, kind: down, subject },
+    windows.flatMap((w): TimelineEvent[] => [
+      w.cause ? { hour: w.start, kind: down, subject, from: w.cause } : { hour: w.start, kind: down, subject },
       { hour: w.end, kind: up, subject },
     ]),
   );
@@ -177,42 +209,25 @@ export function simulateScenario(
       compromises.push({ subject: e.target, window: { start, end: start + toHours(e.downFor) } });
     }
   }
-  const serviceOutages = outagesBySubject(cuts);
-  const assetOutages = outagesBySubject(compromises);
+  const outages = serviceOutages(reg, bySubject(cuts));
+  const assetOutages = new Map([...bySubject(compromises)].map(([id, windows]) => [id, merge(windows)]));
   events.push(
-    ...outageEvents(serviceOutages, 'service-down', 'service-up'),
+    ...outageEvents(outages, 'service-down', 'service-up'),
     ...outageEvents(assetOutages, 'asset-down', 'asset-up'),
   );
 
-  const services = new Map(reg.services.map((x) => [x.id, x]));
+  const services = new Set(reg.services.map((x) => x.id));
   const processes = new Map(reg.processes.map((p) => [p.id, p]));
   const assets = new Set(reg.assets.map((a) => a.id));
   const order = processOrder(reg);
   const samples: Sample[] = [];
   const nonNormalHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
   const stoppedHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
-  // For each service that is down this hour: when its current outage began (exact hours), for timing workarounds.
-  let downSince = new Map<string, number>();
   let previous: Record<string, ProcessState> = Object.fromEntries(reg.processes.map((p) => [p.id, 'normal']));
 
   for (let hour = 0; hour <= horizonHours; hour++) {
-    // A service is down if one of its own cuts covers this hour or a service it requires is down.
-    // A new outage starts at the earliest of those starts; a continuing one keeps the start it had.
-    const before = downSince;
-    downSince = new Map<string, number>();
-    const startOf = (id: string): number | undefined => {
-      if (downSince.has(id)) return downSince.get(id);
-      const starts = [
-        covering(serviceOutages.get(id) ?? [], hour)?.start,
-        ...(services.get(id)?.requires ?? []).map(startOf),
-      ].filter((x): x is number => x !== undefined);
-      if (starts.length === 0) return undefined;
-      const start = before.get(id) ?? Math.min(...starts);
-      downSince.set(id, start);
-      return start;
-    };
     const serviceStates: Record<string, ServiceState> = {};
-    for (const id of services.keys()) serviceStates[id] = startOf(id) === undefined ? 'up' : 'down';
+    for (const id of services) serviceStates[id] = covering(outages.get(id) ?? [], hour) ? 'down' : 'up';
 
     const assetStates: Record<string, 'up' | 'down'> = {};
     for (const id of assets) assetStates[id] = covering(assetOutages.get(id) ?? [], hour) ? 'down' : 'up';
@@ -220,9 +235,10 @@ export function simulateScenario(
     const processStates: Record<string, ProcessState> = {};
     const dependencyResult = (d: Dependency): ProcessState => {
       if (services.has(d.on)) {
-        if (serviceStates[d.on] === 'up') return 'normal';
+        const outage = covering(outages.get(d.on) ?? [], hour);
+        if (!outage) return 'normal';
         const w = d.manualWorkaround;
-        if (w && (s.workaroundsHold || hour < Math.ceil(downSince.get(d.on)! + toHours(w.holdsFor)))) return 'degraded';
+        if (w && (s.workaroundsHold || hour < Math.ceil(outage.start + toHours(w.holdsFor)))) return 'degraded';
         return lossResult(d);
       }
       if (assets.has(d.on)) return assetStates[d.on] === 'down' ? lossResult(d) : 'normal';
