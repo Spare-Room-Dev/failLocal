@@ -69,6 +69,12 @@ processes:
             value: 3
             unit: days
             provenance: { kind: assumed, reasoning: 'How long suppliers keep delivering on emailed orders while invoices and payments cannot be processed (D-041).' }
+        afterRestore:
+          description: New purchase orders held while transactions are reconciled by hand, to avoid duplicate orders
+          holdFor:
+            value: 24
+            unit: hours
+            provenance: { kind: assumed, reasoning: 'Scope''s customers reconciled one to two days of transactions by hand after the restore; that sizes the job, not its length. A day before new orders go out, so none duplicates an emailed one (D-094).' }
     status:
       degraded: Fuel orders going by phone and email
       stopped: No fuel orders going out
@@ -100,6 +106,12 @@ processes:
             value: 3
             unit: days
             provenance: { kind: assumed, reasoning: 'Same judgement as diesel ordering (D-042).' }
+        afterRestore:
+          description: New purchase orders held while transactions are reconciled by hand, to avoid duplicate orders
+          holdFor:
+            value: 24
+            unit: hours
+            provenance: { kind: assumed, reasoning: 'Same judgement as diesel ordering: Scope''s one to two days of hand-reconciled transactions size the job (D-095).' }
     status:
       degraded: Explosives orders going by phone and email
       stopped: No explosives orders going out
@@ -544,6 +556,18 @@ controls:
       works: true
       provenance: { kind: assumed, reasoning: 'Not yet exercised; the lab will test it (D-007).' }
       measurements: []
+  - id: duplicate-rejection
+    name: Stale and duplicate order rejection
+    description: >-
+      When the ERP comes back, stale and duplicate transactions are rejected automatically, so new
+      purchase orders can go out at once while the offline orders are reconciled.
+    effects:
+      - { kind: reconcile, process: diesel-ordering, service: hosted-erp }
+      - { kind: reconcile, process: explosives-ordering, service: hosted-erp }
+    capability:
+      works: true
+      provenance: { kind: assumed, reasoning: 'MM-ISAC asks sites to verify that stale or duplicate transactions are rejected on reconnect. Not yet tested; the lab will count them (D-096, D-007).' }
+      measurements: []
   - id: offline-work-orders
     name: Offline work orders
     description: A site work-order app with open and planned work, parts locations and history, synced back to the ERP later.
@@ -673,7 +697,7 @@ scenarios:
     horizon:
       value: 16
       unit: days
-      provenance: { kind: assumed, reasoning: 'The 12-day outage plus time for the fuel farm to refill past its rationing mark (D-080).' }
+      provenance: { kind: assumed, reasoning: 'Chosen as the 12-day outage plus time for the fuel farm to refill past its rationing mark; with the post-restore hold it no longer gets there (D-080).' }
     events:
       - kind: cut-service
         service: hosted-erp

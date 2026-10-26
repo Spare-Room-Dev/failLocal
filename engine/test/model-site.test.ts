@@ -53,18 +53,33 @@ test('S1 projection: the fleet stops before the ERP is back', () => {
   expect(t.projection).toBe(true);
 });
 
-test('S1 projection: the fleet restarts only once diesel ordered after the restore arrives, and is normal by the end', () => {
+test('S1 projection: the fleet restarts only once diesel ordered after the post-restore hold arrives, still rationed at the end', () => {
   const ev = firstEvent('s1-projection', 'cut-service');
   const lead = reg.stocks.find((x) => x.id === 'diesel')?.leadTime;
+  const hold = reg.processes
+    .find((p) => p.id === 'diesel-ordering')
+    ?.dependsOn.find((d) => d.on === 'hosted-erp')?.afterRestore?.holdFor;
   expect(lead?.provenance.kind).toBe('assumed');
+  expect(hold?.provenance.kind).toBe('assumed');
   const restored = toHours(ev.at) + toHours(ev.restoreAfter);
   const t = simulate(reg, 's1-projection', 'unprepared');
+  const ordering = t.events.find((e) => e.kind === 'process-state' && e.subject === 'diesel-ordering' && e.to === 'normal');
+  expect(ordering?.hour).toBe(Math.ceil(restored + toHours(hold!)));
   const haulage = t.events.filter((e) => e.kind === 'process-state' && e.subject === 'haulage');
   const restart = haulage.find((e) => e.from === 'stopped');
-  // The delivery that lands in the hour `restored + lead` is first seen at the start of the next hour.
-  expect(restart?.hour).toBe(Math.ceil(restored + toHours(lead!)) + 1);
-  expect(haulage[haulage.length - 1]?.to).toBe('normal');
-  expect(t.samples[t.samples.length - 1]!.processes['haulage']).toBe('normal');
+  // The delivery that lands in the hour `restored + hold + lead` is first seen at the start of the next hour.
+  expect(restart?.hour).toBe(Math.ceil(restored + toHours(hold!) + toHours(lead!)) + 1);
+  // The 16-day run (D-080) ends before the fuel farm refills past its rationing mark.
+  expect(haulage[haulage.length - 1]?.to).toBe('degraded');
+  expect(t.samples[t.samples.length - 1]!.processes['haulage']).toBe('degraded');
+});
+
+test('S1 projection: revenue is at risk unprepared and not prepared', () => {
+  const u = simulate(reg, 's1-projection', 'unprepared');
+  const p = simulate(reg, 's1-projection', 'prepared');
+  expect(u.totals.revenueAtRisk).toBeGreaterThan(0);
+  expect(u.totals.stoppedHours['rail']).toBe(0);
+  expect(p.totals.revenueAtRisk).toBe(0);
 });
 
 test('S1 prepared: nothing stops and the fleet keeps running', () => {
