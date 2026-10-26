@@ -195,6 +195,16 @@ describe('sourced provenance must cite a listed source', () => {
     });
     expect(() => parseRegister(r)).toThrow(/nope/);
   });
+  test('on a dependency, named by the id-keyed dependency path', () => {
+    const r: any = minimalRegister();
+    r.processes[0].dependsOn[0].manualWorkaround = {
+      description: 'paper',
+      holdsFor: { value: 3, unit: 'days', provenance: { kind: 'sourced', source: 'nope' } },
+    };
+    expect(issuesOf(r)).toEqual([
+      "processes.ordering.dependsOn.erp.manualWorkaround.holdsFor.provenance: cites unknown source 'nope'",
+    ]);
+  });
   test('a listed source is accepted', () => {
     const r: any = minimalRegister();
     r.production.price.provenance = { kind: 'sourced', source: 'test-src' };

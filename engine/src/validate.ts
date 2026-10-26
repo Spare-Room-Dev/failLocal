@@ -125,10 +125,7 @@ function ref(ix: Index, issues: string[], where: string, id: string, expected: K
 /** Every provenance in the register sits under a `provenance` key; check each `sourced` one cites a listed source. */
 function checkSourcedProvenance(node: unknown, where: string, ix: Index, issues: string[]): void {
   if (Array.isArray(node)) {
-    node.forEach((item, i) => {
-      const label = item && typeof item === 'object' && typeof item.id === 'string' ? `.${item.id}` : `[${i}]`;
-      checkSourcedProvenance(item, `${where}${label}`, ix, issues);
-    });
+    node.forEach((item, i) => checkSourcedProvenance(item, `${where}${entryKey(item, i)}`, ix, issues));
   } else if (node && typeof node === 'object') {
     for (const [key, value] of Object.entries(node)) {
       const path = where ? `${where}.${key}` : key;
