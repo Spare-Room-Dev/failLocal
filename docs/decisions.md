@@ -2,7 +2,7 @@
 
 Every domain judgement in `register/pilbara-model-site.yaml` is recorded here: each tier, each dependency, each outage limit and each assumed number, with its reasoning and source. The owner reviews every entry before a release. A change the owner makes during review, or after feedback from a practitioner, is recorded in that entry's "Owner change" line, so the log shows who decided what and why.
 
-Each entry names the register path it covers (`**Path:**`). Entries without a path record a modelling rule that applies across the register. "Assumed" means a reasoned estimate, not a fact about any real mine; "sourced" names a source listed in the register's `sources`.
+Entries are grouped by topic, so their numbers are not always in order. Each entry names the register path it covers (`**Path:**`). Entries without a path record a modelling rule that applies across the register. "Assumed" means a reasoned estimate, not a fact about any real mine; "sourced" names a source listed in the register's `sources`.
 
 # How the model works
 
@@ -50,7 +50,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 
 ## D-008 Stocks refill through a delivery delay line
 - **Decision:** Stocks are counted in days of normal use. A stock can have a delivery lead time L (rounded up to whole hours; none means 0). A delivery arrives in an hour only if the process that refills the stock was running L hours earlier; before the run starts it counts as running, because a site in steady state has orders on the road. In an hour a delivery arrives, the stock rises at its refill rate (the net gain after normal use) up to capacity. In any other hour it falls by one hour's use while anything still uses it. Every stock starts full.
-- **Reasoning:** Orders already placed are in transit, so when ordering stops, deliveries keep arriving for L hours, and when ordering resumes, the first delivery arrives L hours later. Before this rule the engine had no lead time: fuel arrived the same hour ordering resumed, which made recovery look too fast. The delay is symmetric, so it shifts the timeline later as much as it lengthens the recovery. Only stocks bought from outside the site have a lead time (diesel D-091, explosives D-092); ore stocks are filled on site and have none. A running site keeps its stocks topped up, so "full" is the normal working level.
+- **Reasoning:** Orders already placed are in transit, so when ordering stops, deliveries keep arriving for L hours, and when ordering resumes, the first delivery arrives L hours later. Before this rule the engine had no lead time: fuel arrived the same hour ordering resumed, which made recovery look too fast. The delay is symmetric, so both the stop and the recovery come L hours later. Only stocks bought from outside the site have a lead time (diesel D-091, explosives D-092); ore stocks are filled on site and have none. A running site keeps its stocks topped up, so "full" is the normal working level.
 - **Source / provenance:** modelling rule (engine, `simulate.ts`)
 - **Owner change:** 26 Oct 2026: the owner chose to add delivery lead times (Plan 1 follow-up (a)). Before this, D-008 recorded that the engine had no delivery delay.
 
@@ -433,14 +433,14 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-091 Diesel takes 36 hours from order to delivery
 - **Path:** stocks.diesel.leadTime
 - **Decision:** 36 hours
-- **Reasoning:** Bulk diesel for an inland Pilbara mine comes by road train from the coast (Port Hedland), a drive of roughly five to eight hours. Most of the lead time is the supplier's dispatch: an order placed today is usually loaded and sent the next day, and road-train fatigue rules and remote-area scheduling add to that. That puts order to delivery at about one to two days; the model takes the middle, 36 hours. It was chosen from this reasoning before the scenarios were re-run with it, and is a judgement, not a figure from any supplier; a practitioner should check it.
+- **Reasoning:** Bulk diesel for an inland Pilbara mine comes by road train from the coast (Port Hedland), a drive of roughly five to eight hours. Most of the lead time is the supplier's dispatch: an order placed today is usually loaded and sent the next day, and road-train fatigue rules and remote-area scheduling add to that. That puts order to delivery at about one to two days; the model takes the middle, 36 hours. It is a judgement, not a figure from any supplier; a practitioner should check it.
 - **Source / provenance:** assumed
 - **Owner change:**
 
 ## D-092 Explosives take 72 hours from order to delivery
 - **Path:** stocks.explosives.leadTime
 - **Decision:** 72 hours (3 days)
-- **Reasoning:** Bulk explosives (ammonium nitrate and emulsion) come from a licensed supplier and travel as dangerous goods, with licensed carriers, set routes and a booked receipt at the magazine. That makes them slower to arrange than fuel: a few days from order to delivery. The model takes 3 days. It was chosen from this reasoning before the scenarios were re-run with it, and no public figure was found for a Pilbara site; a practitioner should check it.
+- **Reasoning:** Bulk explosives (ammonium nitrate and emulsion) come from a licensed supplier and travel as dangerous goods, with licensed carriers, set routes and a booked receipt at the magazine. That makes them slower to arrange than fuel: a few days from order to delivery. The model takes 3 days. No public figure was found for a Pilbara site; a practitioner should check it.
 - **Source / provenance:** assumed
 - **Owner change:**
 
@@ -584,7 +584,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-079 S1 projection: the same 12 days; only the workarounds change
 - **Path:** scenarios.s1-projection.events[0].restoreAfter
 - **Decision:** 288 hours (12 days), the same sourced restore as S1 as reported. The only counterfactual is that the manual workarounds run out (D-041 to D-044).
-- **Reasoning:** With the values above, the workarounds end on day 3 (hour 72) and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276 (day 11.5), 12 hours before the restore, and the crusher stops at hour 288 as the ROM pad runs out. Explosives already in transit last until hour 312, so blasting stops a day after the restore. The first diesel ordered after the restore arrives 36 hours later: the fleet restarts at hour 325 and is back to normal at hour 373, and blasting is still rationed when the run ends. The fleet is parked for 49 hours and the crusher for 38, the same as without lead times: the delay is symmetric, so it moved the outage later rather than deepening it. The product stockpile falls to about 1.4 days, above its low mark, so rail never slows and revenue at risk is still $0 in the projection. An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. The prepared site's benefit in S1 is shown as the fleet never parking, not as revenue.
+- **Reasoning:** With the values above, the workarounds end on day 3 (hour 72) and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276 (day 11.5), 12 hours before the restore, and the crusher stops at hour 288 as the ROM pad runs out. Explosives in transit keep the magazine full until hour 144; it runs out at hour 312, so blasting stops a day after the restore. The first diesel ordered after the restore arrives 36 hours later: the fleet restarts at hour 325 and is back to normal at hour 373, and blasting is still rationed when the run ends. The fleet is parked for 49 hours and the crusher for 38, the same as without lead times: the delay is symmetric, so it moved the outage later rather than deepening it. The product stockpile falls to about 1.4 days, above its low mark, so rail never slows and revenue at risk is still $0 in the projection. The fleet parks before the restore only while the diesel lead time is under 48 hours. At 48 hours, the top of D-091's range, it parks in the restore hour and is not back to normal within the 16-day run. An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. The prepared site's benefit in S1 is shown as the fleet never parking, not as revenue.
 - **Source / provenance:** sourced: scope-incident-updates
 - **Owner change:**
 
