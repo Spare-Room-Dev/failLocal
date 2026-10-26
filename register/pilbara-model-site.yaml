@@ -440,6 +440,10 @@ stocks:
       value: 1
       unit: days/day
       provenance: { kind: assumed, reasoning: 'Deliveries bring about twice daily use (D-058).' }
+    leadTime:
+      value: 36
+      unit: hours
+      provenance: { kind: assumed, reasoning: 'Road train from Port Hedland, ordered for next-day dispatch: about one to two days from order to delivery (D-091).' }
     replenishedBy: diesel-ordering
     consumedBy: [haulage]
   - id: explosives
@@ -460,6 +464,10 @@ stocks:
       value: 1
       unit: days/day
       provenance: { kind: assumed, reasoning: 'Same delivery logic as diesel (D-059).' }
+    leadTime:
+      value: 72
+      unit: hours
+      provenance: { kind: assumed, reasoning: 'Dangerous goods from a licensed supplier: a few days from order to delivery (D-092).' }
     replenishedBy: explosives-ordering
     consumedBy: [drill-and-blast]
   - id: broken-ore

@@ -53,6 +53,20 @@ test('S1 projection: the fleet stops before the ERP is back', () => {
   expect(t.projection).toBe(true);
 });
 
+test('S1 projection: the fleet restarts only once diesel ordered after the restore arrives, and is normal by the end', () => {
+  const ev = firstEvent('s1-projection', 'cut-service');
+  const lead = reg.stocks.find((x) => x.id === 'diesel')?.leadTime;
+  expect(lead?.provenance.kind).toBe('assumed');
+  const restored = toHours(ev.at) + toHours(ev.restoreAfter);
+  const t = simulate(reg, 's1-projection', 'unprepared');
+  const haulage = t.events.filter((e) => e.kind === 'process-state' && e.subject === 'haulage');
+  const restart = haulage.find((e) => e.from === 'stopped');
+  // The delivery that lands in the hour `restored + lead` is first seen at the start of the next hour.
+  expect(restart?.hour).toBe(Math.ceil(restored + toHours(lead!)) + 1);
+  expect(haulage[haulage.length - 1]?.to).toBe('normal');
+  expect(t.samples[t.samples.length - 1]!.processes['haulage']).toBe('normal');
+});
+
 test('S1 prepared: nothing stops and the fleet keeps running', () => {
   const u = simulate(reg, 's1-projection', 'unprepared');
   const p = simulate(reg, 's1-projection', 'prepared');
