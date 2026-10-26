@@ -2,3 +2,4 @@ export * from './quantity.js';
 export * from './schema.js';
 export * from './validate.js';
 export * from './paths.js';
+export * from './simulate.js';
