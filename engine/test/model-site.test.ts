@@ -50,16 +50,15 @@ test('S1 projection: the fleet stops before the ERP is back', () => {
   const firstStop = t.events.find((e) => e.kind === 'process-state' && e.subject === 'haulage' && e.to === 'stopped');
   expect(firstStop).toBeDefined();
   expect(firstStop!.hour).toBeLessThan(toHours(ev.at) + toHours(ev.restoreAfter));
-  // The fleet parks inside Scope's sourced 12 days too, not only inside the projection's longer restore.
-  expect(firstStop!.hour).toBeLessThan(toHours(firstEvent('s1-as-reported', 'cut-service').restoreAfter));
   expect(t.projection).toBe(true);
 });
 
-test('S1 prepared: nothing stops and less revenue is at risk', () => {
+test('S1 prepared: nothing stops and the fleet keeps running', () => {
   const u = simulate(reg, 's1-projection', 'unprepared');
   const p = simulate(reg, 's1-projection', 'prepared');
   expect(Object.values(p.totals.stoppedHours).every((h) => h === 0)).toBe(true);
-  expect(p.totals.revenueAtRisk).toBeLessThan(u.totals.revenueAtRisk);
+  expect(u.totals.stoppedHours['haulage']).toBeGreaterThan(0);
+  expect(p.totals.stoppedHours['haulage']).toBe(0);
 });
 
 test('S2: losing Perth parks the fleet unprepared; site authority takes over prepared', () => {
@@ -112,6 +111,12 @@ test('S4 prepared: control room keeps running under isolation', () => {
   const p = simulate(reg, 's4-precautionary-isolation', 'prepared');
   expect(u.totals.stoppedHours['control-room']).toBeGreaterThan(0);
   expect(p.totals.stoppedHours['control-room']).toBe(0);
+});
+
+test('S4 prepared: less revenue is at risk than unprepared', () => {
+  const u = simulate(reg, 's4-precautionary-isolation', 'unprepared');
+  const p = simulate(reg, 's4-precautionary-isolation', 'prepared');
+  expect(p.totals.revenueAtRisk).toBeLessThan(u.totals.revenueAtRisk);
 });
 
 test('every assumed value and every judgement has a decision-log entry', () => {

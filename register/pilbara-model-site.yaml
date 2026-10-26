@@ -82,7 +82,7 @@ processes:
         unit: hours
         provenance: { kind: assumed, reasoning: 'Leaves margin inside the five tolerable days (D-046).' }
       owner: Supply superintendent
-      independentCopy: true
+      independentCopy: false
 
   - id: explosives-ordering
     name: Explosives ordering
@@ -113,7 +113,7 @@ processes:
         unit: hours
         provenance: { kind: assumed, reasoning: 'Leaves margin inside the five tolerable days (D-047).' }
       owner: Drill and blast superintendent
-      independentCopy: true
+      independentCopy: false
 
   - id: work-orders
     name: Maintenance work orders
@@ -144,7 +144,7 @@ processes:
         unit: hours
         provenance: { kind: assumed, reasoning: 'A day to get planning back (D-048).' }
       owner: Maintenance planning superintendent
-      independentCopy: true
+      independentCopy: false
 
   - id: payroll
     name: Payroll
@@ -175,7 +175,7 @@ processes:
         unit: hours
         provenance: { kind: assumed, reasoning: 'Time to run and check a pay run (D-049).' }
       owner: Payroll manager
-      independentCopy: true
+      independentCopy: false
 
   # Control
   - id: remote-operations
@@ -656,17 +656,16 @@ scenarios:
   - id: s1-projection
     title: 'Hosted ERP lost: what if the workarounds ran out'
     summary: >-
-      A projection, not what happened: the same ERP loss as the Scope Systems incident, asking what if
-      restore took longer and the workarounds ran out. The restore here takes three weeks rather than
-      Scope's 12 days, and the phone-and-email workarounds stop after a few days. No real company is
-      shown or implied to have stopped production.
+      A projection, not what happened: the same 12-day ERP loss as the Scope Systems incident. The only
+      change from the record is that the phone-and-email workarounds run out after a few days instead
+      of holding. No real company is shown or implied to have stopped production.
     basis: [scope-incident-updates, mmisac-ref-arch]
     projection: true
     workaroundsHold: false
     horizon:
-      value: 28
+      value: 16
       unit: days
-      provenance: { kind: assumed, reasoning: 'Long enough to show the restore and recovery (D-080).' }
+      provenance: { kind: assumed, reasoning: 'The 12-day outage plus time for the fuel farm to refill past its rationing mark (D-080).' }
     events:
       - kind: cut-service
         service: hosted-erp
@@ -675,9 +674,12 @@ scenarios:
           unit: hours
           provenance: { kind: assumed, reasoning: 'The timeline starts at the cut (D-080).' }
         restoreAfter:
-          value: 504
+          value: 288
           unit: hours
-          provenance: { kind: assumed, reasoning: 'What-if: a three-week restore, longer than Scope''s 12 days (D-079).' }
+          provenance:
+            kind: sourced
+            source: scope-incident-updates
+            note: 'Disruption from early 5 May 2026; "As of Sunday 17 May, all client servers have been restored". 12 days.'
 
   - id: s2-iroc-lost
     title: Perth operations link lost
@@ -739,7 +741,9 @@ scenarios:
       After ransomware on the corporate side, the site is cut off from the corporate network as a
       precaution for five days, which also cuts the hosted ERP, cloud logins and the Perth link. The
       length comes from Copper Mountain, December 2022, which shut its mill as a precaution after an
-      IT ransomware attack and restarted its primary crusher five days later. Waterfall's 2025 report
+      IT ransomware attack and restarted its primary crusher five days later. Copper Mountain kept
+      shipping from inventory throughout; the model site's three-day stockpile does not stretch that
+      far, so its trains run short before the isolation ends. Waterfall's 2025 report
       found that, where the attack pattern could be determined, nearly 90% of 2024 attacks with
       physical consequences caused them indirectly, as here.
     basis: [kitco-copper-mountain, record-copper-mountain, waterfall-2025]
@@ -759,10 +763,7 @@ scenarios:
         restoreAfter:
           value: 120
           unit: hours
-          provenance:
-            kind: sourced
-            source: kitco-copper-mountain
-            note: 'Attack on 27 December 2022; primary crusher restarted on 1 January 2023. The model applies this five-day shutdown to the isolation.'
+          provenance: { kind: assumed, reasoning: 'Proxy for the isolation length: Copper Mountain''s primary crusher restarted five days after the 27 December 2022 attack (Kitco, kitco-copper-mountain). The source measures the crusher shutdown, not an isolation (D-086).' }
 
 production:
   annualTonnes:

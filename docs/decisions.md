@@ -20,7 +20,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 
 ## D-003 The haul fleet is autonomous, supervised from Perth
 - **Decision:** The haul fleet is autonomous (AHS) and supervised from a remote operations centre in Perth. Without that supervision the trucks park.
-- **Reasoning:** A stated model assumption, not a claim about any company. The pattern exists: Rio Tinto says about 90% of its Pilbara haul fleet is autonomous and is run from its Perth Operations Centre, 1,500 km away.
+- **Reasoning:** A stated model assumption, not a claim about any company. The pattern exists: Pilbara mines are run from Perth, 1,000–1,500 km away (project idea file, from the research report), and Rio Tinto says about 90% of its Pilbara haul fleet is autonomous and operated from its Perth Operations Centre.
 - **Source / provenance:** assumed (pattern evidenced by sourced: rio-tinto-wa-operations)
 - **Owner change:**
 
@@ -217,7 +217,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-032 Haulage needs diesel
 - **Path:** processes.haulage.dependsOn.diesel
 - **Decision:** stop when the fuel farm is empty
-- **Reasoning:** The haul fleet is diesel. Battery-electric trucks are only on trial in the Pilbara.
+- **Reasoning:** The model site's haul fleet runs on diesel.
 - **Source / provenance:** assumed
 - **Owner change:**
 
@@ -519,7 +519,7 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-072 The site's own ERP restore takes 2 days
 - **Path:** controls.independent-erp-restore.effects[0].duration
 - **Decision:** 48 hours
-- **Reasoning:** Two days to bring the ERP back from the site's own tested backup on standby hardware, including checking the data. One practitioner was quoted saying miners with their own well-tested backups restored quickly; that is a single quote and gives no number. This is a modelled duration, never a lab timing: the lab's mock ERP restores in seconds, which says nothing about a real one. It does not help in S4, where the ERP is down because the corporate network is cut, not because the ERP itself failed. Because this control exists, the four ERP-backed processes record `independentCopy: true`; no restore has been tested yet, so none records a `lastRestoreTest`.
+- **Reasoning:** Two days to bring the ERP back from the site's own tested backup on standby hardware, including checking the data. One practitioner was quoted saying miners with their own well-tested backups restored quickly; that is a single quote and gives no number. This is a modelled duration, never a lab timing: a lab restore time for a mock ERP says nothing about a real one. It does not help in S4, where the ERP is down because the corporate network is cut, not because the ERP itself failed. The register's continuity fields describe the baseline (unprepared) site, so the four ERP-backed processes record `independentCopy: false`: the baseline site has no copy of its own. The prepared site's independent copy is this control. No restore has been tested yet, so no process records a `lastRestoreTest`.
 - **Source / provenance:** assumed (the quote: sourced: miningcom-scope-oped)
 - **Owner change:**
 
@@ -567,18 +567,18 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 - **Source / provenance:** assumed
 - **Owner change:**
 
-## D-079 S1 projection: the restore takes three weeks
+## D-079 S1 projection: the same 12 days; only the workarounds change
 - **Path:** scenarios.s1-projection.events[0].restoreAfter
-- **Decision:** 504 hours (21 days), instead of Scope's 12
-- **Reasoning:** The projection asks "what if restore took longer and the workarounds ran out". With the values above, the fleet already parks on about day 10, inside Scope's 12 days. But with a 12-day restore the product stockpile carries the trains through to the restore, so no shipment is lost and the prepared site has nothing to save. A three-week restore is a round what-if for a slower recovery (Scope noted some customers "may require an older backup to be restored"). It is not an observation, and the stock and workaround values were set before this was chosen and were not changed.
-- **Source / provenance:** assumed
+- **Decision:** 288 hours (12 days), the same sourced restore as S1 as reported. The only counterfactual is that the manual workarounds run out (D-041 to D-044).
+- **Reasoning:** With the values above, the workarounds end on day 3, the fuel farm empties and the fleet parks on day 10, and the crusher stops half a day later. At Scope's real 12 days the model site's stockpile carried rail to the restore, so revenue at risk is $0 in the projection; the engine has no delivery lead time (D-008), which understates harm. An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. The prepared site's benefit in S1 is shown as the fleet never parking, not as revenue.
+- **Source / provenance:** sourced: scope-incident-updates
 - **Owner change:**
 
-## D-080 S1 projection starts at hour 0 and runs 28 days
+## D-080 S1 projection starts at hour 0 and runs 16 days
 - **Path:** scenarios.s1-projection.events[0].at
 - **Path:** scenarios.s1-projection.horizon
-- **Decision:** the cut at hour 0; a 28-day run
-- **Reasoning:** Long enough to show the restore and the site recovering afterwards.
+- **Decision:** the cut at hour 0; a 16-day run
+- **Reasoning:** The 12-day outage plus the days the fuel farm needs to refill past its rationing mark, so the run ends with haulage back to normal.
 - **Source / provenance:** assumed
 - **Owner change:**
 
@@ -621,8 +621,8 @@ Each entry names the register path it covers (`**Path:**`). Entries without a pa
 ## D-086 S4: the corporate network is isolated for 5 days
 - **Path:** scenarios.s4-precautionary-isolation.events[0].restoreAfter
 - **Decision:** 120 hours (5 days)
-- **Reasoning:** Copper Mountain was hit by ransomware on 27 December 2022, shut its mill as a precaution and restarted the primary crusher on 1 January 2023: five days. The model applies that length to a precautionary isolation of the corporate network. The source measures the crusher shutdown, not the isolation itself.
-- **Source / provenance:** sourced: kitco-copper-mountain
+- **Reasoning:** Copper Mountain was hit by ransomware on 27 December 2022, shut its mill as a precaution and restarted the primary crusher on 1 January 2023: five days. The model uses that length as a proxy for a precautionary isolation of the corporate network. The source measures the crusher shutdown, not the isolation itself, so the value is labelled assumed. Copper Mountain kept shipping from inventory throughout; the model site's three-day stockpile (D-066) does not stretch that far, which is a property of the model site, not a claim about Copper Mountain.
+- **Source / provenance:** assumed (proxy from sourced: kitco-copper-mountain)
 - **Owner change:**
 
 ## D-087 S4 starts at hour 0 and runs 8 days
