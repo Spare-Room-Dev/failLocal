@@ -1,0 +1,12 @@
+{
+  "name": "faillocal",
+  "private": true,
+  "type": "module",
+  "workspaces": ["engine"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "npm test -w engine",
+    "typecheck": "tsc --noEmit -p engine",
+    "cli": "npm run cli -w engine --"
+  }
+}
