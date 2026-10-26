@@ -1,6 +1,6 @@
 import { parse } from 'yaml';
 import type { z } from 'zod';
-import { registerSchema, scenarioSchema } from './schema.js';
+import { ID_PATTERN, registerSchema, scenarioSchema } from './schema.js';
 import type { Register, Scenario } from './schema.js';
 
 export class RegisterError extends Error {
@@ -18,15 +18,30 @@ interface Index {
   duplicates: string[];
 }
 
-function formatPath(path: (string | number)[]): string {
-  return path.reduce<string>((acc, p) => (typeof p === 'number' ? `${acc}[${p}]` : acc ? `${acc}.${p}` : p), '');
+/**
+ * How the list entry `item` at index `i` appears in a path, as paths.ts names it: by its id (a
+ * dependency by its target), or by index when it has none or the id is not path-safe.
+ */
+function entryKey(item: unknown, i: number): string {
+  const entry = item as { id?: unknown; on?: unknown } | null | undefined;
+  const key = typeof entry?.id === 'string' ? entry.id : typeof entry?.on === 'string' ? entry.on : undefined;
+  return key !== undefined && ID_PATTERN.test(key) ? `.${key}` : `[${i}]`;
 }
 
-function zodIssues(error: z.ZodError, prefix = ''): string[] {
-  return error.issues.map((i) => {
-    const where = formatPath([...(prefix ? [prefix] : []), ...i.path]);
-    return `${where || '(register)'}: ${i.message}`;
-  });
+/** The id-keyed path of a zod issue, read against the `input` that was parsed. */
+function issuePath(input: unknown, path: (string | number)[], prefix: string): string {
+  let where = prefix;
+  let node = input;
+  for (const p of path) {
+    if (typeof p === 'number') where += Array.isArray(node) ? entryKey(node[p], p) : `[${p}]`;
+    else where = where ? `${where}.${p}` : p;
+    node = node && typeof node === 'object' ? (node as Record<string | number, unknown>)[p] : undefined;
+  }
+  return where;
+}
+
+function zodIssues(error: z.ZodError, input: unknown, prefix = ''): string[] {
+  return error.issues.map((i) => `${issuePath(input, i.path, prefix) || '(register)'}: ${i.message}`);
 }
 
 /** Depth-first order with dependencies first, plus every cycle found as an id path that closes on itself. */
@@ -170,7 +185,10 @@ function semanticIssues(r: Register): string[] {
     ref(ix, issues, `stocks.${s.id}.replenishedBy`, s.replenishedBy, 'process');
     for (const c of s.consumedBy) ref(ix, issues, `stocks.${s.id}.consumedBy`, c, 'process');
     if (s.initial.value > s.capacity.value) {
-      issues.push(`stocks.${s.id}: initial (${s.initial.value}) exceeds capacity (${s.capacity.value})`);
+      issues.push(`stocks.${s.id}.initial: initial (${s.initial.value}) exceeds capacity (${s.capacity.value})`);
+    }
+    if (s.lowThreshold.value > s.capacity.value) {
+      issues.push(`stocks.${s.id}.lowThreshold: low threshold (${s.lowThreshold.value}) exceeds capacity (${s.capacity.value})`);
     }
   }
 
@@ -199,7 +217,7 @@ function semanticIssues(r: Register): string[] {
 /** Validates the shape (zod), then every cross-reference, provenance citation, stock bound and cycle; throws one RegisterError listing all issues. */
 export function parseRegister(input: unknown): Register {
   const parsed = registerSchema.safeParse(input);
-  if (!parsed.success) throw new RegisterError(zodIssues(parsed.error));
+  if (!parsed.success) throw new RegisterError(zodIssues(parsed.error, input));
   const issues = semanticIssues(parsed.data);
   if (issues.length) throw new RegisterError(issues);
   return parsed.data;
@@ -220,7 +238,7 @@ export function processOrder(r: Register): string[] {
 export function checkScenario(r: Register, s: Scenario): void {
   const where = `scenarios.${s?.id ?? '(unnamed)'}`;
   const parsed = scenarioSchema.safeParse(s);
-  if (!parsed.success) throw new RegisterError(zodIssues(parsed.error, where));
+  if (!parsed.success) throw new RegisterError(zodIssues(parsed.error, s, where));
   const issues: string[] = [];
   const ix = buildIndex(r);
   checkScenarioRefs(parsed.data, where, ix, issues);

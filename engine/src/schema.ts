@@ -1,18 +1,34 @@
 import { z } from 'zod';
 import { provenanceSchema, quantity } from './quantity.js';
-import type { Unit } from './quantity.js';
+import type { Quantity, Unit } from './quantity.js';
 
 const text = z.string().min(1);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be ISO yyyy-mm-dd');
 
 /** Ids appear inside override and decision-log paths, so they must not contain `.` or `[`. */
-const id = z
-  .string()
-  .regex(/^[a-z0-9][a-z0-9_-]*$/, 'id must be lowercase letters, digits, "-" or "_" (it appears in paths)');
+export const ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
+const id = z.string().regex(ID_PATTERN, 'id must be lowercase letters, digits, "-" or "_" (it appears in paths)');
 
 const UNITS = ['hours', 'days', 'seconds', 'count', 'fraction', 'Mt/a', 'USD/t', 'days/day'] as const;
 const _unitsAreExhaustive: Unit extends (typeof UNITS)[number] ? true : never = true;
 void _unitsAreExhaustive;
+
+/** A quantity whose value must also pass `ok`. The issue is reported on its `value`. */
+function bounded<U extends Unit>(q: z.ZodType<Quantity<U>>, ok: (value: number) => boolean, message: string) {
+  return q.refine((x) => ok(x.value), { message, path: ['value'] });
+}
+
+/** The longest scenario a run will simulate: 400 days of hourly samples. */
+const MAX_HORIZON_DAYS = 400;
+
+const fraction = bounded(quantity('fraction'), (v) => v <= 1, 'a fraction must be at most 1');
+const positiveHours = bounded(quantity('hours'), (v) => v > 0, 'must be more than 0 hours');
+const horizon = bounded(
+  quantity('days'),
+  (v) => v > 0 && v <= MAX_HORIZON_DAYS,
+  `horizon must be more than 0 and at most ${MAX_HORIZON_DAYS} days`,
+);
 
 /** A quantity in any unit, measured allowed: lab results that never feed the simulation. */
 const anyQuantity = z
@@ -138,7 +154,7 @@ export const scenarioEventSchema = z.discriminatedUnion('kind', [
       kind: z.literal('cut-service'),
       service: text,
       at: quantity('hours'),
-      restoreAfter: quantity('hours'),
+      restoreAfter: positiveHours,
     })
     .strict(),
   z
@@ -147,7 +163,7 @@ export const scenarioEventSchema = z.discriminatedUnion('kind', [
       via: text, // service id
       target: text, // asset id
       at: quantity('hours'),
-      downFor: quantity('hours'),
+      downFor: positiveHours,
     })
     .strict(),
 ]);
@@ -160,7 +176,7 @@ export const scenarioSchema = z
     basis: z.array(text), // source ids
     projection: z.boolean(), // true => the UI must label the run as a projection
     workaroundsHold: z.boolean(), // true => manualWorkaround degrades indefinitely ("as reported")
-    horizon: quantity('days'),
+    horizon,
     events: z.array(scenarioEventSchema),
   })
   .strict();
@@ -170,7 +186,7 @@ export const productionSchema = z
     annualTonnes: quantity('Mt/a'),
     price: quantity('USD/t'),
     shippingProcess: text, // process id whose state defers tonnes
-    degradedOutput: quantity('fraction'),
+    degradedOutput: fraction,
   })
   .strict();
 

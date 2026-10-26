@@ -35,13 +35,14 @@ const MEASURED_DISALLOWED =
   'measured provenance is not allowed here (spec §5.3): lab measurements are not real-world durations';
 
 /**
- * Schema for a number that must carry provenance. `measured` is rejected unless the
- * field opts in with `allowMeasured`, so lab numbers cannot leak into real-world durations.
+ * Schema for a number that must carry provenance. The value is finite and never negative. `measured`
+ * is rejected unless the field opts in with `allowMeasured`, so lab numbers cannot leak into
+ * real-world durations.
  */
 export function quantity<U extends Unit>(unit: U, opts: { allowMeasured?: boolean } = {}): z.ZodType<Quantity<U>> {
   return z
     .object({
-      value: z.number().finite(),
+      value: z.number().finite().nonnegative(),
       unit: z.literal(unit),
       provenance: provenanceSchema,
     })
