@@ -27,6 +27,7 @@ function summarise(t: Timeline, r: Register): string {
     if (e.kind === 'process-state' && e.to === 'stopped' && !firstStop.has(e.subject)) firstStop.set(e.subject, e.hour);
   }
   const lines = [
+    `Fictional model site: ${r.site.name}`,
     `Scenario: ${t.scenarioId}${t.projection ? ' (projection)' : ''}`,
     `Variant: ${t.variant}`,
     `Production deferred: ${Math.round(t.totals.tonnesDeferred).toLocaleString('en-US')} t (computed)`,
@@ -84,7 +85,8 @@ function run(argv: string[]): void {
 try {
   run(process.argv.slice(2));
 } catch (error) {
-  if (error instanceof UsageError || (error as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') {
+  const parseArgsError = (error as NodeJS.ErrnoException).code?.startsWith('ERR_PARSE_ARGS_');
+  if (error instanceof UsageError || parseArgsError) {
     console.error(`${(error as Error).message}\n${USAGE}`);
     process.exitCode = 2;
   } else if (error instanceof RegisterError) {

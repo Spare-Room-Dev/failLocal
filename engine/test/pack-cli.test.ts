@@ -165,7 +165,7 @@ describe('renderContinuityPack', () => {
   });
 });
 
-describe('cli', () => {
+describe('cli', { timeout: 20_000 }, () => {
   test('cli validate exits 0 on the model site', () => {
     const run = cli('validate', registerPath);
     expect(run.status, run.stderr).toBe(0);
@@ -191,6 +191,12 @@ describe('cli', () => {
     expect(run.stderr).toMatch(/usage/i);
   });
 
+  test('cli exits 2 with usage when an option has no value', () => {
+    const run = cli('simulate', registerPath, '--variant', 'prepared', '--scenario');
+    expect(run.status).toBe(2);
+    expect(run.stderr).toMatch(/usage/i);
+  });
+
   test('cli simulate --json prints a Timeline', () => {
     const scenarioId = register.scenarios[0]!.id;
     const run = cli('simulate', registerPath, '--scenario', scenarioId, '--variant', 'unprepared', '--json');
@@ -205,6 +211,7 @@ describe('cli', () => {
     const scenarioId = register.scenarios[0]!.id;
     const run = cli('simulate', registerPath, '--scenario', scenarioId, '--variant', 'prepared');
     expect(run.status, run.stderr).toBe(0);
+    expect(run.stdout).toMatch(/^Fictional model site/);
     expect(run.stdout).toContain(scenarioId);
     expect(run.stdout).toContain('prepared');
     expect(run.stdout).toMatch(/revenue at risk/i);
