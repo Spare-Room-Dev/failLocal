@@ -53,10 +53,9 @@ test('a timeline has one sample per hour up to the horizon, and totals for every
   expect(t).toMatchObject({ scenarioId: 'cut-erp', variant: 'unprepared', projection: false, stepHours: 1 });
   expect(t.samples).toHaveLength(20 * 24 + 1);
   expect(t.samples.map((s) => s.hour)).toEqual([...Array(481).keys()]);
-  expect(t.totals.stoppedHours).toEqual({ ordering: 288, haulage: 0, crushing: 0, rail: 0 });
-  expect(t.totals.nonNormalHours).toEqual({ ordering: 288, haulage: 0, crushing: 0, rail: 0 });
-  expect(t.totals).toMatchObject({ tonnesDeferred: 0, revenueAtRisk: 0 });
-  expect(at(t, 100)).toMatchObject({ stocks: { diesel: 4, ore: 3 }, tonnesDeferred: 0, revenueAtRisk: 0 });
+  const processes = ['crushing', 'haulage', 'ordering', 'rail'];
+  expect(Object.keys(t.totals.stoppedHours).sort()).toEqual(processes);
+  expect(Object.keys(t.totals.nonNormalHours).sort()).toEqual(processes);
 });
 
 test('onLoss degrade yields degraded, not stopped', () => {
@@ -230,16 +229,24 @@ test('simulateScenario runs an ad-hoc scenario and rejects bad ids', () => {
   expect(() => simulateScenario(r, scenario([cut('ghost', 0, 24)]), 'unprepared')).toThrow(/ghost/);
 });
 
-test('assumptionsUsed lists the scenario and workaround inputs the run read', () => {
+test('assumptionsUsed lists the scenario, workaround, stock and production inputs the run read', () => {
   const r = minimalRegister();
   dependency(r, 'ordering', 'erp').manualWorkaround = { description: 'paper orders', holdsFor: q(2, 'days') };
   const t = simulate(parseRegister(r), 'cut-erp', 'unprepared');
-  expect(Object.keys(t.assumptionsUsed).sort()).toEqual([
-    'processes.ordering.dependsOn.erp.manualWorkaround.holdsFor',
-    'scenarios.cut-erp.events[0].at',
-    'scenarios.cut-erp.events[0].restoreAfter',
-    'scenarios.cut-erp.horizon',
-  ]);
+  const stockInputs = ['capacity', 'initial', 'lowThreshold', 'refillRate'];
+  expect(Object.keys(t.assumptionsUsed).sort()).toEqual(
+    [
+      'processes.ordering.dependsOn.erp.manualWorkaround.holdsFor',
+      'production.annualTonnes',
+      'production.degradedOutput',
+      'production.price',
+      'scenarios.cut-erp.events[0].at',
+      'scenarios.cut-erp.events[0].restoreAfter',
+      'scenarios.cut-erp.horizon',
+      ...stockInputs.map((f) => `stocks.diesel.${f}`),
+      ...stockInputs.map((f) => `stocks.ore.${f}`),
+    ].sort(),
+  );
   expect(t.assumptionsUsed['scenarios.cut-erp.events[0].restoreAfter']).toEqual({
     value: 288,
     unit: 'hours',

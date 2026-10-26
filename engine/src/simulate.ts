@@ -19,11 +19,29 @@
  *   `degraded`.
  * - A manual workaround keeps a lost service dependency at `degraded`: for ever if the scenario says
  *   workarounds hold, otherwise for `holdsFor`, counted from the start of the outage.
+ * - Stocks are kept in hours of normal consumption: day values are multiplied by 24 once, at the
+ *   start, and a refill rate of r days/day adds r hours each hour. Inputs that come to whole hours
+ *   therefore keep the level a whole number, with no floating-point drift. A sample reports a stock in days, as the
+ *   level at the START of its hour, which is the level that hour's processes saw.
+ * - A process that depends on a stock gets `onLoss` when the stock is empty, `degraded` when it is
+ *   at or below its low threshold, and `normal` otherwise.
+ * - After the processes are worked out, each stock moves by one hour: if its replenishing process
+ *   is running (normal or degraded) it gains its refill rate, up to capacity. Otherwise it loses one
+ *   hour if any consumer is not stopped, down to 0. Refill and consumption never both apply.
+ * - `stock-low` fires when a stock's level reaches or drops below its low threshold, and
+ *   `stock-empty` when it reaches 0, once per crossing: each fires again only after the level has
+ *   risen back above that mark. The event hour is the hour whose start first sees the new level.
+ *   A stock that starts at or below a mark fires its event at hour 0.
+ * - Production deferred: each hour adds the hourly rate in full while the shipping process is
+ *   stopped, and `1 - degradedOutput` of it while degraded. Revenue at risk is the tonnes deferred
+ *   times the price. Both are cumulative to the end of each hour, and the totals are the last
+ *   sample's values.
  */
 import type { Provenance, Unit } from './quantity.js';
 import { toHours } from './quantity.js';
 import { applyOverrides, quantityPaths } from './paths.js';
-import type { Dependency, Register, Scenario } from './schema.js';
+import { tonnesPerHour } from './production.js';
+import type { Dependency, Register, Scenario, Stock } from './schema.js';
 import { checkScenario, processOrder, RegisterError } from './validate.js';
 
 export type Variant = 'unprepared' | 'prepared';
@@ -158,6 +176,64 @@ function lossResult(d: Dependency): ProcessState {
   return d.onLoss === 'stop' ? 'stopped' : 'degraded';
 }
 
+/** A stock as the run tracks it, every amount in hours of normal consumption. */
+interface StockLevel {
+  stock: Stock;
+  level: number;
+  capacity: number;
+  low: number;
+  refill: number;
+  lowFired: boolean;
+  emptyFired: boolean;
+}
+
+function stockLevel(stock: Stock): StockLevel {
+  return {
+    stock,
+    level: stock.initial.value * 24,
+    capacity: stock.capacity.value * 24,
+    low: stock.lowThreshold.value * 24,
+    refill: stock.refillRate.value,
+    lowFired: false,
+    emptyFired: false,
+  };
+}
+
+function stockResult(d: Dependency, s: StockLevel): ProcessState {
+  if (s.level <= 0) return lossResult(d);
+  return s.level <= s.low ? 'degraded' : 'normal';
+}
+
+/** Moves the stock on by one hour, given the process states of that hour. */
+function stepStock(s: StockLevel, states: Record<string, ProcessState>): void {
+  if (states[s.stock.replenishedBy] !== 'stopped') {
+    s.level = Math.min(s.capacity, s.level + s.refill);
+  } else if (s.stock.consumedBy.some((id) => states[id] !== 'stopped')) {
+    s.level = Math.max(0, s.level - 1);
+  }
+}
+
+/** The `stock-low` and `stock-empty` events for the level that the start of `hour` sees. */
+function stockCrossings(s: StockLevel, hour: number): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  if (s.level > s.low) s.lowFired = false;
+  else if (!s.lowFired) {
+    s.lowFired = true;
+    events.push({ hour, kind: 'stock-low', subject: s.stock.id });
+  }
+  if (s.level > 0) s.emptyFired = false;
+  else if (!s.emptyFired) {
+    s.emptyFired = true;
+    events.push({ hour, kind: 'stock-empty', subject: s.stock.id });
+  }
+  return events;
+}
+
+/** The share of an hour's tonnes deferred when the shipping process is in `state`. */
+function deferredShare(state: ProcessState, degradedOutput: number): number {
+  return state === 'stopped' ? 1 : state === 'degraded' ? 1 - degradedOutput : 0;
+}
+
 /** The register with `scenario` in place of any scenario of the same id, overrides applied and re-validated. */
 function prepare(r: Register, scenario: Scenario, overrides: Record<string, number>): { reg: Register; scenario: Scenario } {
   const withScenario = { ...r, scenarios: [...r.scenarios.filter((s) => s.id !== scenario.id), scenario] };
@@ -165,11 +241,16 @@ function prepare(r: Register, scenario: Scenario, overrides: Record<string, numb
   return { reg, scenario: reg.scenarios.find((s) => s.id === scenario.id)! };
 }
 
-/** The scenario's own quantities and every workaround duration, as the run used them. */
+/** The scenario's own quantities, every workaround duration, stock and production input, as the run used them. */
 function assumptionsUsed(reg: Register, scenario: Scenario, overrides: Record<string, number>): Record<string, UsedInput> {
   const used: Record<string, UsedInput> = {};
   for (const { path, quantity } of quantityPaths(reg)) {
-    if (path.startsWith(`scenarios.${scenario.id}.`) || path.endsWith('.manualWorkaround.holdsFor')) {
+    const read =
+      path.startsWith(`scenarios.${scenario.id}.`) ||
+      path.endsWith('.manualWorkaround.holdsFor') ||
+      path.startsWith('stocks.') ||
+      path.startsWith('production.');
+    if (read) {
       used[path] = {
         value: quantity.value,
         unit: quantity.unit,
@@ -224,6 +305,10 @@ export function simulateScenario(
   const nonNormalHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
   const stoppedHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
   let previous: Record<string, ProcessState> = Object.fromEntries(reg.processes.map((p) => [p.id, 'normal']));
+  const stocks = new Map(reg.stocks.map((x) => [x.id, stockLevel(x)]));
+  for (const x of stocks.values()) events.push(...stockCrossings(x, 0));
+  const perHour = tonnesPerHour(reg.production);
+  let tonnesDeferred = 0;
 
   for (let hour = 0; hour <= horizonHours; hour++) {
     const serviceStates: Record<string, ServiceState> = {};
@@ -246,7 +331,8 @@ export function simulateScenario(
         const upstream = processStates[d.on];
         return upstream === 'stopped' ? lossResult(d) : upstream === 'degraded' ? 'degraded' : 'normal';
       }
-      return 'normal'; // a stock: treated as full until stocks are modelled
+      const stock = stocks.get(d.on);
+      return stock ? stockResult(d, stock) : 'normal';
     };
     for (const id of order) {
       const state = processes.get(id)!.dependsOn.map(dependencyResult).reduce(worst, 'normal');
@@ -257,16 +343,24 @@ export function simulateScenario(
     }
     previous = processStates;
 
+    const shipping = processStates[reg.production.shippingProcess]!;
+    tonnesDeferred += perHour * deferredShare(shipping, reg.production.degradedOutput.value);
     samples.push({
       hour,
       processes: processStates,
       services: serviceStates,
       assets: assetStates,
-      stocks: Object.fromEntries(reg.stocks.map((x) => [x.id, x.initial.value])),
-      tonnesDeferred: 0,
-      revenueAtRisk: 0,
+      stocks: Object.fromEntries([...stocks].map(([id, x]) => [id, x.level / 24])),
+      tonnesDeferred,
+      revenueAtRisk: tonnesDeferred * reg.production.price.value,
     });
+
+    for (const x of stocks.values()) {
+      stepStock(x, processStates);
+      events.push(...stockCrossings(x, hour + 1));
+    }
   }
+  const last = samples[samples.length - 1]!;
 
   return {
     scenarioId: s.id,
@@ -275,7 +369,7 @@ export function simulateScenario(
     stepHours: 1,
     samples,
     events: events.filter((e) => e.hour <= horizonHours).sort((a, b) => a.hour - b.hour),
-    totals: { tonnesDeferred: 0, revenueAtRisk: 0, nonNormalHours, stoppedHours },
+    totals: { tonnesDeferred: last.tonnesDeferred, revenueAtRisk: last.revenueAtRisk, nonNormalHours, stoppedHours },
     assumptionsUsed: assumptionsUsed(reg, s, overrides),
   };
 }
