@@ -30,6 +30,7 @@ function collect(r: Register): Entry[] {
     add(`${base}.initial`, s.initial);
     add(`${base}.lowThreshold`, s.lowThreshold);
     add(`${base}.refillRate`, s.refillRate);
+    add(`${base}.leadTime`, s.leadTime);
   }
   for (const c of r.controls) {
     const base = `controls.${c.id}`;

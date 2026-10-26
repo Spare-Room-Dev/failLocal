@@ -1,9 +1,9 @@
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { tonnesPerHour } from '../src/production.js';
 import { simulate, simulateWith } from '../src/simulate.js';
 import type { Sample, Timeline } from '../src/simulate.js';
 import { parseRegister, RegisterError } from '../src/validate.js';
-import { minimalRegister } from './fixtures.js';
+import { minimalRegister, q } from './fixtures.js';
 
 function at(t: Timeline, hour: number): Sample {
   const s = t.samples[hour];
@@ -140,4 +140,95 @@ test('an override above capacity is rejected', () => {
 test('an unknown override key throws', () => {
   const r = parseRegister(minimalRegister());
   expect(() => simulateWith(r, 'cut-erp', 'unprepared', { 'stocks.nope.initial': 1 })).toThrow(/nope/);
+});
+
+describe('delivery lead time', () => {
+  function cutErpWithLead(hours?: number): Timeline {
+    const r = minimalRegister();
+    if (hours !== undefined) r.stocks[0]!.leadTime = q(hours, 'hours');
+    return simulate(parseRegister(r), 'cut-erp', 'unprepared');
+  }
+
+  test('orders already in transit keep diesel full for the lead time, then it runs down', () => {
+    const t = cutErpWithLead(48);
+    for (let hour = 0; hour <= 48; hour++) expect(at(t, hour).stocks.diesel).toBe(4);
+    expect(at(t, 49).stocks.diesel).toBe(95 / 24);
+    expect(at(t, 144).stocks.diesel).toBe(0);
+    expect(at(t, 143).processes.haulage).toBe('degraded');
+    expect(at(t, 144).processes.haulage).toBe('stopped');
+    const diesel = t.events.filter((e) => e.subject === 'diesel').map((e) => [e.hour, e.kind]);
+    expect(diesel).toEqual([
+      [120, 'stock-low'],
+      [144, 'stock-empty'],
+    ]);
+  });
+
+  test('after the ERP returns at 288, the first delivery arrives at 336 and haulage is normal at 349', () => {
+    const t = cutErpWithLead(48);
+    expect(at(t, 336).stocks.diesel).toBe(0);
+    expect(at(t, 336).processes.haulage).toBe('stopped');
+    expect(at(t, 337).stocks.diesel).toBe(2 / 24);
+    expect(at(t, 337).processes.haulage).toBe('degraded');
+    expect(at(t, 348).processes.haulage).toBe('degraded');
+    expect(at(t, 349).processes.haulage).toBe('normal');
+  });
+
+  test('a fractional lead time rounds up to whole hours', () => {
+    const whole = cutErpWithLead(48);
+    const fractional = cutErpWithLead(47.5);
+    expect(fractional.samples).toEqual(whole.samples);
+  });
+
+  test('a lead time of 0 or none gives exactly the hours without one', () => {
+    const none = cutErpWithLead();
+    const zero = cutErpWithLead(0);
+    for (const t of [none, zero]) {
+      expect(at(t, 71).processes.haulage).toBe('normal');
+      expect(at(t, 72).processes.haulage).toBe('degraded');
+      expect(at(t, 96).processes.haulage).toBe('stopped');
+      expect(at(t, 155).processes.rail).toBe('normal');
+      expect(at(t, 156).processes.rail).toBe('degraded');
+      expect(at(t, 168).processes.rail).toBe('stopped');
+      expect(at(t, 300).processes.haulage).not.toBe('normal');
+      expect(at(t, 301).processes.haulage).toBe('normal');
+    }
+    expect(zero.samples).toEqual(none.samples);
+    expect(zero.events).toEqual(none.events);
+    expect(zero.totals).toEqual(none.totals);
+  });
+
+  test('assumptionsUsed records the lead time when it is set, and only then', () => {
+    expect(cutErpWithLead(48).assumptionsUsed['stocks.diesel.leadTime']).toMatchObject({
+      value: 48,
+      unit: 'hours',
+      provenance: { kind: 'assumed', reasoning: 'test' },
+      overridden: false,
+    });
+    expect(cutErpWithLead().assumptionsUsed['stocks.diesel.leadTime']).toBeUndefined();
+  });
+
+  test('a lead time can be overridden by its path', () => {
+    const r = minimalRegister();
+    r.stocks[0]!.leadTime = q(0, 'hours');
+    const t = simulateWith(parseRegister(r), 'cut-erp', 'unprepared', { 'stocks.diesel.leadTime': 48 });
+    expect(at(t, 143).processes.haulage).toBe('degraded');
+    expect(at(t, 144).processes.haulage).toBe('stopped');
+    expect(t.assumptionsUsed['stocks.diesel.leadTime']!.overridden).toBe(true);
+  });
+
+  test('a measured lead time is rejected (spec §5.3)', () => {
+    const r: any = minimalRegister();
+    r.stocks[0].leadTime = {
+      value: 48,
+      unit: 'hours',
+      provenance: { kind: 'measured', runId: 'lab-1', date: '2026-10-26', evidence: 'lab' },
+    };
+    expect(() => parseRegister(r)).toThrow(/§5\.3/);
+  });
+
+  test('a negative lead time is rejected', () => {
+    const r = minimalRegister();
+    r.stocks[0]!.leadTime = q(-1, 'hours');
+    expect(() => parseRegister(r)).toThrow(RegisterError);
+  });
 });

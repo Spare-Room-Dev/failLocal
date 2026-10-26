@@ -108,6 +108,7 @@ export const stockSchema = z
     initial: quantity('days'),
     lowThreshold: quantity('days'),
     refillRate: quantity('days/day'),
+    leadTime: quantity('hours').optional(), // order to delivery; absent means 0
     replenishedBy: text, // process id
     consumedBy: z.array(text).min(1), // process ids
   })

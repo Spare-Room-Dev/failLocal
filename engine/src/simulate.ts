@@ -29,9 +29,16 @@
  *   in days, as the level at the START of its hour, which is the level that hour's processes saw.
  * - A process that depends on a stock gets `onLoss` when the stock is empty, `degraded` when it is
  *   at or below its low threshold, and `normal` otherwise.
- * - After the processes are worked out, each stock moves by one hour: if its replenishing process
- *   is running (normal or degraded) it gains its refill rate, up to capacity. Otherwise it loses one
- *   hour if any consumer is not stopped, down to 0. Refill and consumption never both apply.
+ * - Deliveries run through a delay line, because orders already placed are in transit. With a lead
+ *   time of L = ceil(`leadTime`) hours (0 when absent), a delivery arrives at hour h if and only if
+ *   the replenishing process was running (normal or degraded) at hour h - L. Before the run starts
+ *   (h - L < 0) it counts as running: the site starts in steady state with orders on the road.
+ *   So when ordering stops, deliveries keep arriving for L more hours; when it resumes, the first
+ *   delivery arrives L hours later. With no lead time, a delivery arrives in the same hour that
+ *   ordering runs.
+ * - After the processes are worked out, each stock moves by one hour: if a delivery arrives it gains
+ *   its refill rate, up to capacity. Otherwise it loses one hour if any consumer is not stopped, down
+ *   to 0. Refill and consumption never both apply.
  * - `stock-low` fires when a stock's level reaches or drops below its low threshold, and
  *   `stock-empty` when it reaches 0, once per crossing: each fires again only after the level has
  *   risen back above that mark. The event hour is the hour whose start first sees the new level.
@@ -309,6 +316,7 @@ interface StockLevel {
   capacity: number;
   low: number;
   refill: number;
+  leadHours: number;
   lowFired: boolean;
   emptyFired: boolean;
 }
@@ -320,6 +328,7 @@ function stockLevel(stock: Stock): StockLevel {
     capacity: stock.capacity.value * 24,
     low: stock.lowThreshold.value * 24,
     refill: stock.refillRate.value,
+    leadHours: Math.ceil(stock.leadTime?.value ?? 0),
     lowFired: false,
     emptyFired: false,
   };
@@ -330,9 +339,18 @@ function stockResult(d: Dependency, s: StockLevel): ProcessState {
   return s.level <= s.low ? 'degraded' : 'normal';
 }
 
-/** Moves the stock on by one hour, given the process states of that hour. */
-function stepStock(s: StockLevel, states: Record<string, ProcessState>): void {
-  if (states[s.stock.replenishedBy] !== 'stopped') {
+/**
+ * Whether a delivery reaches the stock at `hour`: its replenisher was running `leadHours` earlier.
+ * `history[h]` holds the process states of hour h; hours before the run count as running.
+ */
+function delivered(s: StockLevel, history: Record<string, ProcessState>[], hour: number): boolean {
+  const ordered = hour - s.leadHours;
+  return ordered < 0 || history[ordered]![s.stock.replenishedBy] !== 'stopped';
+}
+
+/** Moves the stock on by one hour, given whether a delivery arrives and the process states of that hour. */
+function stepStock(s: StockLevel, delivery: boolean, states: Record<string, ProcessState>): void {
+  if (delivery) {
     s.level = Math.min(s.capacity, s.level + s.refill);
   } else if (s.stock.consumedBy.some((id) => states[id] !== 'stopped')) {
     s.level = Math.max(0, s.level - 1);
@@ -451,6 +469,7 @@ export function simulateScenario(
   const assets = new Set(reg.assets.map((a) => a.id));
   const order = processOrder(reg);
   const samples: Sample[] = [];
+  const history: Record<string, ProcessState>[] = []; // process states by hour, for delivery lead times
   const nonNormalHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
   const stoppedHours = Object.fromEntries(reg.processes.map((p) => [p.id, 0]));
   let previous: Record<string, ProcessState> = Object.fromEntries(reg.processes.map((p) => [p.id, 'normal']));
@@ -496,6 +515,7 @@ export function simulateScenario(
       if (state !== previous[id]) events.push({ hour, kind: 'process-state', subject: id, from: previous[id], to: state });
     }
     previous = processStates;
+    history.push(processStates);
 
     const shipping = processStates[reg.production.shippingProcess]!;
     tonnesDeferred += perHour * deferredShare(shipping, reg.production.degradedOutput.value);
@@ -510,7 +530,7 @@ export function simulateScenario(
     });
 
     for (const x of stocks.values()) {
-      stepStock(x, processStates);
+      stepStock(x, delivered(x, history, hour), processStates);
       events.push(...stockCrossings(x, hour + 1));
     }
   }
