@@ -3,7 +3,8 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { allowedUrls, checkIndexHtml, findDisallowedUrls, gzippedJsBytes } from '../scripts/check-build.mjs';
+import { gzipSync } from 'node:zlib';
+import { JS_BUDGET_BYTES, allowedUrls, checkIndexHtml, checkJsBudget, findDisallowedUrls, gzippedJsBytes } from '../scripts/check-build.mjs';
 import { parseHeaders } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
@@ -69,10 +70,18 @@ describe('check-build', () => {
     ]);
   });
 
-  test('gzipped JS total counts every script under assets', () => {
-    const dist = fixtureDist({ 'assets/a.js': 'a'.repeat(5000), 'assets/b.js': 'b'.repeat(5000), 'assets/c.css': 'c'.repeat(5000) });
-    const total = gzippedJsBytes(dist);
-    expect(total).toBeGreaterThan(0);
-    expect(total).toBeLessThan(200);
+  test('gzipped JS total counts every .js file in dist and nothing else', () => {
+    const files = { 'top.js': 'let t = 1;\n'.repeat(300), 'assets/a.js': 'a'.repeat(5000), 'assets/deep/b.js': 'const b = [1, 2, 3];'.repeat(80) };
+    const dist = fixtureDist({ ...files, 'assets/c.css': 'body { margin: 0 }'.repeat(400), 'index.html': '<p>x</p>'.repeat(300) });
+    const expected = Object.values(files).reduce((sum, text) => sum + gzipSync(text).length, 0);
+    expect(gzippedJsBytes(dist)).toBe(expected);
+  });
+
+  test('check-build fails a build over the gzipped JS budget', () => {
+    const dist = fixtureDist({ 'assets/index.js': 'x'.repeat(5000) });
+    const size = gzippedJsBytes(dist);
+    expect(checkJsBudget(dist, size)).toEqual([]);
+    expect(checkJsBudget(dist, size - 1)).toEqual([`gzipped JS is ${size} bytes, over the ${size - 1} byte budget`]);
+    expect(JS_BUDGET_BYTES).toBe(300_000);
   });
 });

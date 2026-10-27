@@ -9,8 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { parse } from 'yaml';
 
-/** Gzipped JS budget. Plan 2b raises it for PixiJS. */
-export const JS_BUDGET_BYTES = 300 * 1024;
+/** Gzipped JS budget in bytes (300 KB, decimal, as Vite reports sizes). Plan 2b raises it for PixiJS. */
+export const JS_BUDGET_BYTES = 300_000;
 
 /**
  * URLs allowed besides the register's sources. None is ever requested; each is a string
@@ -93,15 +93,25 @@ export function findDisallowedUrls(distDir, allowed) {
 }
 
 /**
- * The summed gzipped size of every .js file under `distDir/assets`.
+ * The summed gzipped size, in bytes, of every .js file under `distDir`.
  * @param {string} distDir
  * @returns {number}
  */
 export function gzippedJsBytes(distDir) {
-  const assets = join(distDir, 'assets');
-  return listFiles(assets)
+  return listFiles(distDir)
     .filter((f) => f.endsWith('.js'))
-    .reduce((total, f) => total + gzipSync(readFileSync(join(assets, f))).length, 0);
+    .reduce((total, f) => total + gzipSync(readFileSync(join(distDir, f))).length, 0);
+}
+
+/**
+ * A problem when the gzipped JS under `distDir` is over `budget` bytes.
+ * @param {string} distDir
+ * @param {number} [budget]
+ * @returns {string[]}
+ */
+export function checkJsBudget(distDir, budget = JS_BUDGET_BYTES) {
+  const js = gzippedJsBytes(distDir);
+  return js > budget ? [`gzipped JS is ${js} bytes, over the ${budget} byte budget`] : [];
 }
 
 function main() {
@@ -111,16 +121,15 @@ function main() {
 
   const problems = checkIndexHtml(readFileSync(join(distDir, 'index.html'), 'utf8'));
   for (const { file, url } of findDisallowedUrls(distDir, allowed)) problems.push(`dist/${file} names a URL off the allow-list: ${url}`);
-  const js = gzippedJsBytes(distDir);
-  const kb = (/** @type {number} */ n) => (n / 1024).toFixed(1);
-  if (js > JS_BUDGET_BYTES) problems.push(`gzipped JS is ${kb(js)} KB, over the ${kb(JS_BUDGET_BYTES)} KB budget`);
+  problems.push(...checkJsBudget(distDir));
 
+  const kb = (/** @type {number} */ n) => `${(n / 1000).toFixed(1)} KB`;
   if (problems.length) {
     console.error(`check-build: FAILED\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);
   }
   console.log(
-    `check-build: ok — index.html has no inline script or style; every URL is on the allow-list (${allowed.size} entries); gzipped JS ${kb(js)} KB of ${kb(JS_BUDGET_BYTES)} KB`,
+    `check-build: ok — index.html has no inline script or style; every URL is on the allow-list (${allowed.size} entries); gzipped JS ${kb(gzippedJsBytes(distDir))} of ${kb(JS_BUDGET_BYTES)} (decimal KB, 1 KB = 1,000 bytes)`,
   );
 }
 
