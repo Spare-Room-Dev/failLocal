@@ -10,6 +10,11 @@ describe('App', () => {
     expect(screen.getByText('Fictional model site')).toBeTruthy();
   });
 
+  it('reads the badge from the real register by default', () => {
+    render(<App />);
+    expect(screen.getByText('Fictional model site')).toBeTruthy();
+  });
+
   it('omits the fictional badge when the register says the site is real', () => {
     render(<App register={{ site: { fictional: false } }} />);
     expect(screen.queryByText('Fictional model site')).toBeNull();
