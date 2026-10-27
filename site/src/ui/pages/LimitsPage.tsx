@@ -12,8 +12,7 @@ export function LimitsPage() {
           The dollar figure for the hosted ERP outage rests on an assumed hold: how long the manual workarounds last
           before they run out.
         </li>
-        <li>There is no delivery-rate modelling beyond the lead times.</li>
-        <li>Lead times model delivery delay, not delivery rate.</li>
+        <li>Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.</li>
       </ul>
       <p>
         Every modelling choice, and why it was made, is in the <a href={DECISION_LOG} rel="noopener noreferrer">decision log</a>{' '}

@@ -14,7 +14,7 @@ export function SourcesPage() {
         {register.sources.map((s) => (
           <li key={s.id}>
             <a href={s.url} rel="noopener noreferrer">
-              {s.title}
+              <cite>{s.title}</cite>
             </a>
             <span className="source-accessed">
               Accessed <time dateTime={s.accessed}>{longDate(s.accessed)}</time>

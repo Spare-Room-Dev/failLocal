@@ -91,6 +91,12 @@ describe('untaggedNumbers', () => {
     expect(untaggedNumbers(root)).toEqual(['Back after 12 days']);
   });
 
+  it('exempts a cited title inside <cite>, but not digits beside it', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `<p><cite>Waterfall Security, 2025 OT Cyber Threat Report</cite></p><p>Read 3 times</p>`;
+    expect(untaggedNumbers(root)).toEqual(['Read 3 times']);
+  });
+
   it('exempts message text inside data-message (R7), but not digits beside it', () => {
     const root = document.createElement('div');
     root.innerHTML = `<p data-message role="alert">Price: must be at least 0</p><p>Cut for 3 days</p>`;

@@ -18,7 +18,7 @@ export function BuiltPage() {
       <ul>
         <li>Automated tests on the simulation engine and on this site, including the wording and provenance rules.</li>
         <li>An independent reviewer read every task&rsquo;s changes before it was accepted.</li>
-        <li>A review of the whole branch before release.</li>
+        <li className="placeholder">[Placeholder: whole-branch review — confirm once done]</li>
         <li>
           A decision log, <code>docs/decisions.md</code>, records each modelling choice, the reasoning behind it and
           where its numbers come from.

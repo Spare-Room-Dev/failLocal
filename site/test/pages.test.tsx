@@ -77,6 +77,8 @@ describe('pages', () => {
   });
 
   test('tested page lists every control with its provenance kind', () => {
+    // The note below says every capability is assumed; this fails when the register stops saying so.
+    expect(register.controls.every((c) => c.capability.provenance.kind === 'assumed')).toBe(true);
     go('#/tested');
     render(<App />);
     expect(
@@ -93,15 +95,26 @@ describe('pages', () => {
     render(<App />);
     expect(screen.getByText('Draft — awaiting owner review')).toBeTruthy();
     expect(screen.getByText(/Claude Code/)).toBeTruthy();
+    const review = screen.getByText('[Placeholder: whole-branch review — confirm once done]');
+    expect(review.classList.contains('placeholder')).toBe(true);
+    expect(screen.queryByText('A review of the whole branch before release.')).toBeNull();
   });
 
   test('limits page names the delivery-rate limit and the placeholder decision log', () => {
     go('#/limits');
     render(<App />);
-    expect(screen.getByText('Lead times model delivery delay, not delivery rate.')).toBeTruthy();
+    expect(screen.getByText('Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.')).toBeTruthy();
     const log = screen.getByRole('link', { name: /decision log/i });
     expect(log.getAttribute('href')).toBe('https://github.com/[owner]/faillocal/blob/main/docs/decisions.md');
     expect(screen.getByText(/placeholder until the repo is public/i)).toBeTruthy();
+  });
+
+  test('landing on the site in welcome mode enters free play', () => {
+    expect(appStore.get().mode).toBe('welcome');
+    go('#/site');
+    render(<App />);
+    expect(appStore.get().mode).toBe('free');
+    expect(screen.getByRole('region', { name: 'Free play' })).toBeTruthy();
   });
 
   test('unknown route falls back to welcome', () => {
@@ -151,7 +164,7 @@ describe('pages', () => {
   });
 
   test('copy pages carry no untagged numbers', () => {
-    for (const hash of ['#/', '#/tested', '#/built', '#/limits']) {
+    for (const hash of ['#/', '#/sources', '#/tested', '#/built', '#/limits']) {
       go(hash);
       render(<App />);
       expect(untaggedNumbers(document.body)).toEqual([]);

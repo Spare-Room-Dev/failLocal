@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { register } from '../../model/register.js';
 import { sampleAt } from '../../model/clock.js';
 import { sceneState } from '../../model/sceneState.js';
@@ -28,6 +29,10 @@ function Scene() {
  */
 export function SitePage() {
   const mode = useStore(appStore, (s) => s.mode);
+  // Reached by a link, reload or footer rather than a welcome button: start in free play.
+  useEffect(() => {
+    if (appStore.get().mode === 'welcome') actions.enterFreePlay();
+  }, []);
   return (
     <div className="site-page">
       <TopBar />
