@@ -1,0 +1,65 @@
+/* Provenance tags: DESIGN.md "Provenance Tags". The four kinds differ by border, not colour. */
+.qty {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qty-tag {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--ink-2);
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.qty-tag--computed {
+  background: var(--computed-fill);
+}
+
+.qty-tag--assumed {
+  border: 1px dashed var(--line-2);
+}
+
+.qty-tag--sourced {
+  border-color: var(--ink-3);
+  cursor: help;
+}
+
+.qty-tag--measured {
+  border-color: var(--ink-3);
+  border-bottom-width: 2px;
+}
+
+.qty-tag--changed {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.qty-tag-anchor {
+  position: relative;
+}
+
+.qty-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  padding: 4px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.qty-tip[hidden] {
+  display: none;
+}
