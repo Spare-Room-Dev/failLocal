@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import type { RunSpec } from '../src/model/run.js';
+import { register } from '../src/model/register.js';
+import { deriveRun } from '../src/model/run.js';
 import { actions, appStore, createStore, initialAppState } from '../src/model/store.js';
 
 beforeEach(() => appStore.set(initialAppState()));
@@ -30,6 +32,8 @@ describe('app store', () => {
       clock: { hour: 0, playing: false, hoursPerSecond: 24 },
       selected: 'haulage',
       issues: [],
+      fieldIssues: {},
+      lastGoodKind: 'register',
     });
     expect(s.lastGood?.scenarioId).toBe('s1-projection');
   });
@@ -44,17 +48,67 @@ describe('app store', () => {
     expect(s.lastGood?.scenarioId).toBe('s2-iroc-lost');
   });
 
-  test('an invalid override keeps lastGood and sets issues', () => {
+  test('an invalid override leaves overrides unchanged and records a field issue', () => {
+    actions.setOverride('production.price', 120);
     const good = appStore.get().lastGood;
-    expect(good).not.toBeNull();
+    expect(good?.assumptionsUsed['production.price']?.value).toBe(120);
     actions.setOverride('production.degradedOutput', 1.5);
     let s = appStore.get();
+    expect(s.overrides).toEqual({ 'production.price': 120 });
     expect(s.lastGood).toBe(good);
-    expect(s.issues.join('\n')).toMatch(/production\.degradedOutput/);
-    actions.setOverride('production.degradedOutput', null);
-    s = appStore.get();
-    expect(s.overrides).toEqual({});
     expect(s.issues).toEqual([]);
+    expect(Object.keys(s.fieldIssues)).toEqual(['production.degradedOutput']);
+    expect(s.fieldIssues['production.degradedOutput']!.join('\n')).toMatch(/production\.degradedOutput/);
+    actions.setOverride('production.degradedOutput', 0.5);
+    s = appStore.get();
+    expect(s.overrides).toEqual({ 'production.price': 120, 'production.degradedOutput': 0.5 });
+    expect(s.fieldIssues).toEqual({});
+    expect(s.lastGood?.assumptionsUsed['production.degradedOutput']?.value).toBe(0.5);
+  });
+
+  test('resetting a field, or every field, clears its issue', () => {
+    actions.setOverride('production.degradedOutput', 1.5);
+    actions.setOverride('production.degradedOutput', null);
+    expect(appStore.get().fieldIssues).toEqual({});
+    actions.setOverride('production.price', -1);
+    actions.clearOverrides();
+    expect(appStore.get().fieldIssues).toEqual({});
+  });
+
+  test('after a failed override, setScenario gives a run whose scenario, projection and samples agree', () => {
+    actions.setOverride('production.degradedOutput', 1.5);
+    actions.setScenario('s1-as-reported');
+    const s = appStore.get();
+    const expected = deriveRun(register, { spec: { kind: 'register', scenarioId: 's1-as-reported' }, variant: 'unprepared', overrides: {} });
+    if (!expected.ok) throw new Error('s1-as-reported does not run');
+    expect(s.issues).toEqual([]);
+    expect(s.lastGoodKind).toBe('register');
+    expect(s.lastGood?.scenarioId).toBe('s1-as-reported');
+    expect(s.lastGood?.projection).toBe(false);
+    expect(s.lastGood?.samples).toEqual(expected.timeline.samples);
+  });
+
+  test('after a failed override, setVariant gives a run on that variant', () => {
+    actions.setOverride('production.degradedOutput', 1.5);
+    actions.setVariant('prepared');
+    const s = appStore.get();
+    const expected = deriveRun(register, { spec: { kind: 'register', scenarioId: 's1-projection' }, variant: 'prepared', overrides: {} });
+    if (!expected.ok) throw new Error('s1-projection does not run');
+    expect(s.issues).toEqual([]);
+    expect(s.lastGood?.variant).toBe('prepared');
+    expect(s.lastGood?.samples).toEqual(expected.timeline.samples);
+  });
+
+  test('lastGoodKind follows the run that last succeeded', () => {
+    expect(appStore.get().lastGoodKind).toBe('register');
+    actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 1 });
+    expect(appStore.get().lastGoodKind).toBe('free');
+    // A failing run leaves the last good one, and its kind, in place.
+    appStore.set({ overrides: { 'production.price': -1 } });
+    actions.setScenario('s1-as-reported');
+    expect(appStore.get().issues).not.toEqual([]);
+    expect(appStore.get().lastGoodKind).toBe('free');
+    expect(appStore.get().lastGood?.scenarioId).toBe('free-play');
   });
 
   test('removing a free-play cut prunes overrides on its event paths', () => {

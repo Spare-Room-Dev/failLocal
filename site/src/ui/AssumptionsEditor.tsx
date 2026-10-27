@@ -166,15 +166,17 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
 
 /**
  * The inputs the current run used, editable (desktop only). Each row shows the value the last good
- * run used, with its tag, beside an input; a value goes to the store's overrides once it parses. A
- * failed run leaves the site on the last good timeline and shows its issues against the rows they
- * name, or above the rows when they name none. Renders only in free play.
+ * run used, with its tag, beside an input; a value goes to the store once it parses. A value the run
+ * refuses stays in the field with its issues beside it (the store's `fieldIssues`), and the site stays
+ * on the last good run. Issues on a path with no row, and those of a failed run, show above the rows.
+ * Renders only in free play.
  */
 export function AssumptionsEditor() {
   const mode = useStore(appStore, (s) => s.mode);
   const timeline = useStore(appStore, (s) => s.lastGood);
   const overrides = useStore(appStore, (s) => s.overrides);
   const issues = useStore(appStore, (s) => s.issues);
+  const fieldIssues = useStore(appStore, (s) => s.fieldIssues);
   const desktop = useMediaQuery(DESKTOP);
   if (mode !== 'free' || !timeline) return null;
   if (!desktop) return <p className="editor-phone-note">{PHONE_NOTE}</p>;
@@ -182,7 +184,11 @@ export function AssumptionsEditor() {
   const touched = touchedServices(timeline);
   const rows = Object.entries(timeline.assumptionsUsed).flatMap(([path, used]) => rowFor(path, used, touched, timeline.variant === 'prepared') ?? []);
   const sources = Object.fromEntries(register.sources.map((s) => [s.id, s.title]));
-  const unplaced = issues.filter((issue) => !rows.some((r) => names(issue, r.path)));
+  const rowIssues = (path: string) => [...(fieldIssues[path] ?? []), ...issues.filter((issue) => names(issue, path))];
+  const unplaced = [
+    ...Object.entries(fieldIssues).flatMap(([path, list]) => (rows.some((r) => r.path === path) ? [] : list)),
+    ...issues.filter((issue) => !rows.some((r) => names(issue, r.path))),
+  ];
 
   return (
     <section className="editor" aria-label="Assumptions">
@@ -210,7 +216,7 @@ export function AssumptionsEditor() {
                 key={row.path}
                 row={row}
                 override={overrides[row.path]}
-                issues={issues.filter((issue) => names(issue, row.path))}
+                issues={rowIssues(row.path)}
                 sources={sources}
               />
             ))}

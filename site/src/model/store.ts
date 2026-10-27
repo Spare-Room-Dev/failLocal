@@ -41,7 +41,12 @@ export interface AppState {
   clock: Clock;
   selected: string | null;
   lastGood: Timeline | null;
+  /** Whether `lastGood` is a register scenario or the visitor's free play. */
+  lastGoodKind: RunSpec['kind'];
+  /** Issues from a run that failed for a reason other than an editor field. */
   issues: string[];
+  /** Issues from an override the store refused, by its path; the override never reached `overrides`. */
+  fieldIssues: Record<string, string[]>;
 }
 
 const DEFAULT_SPEC: RunSpec = { kind: 'register', scenarioId: 's1-projection' };
@@ -58,7 +63,9 @@ export function initialAppState(): AppState {
     clock: { hour: 0, playing: false, hoursPerSecond: DEFAULT_SPEED },
     selected: 'haulage',
     lastGood: result.ok ? result.timeline : null,
+    lastGoodKind: DEFAULT_SPEC.kind,
     issues: result.ok ? [] : result.issues,
+    fieldIssues: {},
   };
 }
 
@@ -68,6 +75,12 @@ export const appStore = createStore<AppState>(initialAppState());
 const FREE_EVENT_PATH = new RegExp(`^scenarios\\.${FREE_PLAY_ID}\\.events\\[(\\d+)\\]\\.`);
 
 const paused = (clock: Clock): Clock => ({ ...clock, hour: 0, playing: false });
+
+/** `record` without `key`. */
+function without<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const { [key]: _, ...rest } = record;
+  return rest;
+}
 
 /** The free-play spec to edit: the current one, or one seeded from the register scenario showing (R4). */
 function freeSpec(s: AppState): Extract<RunSpec, { kind: 'free' }> {
@@ -97,35 +110,47 @@ export const actions = {
   updateCut(i: number, c: Partial<FreeCut>): void {
     setFree((spec) => ({ cuts: spec.cuts.map((cut, j) => (j === i ? { ...cut, ...c } : cut)) }));
   },
-  /** Removes cut `i`, and any override on a free-play event that no longer exists, which would be an unknown path. */
+  /** Removes cut `i`, and any override or field issue on a free-play event that no longer exists, which would be an unknown path. */
   removeCut(i: number): void {
     appStore.set((s) => {
       const spec = freeSpec(s);
       const cuts = spec.cuts.filter((_, j) => j !== i);
-      const overrides = Object.fromEntries(
-        Object.entries(s.overrides).filter(([path]) => {
-          const event = FREE_EVENT_PATH.exec(path);
-          return !event || Number(event[1]) < cuts.length;
-        }),
-      );
-      return { spec: { ...spec, cuts }, overrides };
+      const exists = ([path]: [string, unknown]) => {
+        const event = FREE_EVENT_PATH.exec(path);
+        return !event || Number(event[1]) < cuts.length;
+      };
+      const overrides = Object.fromEntries(Object.entries(s.overrides).filter(exists));
+      const fieldIssues = Object.fromEntries(Object.entries(s.fieldIssues).filter(exists));
+      return { spec: { ...spec, cuts }, overrides, fieldIssues };
     });
     actions.recompute();
   },
   setWorkaroundsHold(b: boolean): void {
     setFree(() => ({ workaroundsHold: b }));
   },
+  /**
+   * Sets or (with null) clears the override at `path`. A new value is tried first: if the run fails
+   * with it, `overrides` stays as it was and the issues are kept against `path` in `fieldIssues`, so
+   * the site never shows a run the visitor did not get. Clearing always applies.
+   */
   setOverride(path: string, value: number | null): void {
-    appStore.set((s) => {
-      const overrides = { ...s.overrides };
-      if (value === null) delete overrides[path];
-      else overrides[path] = value;
-      return { overrides };
-    });
+    const s = appStore.get();
+    if (value === null) {
+      appStore.set({ overrides: without(s.overrides, path), fieldIssues: without(s.fieldIssues, path) });
+      actions.recompute();
+      return;
+    }
+    const overrides = { ...s.overrides, [path]: value };
+    const trial = deriveRun(register, { spec: s.spec, variant: s.variant, overrides });
+    if (!trial.ok) {
+      appStore.set({ fieldIssues: { ...s.fieldIssues, [path]: trial.issues } });
+      return;
+    }
+    appStore.set({ overrides, fieldIssues: without(s.fieldIssues, path) });
     actions.recompute();
   },
   clearOverrides(): void {
-    appStore.set({ overrides: {} });
+    appStore.set({ overrides: {}, fieldIssues: {} });
     actions.recompute();
   },
   select(id: string | null): void {
@@ -137,7 +162,7 @@ export const actions = {
   },
   /** Enters the guided run, which always shows register values (R5). */
   startGuided(): void {
-    appStore.set({ mode: 'guided', overrides: {} });
+    appStore.set({ mode: 'guided', overrides: {}, fieldIssues: {} });
     actions.recompute();
   },
   setClock(p: Partial<Clock>): void {
@@ -146,11 +171,11 @@ export const actions = {
   setSpeed(hps: number): void {
     appStore.set((s) => ({ clock: { ...s.clock, hoursPerSecond: hps } }));
   },
-  /** Derives the current run. A good run replaces `lastGood`; a bad one sets `issues` and keeps `lastGood`. */
+  /** Derives the current run. A good run replaces `lastGood` and its kind; a bad one sets `issues` and keeps both. */
   recompute(): void {
     appStore.set((s) => {
       const result = deriveRun(register, { spec: s.spec, variant: s.variant, overrides: s.overrides });
-      return result.ok ? { lastGood: result.timeline, issues: [] } : { issues: result.issues };
+      return result.ok ? { lastGood: result.timeline, lastGoodKind: s.spec.kind, issues: [] } : { issues: result.issues };
     });
   },
 };

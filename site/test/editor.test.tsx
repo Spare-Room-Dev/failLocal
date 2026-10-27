@@ -55,6 +55,10 @@ describe('AssumptionsEditor', () => {
     const price = formatQty(register.production.price.value, 'usdPerT');
     fireEvent.change(input('production.price'), { target: { value: '-1' } });
     expect(appStore.get().lastGood).toBe(good);
+    // The refused value never reaches the run's overrides; the field keeps what the visitor typed.
+    expect(appStore.get().overrides).toEqual({});
+    expect(appStore.get().issues).toEqual([]);
+    expect(input('production.price').value).toBe('-1');
     const alert = within(row('production.price')).getByRole('alert');
     expect(alert.textContent).toMatch(/^Ore price: .*0/);
     expect(alert.textContent).not.toContain('production.price');

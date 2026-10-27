@@ -83,9 +83,10 @@ describe('AreaPanel', () => {
   test('after a failed recompute the copy row follows the run shown, not the store variant', () => {
     actions.select('diesel-ordering');
     render(<DetailPanel />);
-    act(() => actions.setOverride('production.price', -3));
-    expect(appStore.get().issues).not.toEqual([]);
+    // setOverride refuses a failing value, so put one in place directly to make the next run fail.
+    act(() => appStore.set({ overrides: { 'production.price': -3 } }));
     act(() => actions.setVariant('prepared'));
+    expect(appStore.get().issues).not.toEqual([]);
     expect(appStore.get().variant).toBe('prepared');
     expect(appStore.get().lastGood!.variant).toBe('unprepared');
     expect(within(area()).getByTestId('independent-copy').textContent).toBe('No');

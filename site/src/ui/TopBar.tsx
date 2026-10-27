@@ -23,10 +23,13 @@ function BrandMark() {
 
 /** The 60 px top bar (DESIGN.md "Top Bar Controls"): brand, scenario title, badges and the variant switch. */
 export function TopBar() {
-  const spec = useStore(appStore, (s) => s.spec);
+  // All from the run on screen, so a failed run never leaves the bar describing a different one.
+  const kind = useStore(appStore, (s) => s.lastGoodKind);
+  const scenarioId = useStore(appStore, (s) => s.lastGood?.scenarioId);
   const projection = useStore(appStore, (s) => s.lastGood?.projection ?? false);
-  const variant = useStore(appStore, (s) => s.variant);
-  const title = spec.kind === 'register' ? register.scenarios.find((s) => s.id === spec.scenarioId)?.title : FREE_PLAY_TITLE;
+  const variant = useStore(appStore, (s) => s.lastGood?.variant);
+  const locked = useStore(appStore, (s) => s.mode === 'guided');
+  const title = kind === 'free' ? FREE_PLAY_TITLE : register.scenarios.find((s) => s.id === scenarioId)?.title;
 
   return (
     <header className="top-bar">
@@ -41,7 +44,7 @@ export function TopBar() {
       </div>
       <div className="segmented" role="group" aria-label="Site readiness">
         {VARIANTS.map((v) => (
-          <button key={v.id} type="button" aria-pressed={variant === v.id} onClick={() => actions.setVariant(v.id)}>
+          <button key={v.id} type="button" aria-pressed={variant === v.id} disabled={locked} onClick={() => actions.setVariant(v.id)}>
             {v.label}
           </button>
         ))}

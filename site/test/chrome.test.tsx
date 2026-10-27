@@ -39,6 +39,45 @@ describe('TopBar', () => {
     expect(unprepared.getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('after a failed override, a scenario switch shows that run\'s title and badge', () => {
+    render(<TopBar />);
+    act(() => actions.setOverride('production.degradedOutput', 1.5));
+    act(() => actions.setScenario('s1-as-reported'));
+    expect(screen.getByText('Hosted ERP lost (as reported)')).toBeTruthy();
+    expect(screen.queryByText('Projection')).toBeNull();
+    act(() => actions.setVariant('prepared'));
+    expect(screen.getByRole('button', { name: 'Prepared' }).getAttribute('aria-pressed')).toBe('true');
+    expect(appStore.get().lastGood?.variant).toBe('prepared');
+  });
+
+  test('title, badge and variant render from the last good run, not the requested one', () => {
+    render(<TopBar />);
+    // A run that fails: the store keeps the s1 projection, unprepared, on screen.
+    act(() => {
+      appStore.set({ overrides: { 'production.price': -1 } });
+      actions.setScenario('s1-as-reported');
+      actions.setVariant('prepared');
+    });
+    expect(appStore.get().issues).not.toEqual([]);
+    expect(appStore.get().spec).toEqual({ kind: 'register', scenarioId: 's1-as-reported' });
+    expect(screen.getByText('Hosted ERP lost: what if the workarounds ran out')).toBeTruthy();
+    expect(screen.getByText('Projection')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Unprepared' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Prepared' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('the variant toggle is disabled during the guided run', () => {
+    actions.startGuided();
+    render(<TopBar />);
+    const prepared = screen.getByRole('button', { name: 'Prepared' }) as HTMLButtonElement;
+    expect(prepared.disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Unprepared' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(prepared);
+    expect(appStore.get().variant).toBe('unprepared');
+    act(() => actions.enterFreePlay());
+    expect(prepared.disabled).toBe(false);
+  });
+
   test('a free-play run is titled "Your scenario"', () => {
     actions.enterFreePlay();
     actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 2 });
