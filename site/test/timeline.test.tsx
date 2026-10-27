@@ -19,6 +19,18 @@ afterEach(() => {
 const slider = () => screen.getByRole('slider', { name: 'Timeline' });
 const ticks = (root: HTMLElement) => root.querySelectorAll('[data-tick]').length;
 
+/** A hand-cranked requestAnimationFrame: `frame(ms)` runs the queued callbacks at time `ms`. */
+function stubFrames() {
+  let queue: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => queue.push(cb));
+  vi.stubGlobal('cancelAnimationFrame', () => (queue = []));
+  return (ms: number) => {
+    const run = queue;
+    queue = [];
+    act(() => run.forEach((cb) => cb(ms)));
+  };
+}
+
 describe('Timeline', () => {
   test('axis uses the scenario horizon', () => {
     const { container } = render(<Timeline />);
@@ -71,6 +83,7 @@ describe('Timeline', () => {
   });
 
   test('scenario change resets the clock on screen', () => {
+    stubFrames();
     render(<Timeline />);
     act(() => actions.setClock({ hour: 200, playing: true }));
     expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
@@ -80,6 +93,7 @@ describe('Timeline', () => {
   });
 
   test('play, pause and speed controls drive the clock', async () => {
+    stubFrames();
     const user = userEvent.setup();
     render(<Timeline />);
     await user.click(screen.getByRole('button', { name: 'Play' }));
@@ -93,6 +107,7 @@ describe('Timeline', () => {
   });
 
   test('play at the horizon starts again from hour 0', async () => {
+    stubFrames();
     const user = userEvent.setup();
     render(<Timeline />);
     act(() => actions.setClock({ hour: 384 }));
@@ -125,18 +140,6 @@ describe('usePlayback', () => {
   function Player() {
     usePlayback();
     return null;
-  }
-
-  /** A hand-cranked requestAnimationFrame: `frame(ms)` runs the queued callbacks at time `ms`. */
-  function stubFrames() {
-    let queue: FrameRequestCallback[] = [];
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => queue.push(cb));
-    vi.stubGlobal('cancelAnimationFrame', () => (queue = []));
-    return (ms: number) => {
-      const run = queue;
-      queue = [];
-      act(() => run.forEach((cb) => cb(ms)));
-    };
   }
 
   test('advances the clock while playing, throttled to about 30 ms', () => {
