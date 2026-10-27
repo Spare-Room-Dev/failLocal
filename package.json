@@ -3,11 +3,11 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "workspaces": ["engine"],
+  "workspaces": ["engine", "site"],
   "engines": { "node": ">=22" },
   "scripts": {
-    "test": "npm test -w engine",
-    "typecheck": "tsc --noEmit -p engine",
+    "test": "npm test -w engine && npm test -w site",
+    "typecheck": "tsc --noEmit -p engine && tsc --noEmit -p site",
     "cli": "tsx engine/src/cli.ts"
   }
 }

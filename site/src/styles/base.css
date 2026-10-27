@@ -1,0 +1,39 @@
+html {
+  background: var(--gallery-floor);
+  scrollbar-color: var(--line-2) var(--gallery-floor);
+}
+
+body {
+  margin: 0;
+  background: var(--gallery-floor);
+  color: var(--ink);
+  font-family: 'Archivo Variable', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--hivis);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gallery-floor);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border: 2px solid var(--gallery-floor);
+  border-radius: 999px;
+}

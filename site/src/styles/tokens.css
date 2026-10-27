@@ -1,0 +1,38 @@
+/* Colour tokens: the colors map in DESIGN.md front matter, one custom property per key. */
+:root {
+  --ink: #1d1a17;
+  --ink-2: #554e47;
+  --ink-3: #6c645c;
+  --paper: #faf8f4;
+  --paper-2: #f3efe8;
+  --gallery-floor: #ebe6de;
+  --line: #d8d0c4;
+  --line-2: #c4bbad;
+  --computed-fill: #efe9df;
+  --state-wash: #fbf6ea;
+  --cut-wash: #f6f1ea;
+  --meter-track: #e4ddd2;
+  --stop-red: #b3261e;
+  --stop-red-text: #9d1f18;
+  --degraded-amber: #d4940a;
+  --hivis: #f2b01e;
+  --hivis-pressed: #e09d0c;
+  --hivis-parked: #bfae86;
+  --oxide-low: #9a3f24;
+  --oxide-high: #bf6a36;
+  --ironstone-low: #57302a;
+  --ironstone-high: #7d4630;
+  --spinifex-low: #8e9a6c;
+  --spinifex-high: #a9ad7d;
+  --galvanised: #d9d5cc;
+  --roof-steel: #a6abae;
+  --haul-road: #c79c74;
+  --ore-load: #9a4224;
+  --wagon-dark: #3d3532;
+  --plinth: #3b3632;
+  --plate-engraving: #cfc6bb;
+  --shade-dark: #2a1a20;
+  --shade-lite: #fff4e0;
+  --cast-shadow: #3b160b;
+  --hatch-ink: #1c1916;
+}
