@@ -29,3 +29,8 @@ test('measured is rejected unless the field allows it', () => {
 test('toHours converts days', () => {
   expect(toHours({ value: 1.5, unit: 'days', provenance: { kind: 'assumed', reasoning: 'r' } })).toBe(36);
 });
+
+test('zod runs jitless, so parsing never needs eval under the site CSP', async () => {
+  const { z } = await import('zod');
+  expect(z.config().jitless).toBe(true);
+});

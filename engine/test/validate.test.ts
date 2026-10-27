@@ -484,3 +484,77 @@ describe('post-restore hold and reconcile', () => {
     expect(o.processes[0]!.dependsOn[0]!.afterRestore!.holdFor.value).toBe(12);
   });
 });
+
+describe('shape guarantees (zod 4)', () => {
+  const MEASURED = 'measured provenance is not allowed here (spec §5.3): lab measurements are not real-world durations';
+
+  test('every quantity is strict: an unknown key is rejected on the quantity path', () => {
+    const r: any = minimalRegister();
+    r.stocks[0].initial.extra = 1;
+    const issues = issuesOf(r);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatch(/^stocks\.diesel\.initial: Unrecognized key.*\bextra\b/);
+  });
+
+  test('measured provenance is rejected with the §5.3 message on provenance.kind', () => {
+    const r: any = minimalRegister();
+    r.stocks[0].initial.provenance = measured;
+    expect(issuesOf(r)).toEqual([`stocks.diesel.initial.provenance.kind: ${MEASURED}`]);
+  });
+
+  test('RegisterError collects every issue, including §5.3 next to other shape errors', () => {
+    const r: any = minimalRegister();
+    r.stocks[0].initial.provenance = measured;
+    r.stocks[0].initial.extra = 1;
+    r.stocks[1].capacity.value = -1;
+    r.production.degradedOutput.value = 1.5;
+    const issues = issuesOf(r);
+    expect(issues).toHaveLength(4);
+    expect(issues).toContain(`stocks.diesel.initial.provenance.kind: ${MEASURED}`);
+    expect(issues.some((i) => i.startsWith('stocks.diesel.initial: Unrecognized key'))).toBe(true);
+    expect(issues.some((i) => i.startsWith('stocks.ore.capacity.value: '))).toBe(true);
+    expect(issues).toContain('production.degradedOutput.value: a fraction must be at most 1');
+  });
+
+  test('zod issue paths are id-keyed, by index only when the id is not path-safe', () => {
+    const r: any = minimalRegister();
+    r.processes[0].dependsOn[0].onLoss = 'never';
+    r.stocks[1].id = 'Bad.Id';
+    r.stocks[1].initial.value = -1;
+    const issues = issuesOf(r);
+    expect(issues.some((i) => i.startsWith('processes.ordering.dependsOn.erp.onLoss: '))).toBe(true);
+    expect(issues.some((i) => i.startsWith('stocks[1].id: id must be lowercase'))).toBe(true);
+    expect(issues.some((i) => i.startsWith('stocks[1].initial.value: '))).toBe(true);
+  });
+
+  test('bounds: non-negative, fraction at most 1, horizon in (0, 400], positive restoreAfter and downFor', () => {
+    const at = (edit: (r: any) => void) => {
+      const r: any = minimalRegister();
+      edit(r);
+      return issuesOf(r);
+    };
+    expect(at((r) => (r.production.price.value = -1))).toEqual([expect.stringMatching(/^production\.price\.value: /)]);
+    expect(at((r) => (r.production.degradedOutput.value = 1.01))).toEqual([
+      'production.degradedOutput.value: a fraction must be at most 1',
+    ]);
+    for (const v of [0, 400.5]) {
+      expect(at((r) => (r.scenarios[0].horizon.value = v))).toEqual([
+        'scenarios.cut-erp.horizon.value: horizon must be more than 0 and at most 400 days',
+      ]);
+    }
+    const r400: any = minimalRegister();
+    r400.scenarios[0].horizon.value = 400;
+    expect(() => parseRegister(r400)).not.toThrow();
+    expect(at((r) => (r.scenarios[0].events[0].restoreAfter.value = 0))).toEqual([
+      'scenarios.cut-erp.events[0].restoreAfter.value: must be more than 0 hours',
+    ]);
+    const compromise = (downFor: number) => (r: any) => {
+      r.services.push({ id: 'vendor', name: 'V', provider: 't', hosting: 't', kind: 'vendor-access' });
+      r.scenarios[0].events.push({ kind: 'compromise', via: 'vendor', target: 'plc', at: q(0, 'hours'), downFor: q(downFor, 'hours') });
+    };
+    expect(at(compromise(0))).toEqual(['scenarios.cut-erp.events[1].downFor.value: must be more than 0 hours']);
+    const ok: any = minimalRegister();
+    compromise(1)(ok);
+    expect(() => parseRegister(ok)).not.toThrow();
+  });
+});

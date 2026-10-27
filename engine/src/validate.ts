@@ -31,13 +31,13 @@ function entryKey(item: unknown, i: number): string {
 }
 
 /** The id-keyed path of a zod issue, read against the `input` that was parsed. */
-function issuePath(input: unknown, path: (string | number)[], prefix: string): string {
+function issuePath(input: unknown, path: PropertyKey[], prefix: string): string {
   let where = prefix;
   let node = input;
   for (const p of path) {
     if (typeof p === 'number') where += Array.isArray(node) ? entryKey(node[p], p) : `[${p}]`;
-    else where = where ? `${where}.${p}` : p;
-    node = node && typeof node === 'object' ? (node as Record<string | number, unknown>)[p] : undefined;
+    else where = where ? `${where}.${String(p)}` : String(p);
+    node = node && typeof node === 'object' ? (node as Record<PropertyKey, unknown>)[p] : undefined;
   }
   return where;
 }

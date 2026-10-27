@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Parse without `new Function`: the site's CSP has no 'unsafe-eval', and zod's eval probe alone reports a violation.
+z.config({ jitless: true });
+
 export type Provenance =
   | { kind: 'sourced'; source: string; note?: string } // source = sources[].id
   | { kind: 'measured'; runId: string; date: string; evidence: string } // date = ISO yyyy-mm-dd
@@ -49,7 +52,7 @@ export function quantity<U extends Unit>(unit: U, opts: { allowMeasured?: boolea
     .strict()
     .superRefine((q, ctx) => {
       if (q.provenance.kind === 'measured' && !opts.allowMeasured) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['provenance', 'kind'], message: MEASURED_DISALLOWED });
+        ctx.addIssue({ code: 'custom', path: ['provenance', 'kind'], message: MEASURED_DISALLOWED });
       }
     }) as z.ZodType<Quantity<U>>;
 }

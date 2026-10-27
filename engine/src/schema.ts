@@ -16,7 +16,7 @@ void _unitsAreExhaustive;
 
 /** A quantity whose value must also pass `ok`. The issue is reported on its `value`. */
 function bounded<U extends Unit>(q: z.ZodType<Quantity<U>>, ok: (value: number) => boolean, message: string) {
-  return q.refine((x) => ok(x.value), { message, path: ['value'] });
+  return q.refine((x) => ok(x.value), { error: message, path: ['value'] });
 }
 
 /** The longest scenario a run will simulate: 400 days of hourly samples. */
