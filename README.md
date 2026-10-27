@@ -21,5 +21,18 @@ npm run cli -- pack register/pilbara-model-site.yaml --out out/continuity-pack.m
 - `pack` writes the continuity pack as Markdown. PDF output comes later.
 - A usage error (an unknown command, a missing argument or option value) prints the usage and exits 2.
 
+## Website
+
+`site/` is the playable website, a static Vite + React app.
+
+```sh
+npm run dev -w site     # local dev server
+npm run build -w site   # build to site/dist, then run the build guard (scripts/check-build.mjs)
+npm run e2e -w site     # build, preview under the deployed headers, and run the Playwright checks
+```
+
+The build guard fails the build on inline script or style in `index.html`, on any URL other than the register's sources (and a short list of library namespace strings), and on more than 300 KB of gzipped JS.
+Deployment is the static `site/dist` folder on Cloudflare Pages; `site/public/_headers` is copied into it and sets the Content-Security-Policy and other security headers for every path.
+
 Every judgement and assumed value in the register is explained in [docs/decisions.md](docs/decisions.md).
 Licensed under Apache-2.0.

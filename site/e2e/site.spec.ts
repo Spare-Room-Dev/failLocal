@@ -211,3 +211,26 @@ test('phone layout', async ({ page }, info) => {
   expect(overflowing).toEqual([]);
   await page.screenshot({ path: info.outputPath('phone-390x844.png'), fullPage: true });
 });
+
+test('the site runs under the deployed CSP', async ({ page }) => {
+  // Listen before any page script runs, so violations during module evaluation and first paint count too.
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __cspViolations: string[] }).__cspViolations = seen;
+    document.addEventListener('securitypolicyviolation', (e) => seen.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  const violations = () => page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+
+  const response = await page.goto('/?e2e#/');
+  // `vite preview` serves public/_headers; without the header, no violations would prove nothing.
+  expect(response!.headers()['content-security-policy']).toContain("script-src 'self'");
+  await expect(page.getByRole('button', { name: 'Show me the site' })).toBeVisible();
+  expect(await violations()).toEqual([]);
+
+  await open(page, '#/site');
+  const card = page.locator('[data-service-group="cloud-identity"]');
+  await card.getByRole('button', { name: /^Cut / }).click();
+  await expect(card).toHaveAttribute('data-cut', 'true');
+  await scrubToDay(page, 6);
+  expect(await violations()).toEqual([]);
+});
