@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { gzipSync } from 'node:zlib';
-import { JS_BUDGET_BYTES, allowedUrls, checkIndexHtml, checkJsBudget, findDisallowedUrls, gzippedJsBytes } from '../scripts/check-build.mjs';
+import { JS_BUDGET_BYTES, allowedUrls, checkIndexHtml, checkJsBudget, findDisallowedUrls, gzippedJsBytes, isAllowedUrl } from '../scripts/check-build.mjs';
 import { parseHeaders } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
@@ -67,6 +67,34 @@ describe('check-build', () => {
       { file: 'assets/index.css', url: 'http://fonts.example.com/face.css' },
       { file: 'assets/index.js', url: 'https://tracker.example.net/pixel.gif' },
       { file: 'assets/index.js', url: 'https://example.org/report.pdf' },
+    ]);
+  });
+
+  test('zod 4 JSON Schema dialect URIs are allowed exactly, near misses are not', () => {
+    const allowed = allowedUrls(REGISTER);
+    for (const url of [
+      'https://json-schema.org/draft/2020-12/schema',
+      'http://json-schema.org/draft-07/schema#',
+      'http://json-schema.org/draft-04/schema#',
+    ]) {
+      expect(isAllowedUrl(url, allowed)).toBe(true);
+    }
+    expect(isAllowedUrl('https://json-schema.org/draft/2020-12/schema/../x', allowed)).toBe(false);
+  });
+
+  test('only a bare template-literal host like http://[${e}] is allowed as a pattern', () => {
+    const allowed = allowedUrls(REGISTER);
+    expect(isAllowedUrl('http://[${e}]', allowed)).toBe(true);
+    expect(isAllowedUrl('http://[${abc}]', allowed)).toBe(true);
+    for (const url of ['http://[::1]', 'http://[${e}]/x', 'https://evil.example/[${e}]']) {
+      expect(isAllowedUrl(url, allowed)).toBe(false);
+    }
+    const dist = fixtureDist({
+      'assets/index.js': 'const a = `http://[${e}]`; const b = "http://[::1]"; const c = `http://[${e}]/x`;',
+    });
+    expect(findDisallowedUrls(dist, allowed)).toEqual([
+      { file: 'assets/index.js', url: 'http://[::1]' },
+      { file: 'assets/index.js', url: 'http://[${e}]/x' },
     ]);
   });
 

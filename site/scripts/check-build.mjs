@@ -28,7 +28,29 @@ export const EXTRA_ALLOWED_URLS = [
   // Temporary: the Limits page's decision-log link, a placeholder until the repo is public
   // (owner gate 5). Replace this entry with the real URL when the link is filled in.
   'https://github.com/[owner]/faillocal/blob/main/docs/decisions.md',
+  // zod 4 JSON Schema dialect identifier, never fetched.
+  'https://json-schema.org/draft/2020-12/schema',
+  // zod 4 JSON Schema dialect identifier, never fetched.
+  'http://json-schema.org/draft-07/schema#',
+  // zod 4 JSON Schema dialect identifier, never fetched.
+  'http://json-schema.org/draft-04/schema#',
 ];
+
+/**
+ * The one pattern exception: zod 4's IPv6 check builds `http://[${host}]` at runtime; the minifier
+ * renames the variable; never a fetchable URL. Every other URL must match the allow-list exactly.
+ */
+const TEMPLATE_HOST_URL = /^https?:\/\/\[\$\{[A-Za-z_$][\w$]*\}\]$/;
+
+/**
+ * Whether `url` is on the allow-list, or is the bare template-literal host artefact above.
+ * @param {string} url
+ * @param {Set<string>} allowed
+ * @returns {boolean}
+ */
+export function isAllowedUrl(url, allowed) {
+  return allowed.has(url) || TEMPLATE_HOST_URL.test(url);
+}
 
 const URL_PATTERN = /https?:\/\/[^\s"'`<>\\)]+/g;
 const BINARY_EXTENSIONS = new Set(['.woff2', '.woff', '.ttf', '.otf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.ico', '.pdf', '.wasm']);
@@ -76,7 +98,7 @@ function listFiles(dir) {
 }
 
 /**
- * Each http(s) URL in a text file under `distDir` that is not exactly on the allow-list.
+ * Each http(s) URL in a text file under `distDir` that `isAllowedUrl` rejects.
  * @param {string} distDir
  * @param {Set<string>} allowed
  * @returns {{ file: string, url: string }[]}
@@ -86,7 +108,7 @@ export function findDisallowedUrls(distDir, allowed) {
   for (const file of listFiles(distDir)) {
     if (BINARY_EXTENSIONS.has(extname(file).toLowerCase())) continue;
     for (const [url] of readFileSync(join(distDir, file), 'utf8').matchAll(URL_PATTERN)) {
-      if (!allowed.has(url)) found.push({ file, url });
+      if (!isAllowedUrl(url, allowed)) found.push({ file, url });
     }
   }
   return found;
