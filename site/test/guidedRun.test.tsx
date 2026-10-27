@@ -56,6 +56,8 @@ describe('GuidedRun', () => {
     const { container } = startGuided();
     expect(screen.getByText('Draft copy')).toBeTruthy();
     expect(screen.getByText(/What really happened/)).toBeTruthy();
+    expect(section().querySelector('time[datetime="2026-05"]')?.textContent).toBe('May 2026');
+    expect(untaggedNumbers(container)).toEqual([]);
     const scenario = register.scenarios.find((s) => s.id === 's1-as-reported')!;
     expect(screen.getByRole('heading', { name: scenario.title })).toBeTruthy();
     advanceUntil(() => at() === '1');

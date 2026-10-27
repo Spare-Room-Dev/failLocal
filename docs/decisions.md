@@ -747,3 +747,9 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** Controller ruling R3. The corporate network is the lever in the precautionary isolation scenario, so it needs a card the visitor can cut, and the vendor scenario only revokes vendor A, which a single vendor status line would hide.
 - **Source / provenance:** modelling rule (site, `serviceGroups.ts`)
 - **Owner change:**
+
+## D-103 Guided steps run in hour order within each segment
+- **Decision:** Within each segment of the guided run, the steps are sorted by hour, so the clock only ever travels forward; moving between segments is a jump. Each segment's intro line is read before its first step's own caption, never in place of it.
+- **Reasoning:** On the prepared site the independent restore brings the ERP back at hour 48, before the fallback moments (fuel ordering at 72, the fleet at 276) taken from the projection. In the brief's order the clock would have had to run backward.
+- **Source / provenance:** modelling rule (site, `guided.ts`)
+- **Owner change:**

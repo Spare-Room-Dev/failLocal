@@ -85,6 +85,12 @@ describe('untaggedNumbers', () => {
     expect(untaggedNumbers(root)).toEqual(['Stock lasts 4 days', '7 trucks']);
   });
 
+  it('exempts a calendar date inside <time> (R6), but not digits beside it', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `<p><time datetime="2026-05">May 2026</time>: the ERP goes down.</p><p>Back after 12 days</p>`;
+    expect(untaggedNumbers(root)).toEqual(['Back after 12 days']);
+  });
+
   it('finds nothing untagged in a rendered Qty', () => {
     const { container } = render(<Qty value={12400} kind="tonnes" display="computed" overridden />);
     expect(untaggedNumbers(container)).toEqual([]);

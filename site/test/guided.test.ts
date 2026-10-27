@@ -69,6 +69,40 @@ describe('guidedSteps', () => {
     }
   });
 
+  test("each segment's intro comes before its first step's own caption, never in place of it", () => {
+    const steps = guidedSteps(register);
+    const projected = run(register, 's1-projection', 'unprepared');
+    const prepared = run(register, 's1-projection', 'prepared');
+    const firstProjection = steps.find((s) => s.segment === 'projection')!;
+    expect(firstProjection.caption(projected)).toEqual(['Projection: what if the workarounds ran out?', ' ', 'Fuel orders stop.']);
+    const firstPrepared = steps.find((s) => s.segment === 'prepared')!;
+    expect(firstPrepared.moment).toBe('restore');
+    expect(firstPrepared.caption(prepared)).toEqual([
+      'Same outage, prepared site: offline ordering and an independent restore keep fuel coming.',
+      ' ',
+      'The ERP is back, restored independently.',
+    ]);
+  });
+
+  test('an intro on a fallback step keeps the "did not happen" caption', () => {
+    // A slow independent restore puts the prepared ERP return after the fuel moment, so the first prepared step is a fallback.
+    const slow = structuredClone(register);
+    const control = slow.controls.find((c) => c.id === 'independent-erp-restore')!;
+    const effect = control.effects.find((e) => e.kind === 'restore')!;
+    if (effect.kind !== 'restore') throw new Error('expected a restore effect');
+    effect.duration.value = 300;
+    const steps = guidedSteps(slow);
+    const first = steps.find((s) => s.segment === 'prepared')!;
+    const prepared = run(slow, 's1-projection', 'prepared');
+    expect(prepared.events.some((e) => e.kind === 'process-state' && e.subject === 'diesel-ordering' && e.to === 'stopped')).toBe(false);
+    expect(first.moment).toBe('fuel-stops');
+    expect(first.caption(prepared)).toEqual([
+      'Same outage, prepared site: offline ordering and an independent restore keep fuel coming.',
+      ' ',
+      'Fuel orders keep going.',
+    ]);
+  });
+
   test('the 12 days comes from the sourced restore', () => {
     const steps = guidedSteps(register);
     const reported = run(register, 's1-as-reported', 'unprepared');

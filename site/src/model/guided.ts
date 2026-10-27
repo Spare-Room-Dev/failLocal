@@ -92,14 +92,15 @@ const CAPTIONS = {
     ];
   },
   projection: {
-    'fuel-stops': text('Projection: what if the workarounds ran out? Fuel orders stop.'),
+    intro: 'Projection: what if the workarounds ran out?',
+    'fuel-stops': text('Fuel orders stop.'),
     'fleet-parks': text('The fuel farm runs dry. The fleet parks.'),
     restore: text('The ERP returns, but orders are held while transactions are reconciled.'),
     'trains-slow': text('The stockpile runs low. Trains slow.'),
     total: totalCaption('By the end of the projection: '),
   },
   prepared: {
-    intro: text('Same outage, prepared site: offline ordering and an independent restore keep fuel coming.'),
+    intro: 'Same outage, prepared site: offline ordering and an independent restore keep fuel coming.',
     'fuel-stops': text('Fuel orders keep going.'),
     'fleet-parks': text('The fleet keeps running.'),
     restore: text('The ERP is back, restored independently.'),
@@ -109,8 +110,10 @@ const CAPTIONS = {
 };
 
 /** Captions for the prepared moments that did happen there. */
-const PREPARED_HAPPENED: Record<Exclude<Moment, 'start'>, (t: Timeline) => CaptionParts> = {
-  ...CAPTIONS.projection,
+const PREPARED_HAPPENED: Record<ProjectionMoment, (t: Timeline) => CaptionParts> = {
+  'fuel-stops': CAPTIONS.projection['fuel-stops'],
+  'fleet-parks': CAPTIONS.projection['fleet-parks'],
+  'trains-slow': CAPTIONS.projection['trains-slow'],
   restore: CAPTIONS.prepared.restore,
   total: CAPTIONS.prepared.total,
 };
@@ -118,6 +121,13 @@ const PREPARED_HAPPENED: Record<Exclude<Moment, 'start'>, (t: Timeline) => Capti
 const PROJECTION_MOMENTS = ['fuel-stops', 'fleet-parks', 'restore', 'trains-slow', 'total'] as const;
 type ProjectionMoment = (typeof PROJECTION_MOMENTS)[number];
 const byHour = (a: GuidedStep, b: GuidedStep) => a.hour - b.hour;
+
+/** The segment sorted by hour, with `intro` read before its first step's own caption. */
+function introduced(segment: GuidedStep[], intro: string): GuidedStep[] {
+  const [first, ...rest] = [...segment].sort(byHour);
+  const own = first!.caption;
+  return [{ ...first!, caption: (t) => [intro, ' ', ...own(t)] }, ...rest];
+}
 
 /**
  * The guided run's steps, in order. Every hour is found in that segment's own computed run, so a
@@ -151,16 +161,13 @@ export function guidedSteps(r: Register): GuidedStep[] {
     caption: CAPTIONS.projection[moment],
   }));
 
-  const segment3: GuidedStep[] = PROJECTION_MOMENTS
-    .map((moment) => {
-      const hour = findHour(prepared, moment);
-      const caption = hour === undefined ? CAPTIONS.prepared[moment] : PREPARED_HAPPENED[moment];
-      return { segment: 'prepared' as const, moment, scenarioId: PROJECTION, variant: 'prepared' as const, hour: hour ?? asOf(moment), caption };
-    })
-    .sort(byHour);
-  segment3[0] = { ...segment3[0]!, caption: CAPTIONS.prepared.intro };
+  const segment3: GuidedStep[] = PROJECTION_MOMENTS.map((moment) => {
+    const hour = findHour(prepared, moment);
+    const caption = hour === undefined ? CAPTIONS.prepared[moment] : PREPARED_HAPPENED[moment];
+    return { segment: 'prepared', moment, scenarioId: PROJECTION, variant: 'prepared', hour: hour ?? asOf(moment), caption };
+  });
 
-  return [...segment1, ...segment2.sort(byHour), ...segment3];
+  return [...segment1, ...introduced(segment2, CAPTIONS.projection.intro), ...introduced(segment3, CAPTIONS.prepared.intro)];
 }
 
 /** Hours the clock travels from `from` to `to`: forward within one segment, otherwise a jump (zero). */

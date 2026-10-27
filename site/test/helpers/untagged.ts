@@ -1,4 +1,5 @@
-const EXEMPT = '[data-quantity], [data-clock], script, style, [aria-hidden="true"][data-decorative]';
+/** Quantities, clock values, calendar dates in `<time>` (R6), and non-text content. */
+const EXEMPT = '[data-quantity], [data-clock], time, script, style, [aria-hidden="true"][data-decorative]';
 
 /** Digit-containing text runs under `root` that no `<Qty>` or clock owns: each is an untagged number. */
 export function untaggedNumbers(root: HTMLElement): string[] {
