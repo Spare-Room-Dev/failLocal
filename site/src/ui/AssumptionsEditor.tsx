@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useId, useSyncExternalStore } from 'react';
 import type { Timeline, Unit, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
 import { register } from '../model/register.js';
@@ -72,10 +72,9 @@ function controlLabel(controlId: string, effectIndex: number): string {
 
 /**
  * The editor row for `path`, or null when the editor does not offer it. Workaround durations are
- * offered only for services the run takes down or revokes; control durations reach `assumptionsUsed`
- * only on a prepared run.
+ * offered only for services the run takes down or revokes, and control durations only on a prepared run.
  */
-function rowFor(path: string, used: UsedInput, touched: Set<string>): Row | null {
+function rowFor(path: string, used: UsedInput, touched: Set<string>, prepared: boolean): Row | null {
   let m: RegExpExecArray | null;
   const row = (group: Group, label: string): Row => ({ path, group, label, used });
   if ((m = /^production\.(\w+)$/.exec(path))) return row('Production', productionLabel(m[1]!));
@@ -85,7 +84,8 @@ function rowFor(path: string, used: UsedInput, touched: Set<string>): Row | null
     return row('Purchasing hold', `${processName(m[1]!)}: held after ${targetName(m[2]!)} returns`);
   if ((m = /^processes\.([^.]+)\.dependsOn\.([^.]+)\.manualWorkaround\.holdsFor$/.exec(path)))
     return touched.has(m[2]!) ? row('Workarounds', `${processName(m[1]!)}: workaround without ${targetName(m[2]!)}`) : null;
-  if ((m = /^controls\.([^.]+)\.effects\[(\d+)\]\.(duration|delay)$/.exec(path))) return row('Controls', controlLabel(m[1]!, Number(m[2])));
+  if ((m = /^controls\.([^.]+)\.effects\[(\d+)\]\.(duration|delay)$/.exec(path)))
+    return prepared ? row('Controls', controlLabel(m[1]!, Number(m[2]))) : null;
   if ((m = /^processes\.([^.]+)\.continuity\.(\w+)$/.exec(path)))
     return row('Continuity', `${processName(m[1]!)}: ${CONTINUITY_FIELDS[m[2]!]}`);
   return null;
@@ -102,6 +102,17 @@ function names(issue: string, path: string): boolean {
   return at >= 0 && !/[\w\-[]/.test(issue.charAt(at + path.length));
 }
 
+/**
+ * An engine issue on `path` as the visitor reads it: the leading path (and its `.value`) becomes the
+ * row's label, so "production.price.value: Number must be…" reads "Ore price: must be…". An issue that
+ * does not start with the path is left as it is.
+ */
+function issueText(issue: string, path: string, label: string): string {
+  if (!issue.startsWith(path)) return issue;
+  const rest = issue.slice(path.length).replace(/^\.value/, '').replace(/^:\s*(Number\s+)?/, '');
+  return `${label}: ${rest}`;
+}
+
 interface RowProps {
   row: Row;
   override: number | undefined;
@@ -114,6 +125,7 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
   const unit = UNITS[used.unit];
   if (!unit) throw new Error(`the editor has no format for ${used.unit} (${path})`);
   const [draft, setDraft] = useDraft(override ?? used.value);
+  const issueId = useId();
 
   return (
     <div className="editor-row" data-path={path}>
@@ -126,6 +138,7 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
           step={unit.step}
           value={draft}
           aria-invalid={issues.length > 0}
+          aria-describedby={issues.length > 0 ? issueId : undefined}
           onChange={(e) => {
             setDraft(e.target.value);
             const value = parseDraft(e.target.value);
@@ -142,8 +155,8 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
         </button>
       )}
       {issues.length > 0 && (
-        <p className="editor-issue" role="alert">
-          {issues.join(' ')}
+        <p id={issueId} className="editor-issue" role="alert" data-message data-path={path}>
+          {issues.map((issue) => issueText(issue, path, label)).join(' ')}
         </p>
       )}
     </div>
@@ -177,7 +190,7 @@ export function AssumptionsEditor() {
   if (!desktop) return <p className="editor-phone-note">{PHONE_NOTE}</p>;
 
   const touched = touchedServices(timeline);
-  const rows = Object.entries(timeline.assumptionsUsed).flatMap(([path, used]) => rowFor(path, used, touched) ?? []);
+  const rows = Object.entries(timeline.assumptionsUsed).flatMap(([path, used]) => rowFor(path, used, touched, timeline.variant === 'prepared') ?? []);
   const sources = Object.fromEntries(register.sources.map((s) => [s.id, s.title]));
   const unplaced = issues.filter((issue) => !rows.some((r) => names(issue, r.path)));
 
@@ -190,7 +203,7 @@ export function AssumptionsEditor() {
         </button>
       </div>
       {unplaced.length > 0 && (
-        <ul className="editor-issue" role="alert">
+        <ul className="editor-issue" role="alert" data-message>
           {unplaced.map((issue) => (
             <li key={issue}>{issue}</li>
           ))}

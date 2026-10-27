@@ -91,6 +91,12 @@ describe('untaggedNumbers', () => {
     expect(untaggedNumbers(root)).toEqual(['Back after 12 days']);
   });
 
+  it('exempts message text inside data-message (R7), but not digits beside it', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `<p data-message role="alert">Price: must be at least 0</p><p>Cut for 3 days</p>`;
+    expect(untaggedNumbers(root)).toEqual(['Cut for 3 days']);
+  });
+
   it('finds nothing untagged in a rendered Qty', () => {
     const { container } = render(<Qty value={12400} kind="tonnes" display="computed" overridden />);
     expect(untaggedNumbers(container)).toEqual([]);

@@ -6,9 +6,12 @@ describe('formatQty', () => {
   const rows: [number, QtyKind, string][] = [
     [1.4, 'days', '1.4 days'],
     [1, 'days', '1 day'],
-    [0.4, 'days', '0.4 days'],
+    [0.4, 'days', '0.40 days'],
+    [0.125, 'days', '0.13 days'],
     [24, 'hours', '24 hours'],
     [1, 'hours', '1 hour'],
+    [0.5, 'hours', '0.5 hours'],
+    [1.5, 'hours', '1.5 hours'],
     [12400, 'tonnes', '12,400 t'],
     [950000, 'usd', 'US$950,000'],
     [6_000_000, 'usd', 'US$6.0 M'],

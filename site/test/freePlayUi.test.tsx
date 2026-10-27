@@ -92,10 +92,29 @@ describe('FreePlay', () => {
     expect(freeCuts()[1]).toEqual({ service: 'iroc-link', atDays: 398, forDays: 2 });
   });
 
+  test('a rejected day says why, through aria-describedby', () => {
+    act(() => actions.addCut({ service: 'iroc-link', atDays: 10, forDays: 2 }));
+    const { container } = render(<FreePlay />);
+    const row = cutRows()[1]!;
+    const described = (field: HTMLInputElement) => {
+      const id = field.getAttribute('aria-describedby');
+      return id ? document.getElementById(id) : null;
+    };
+    expect(described(startInput(row))).toBeNull();
+    fireEvent.change(startInput(row), { target: { value: '' } });
+    expect(described(startInput(row))?.textContent).toBe('Start day must be between 0 and 398');
+    expect(startInput(row).getAttribute('aria-invalid')).toBe('true');
+    fireEvent.change(lengthInput(row), { target: { value: '0' } });
+    expect(described(lengthInput(row))?.textContent).toBe('Days cut must be between 1 and 390');
+    expect(untaggedNumbers(container)).toEqual([]);
+    fireEvent.change(startInput(row), { target: { value: '3' } });
+    expect(described(startInput(row))).toBeNull();
+  });
+
   test('remove drops the cut', () => {
     act(() => actions.addCut({ service: 'iroc-link', atDays: 1, forDays: 2 }));
     render(<FreePlay />);
-    fireEvent.click(within(cutRows()[0]!).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(cutRows()[0]!).getByRole('button', { name: 'Remove Hosted ERP cut' }));
     expect(freeCuts()).toEqual([{ service: 'iroc-link', atDays: 1, forDays: 2 }]);
     expect(cutRows()).toHaveLength(1);
   });

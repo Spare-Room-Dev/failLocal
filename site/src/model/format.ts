@@ -7,11 +7,12 @@ const oneDecimal = (value: number): string => value.toFixed(1);
 export function formatQty(value: number, kind: QtyKind): string {
   switch (kind) {
     case 'days':
-      return value === 1 ? '1 day' : `${oneDecimal(value)} days`;
-    case 'hours': {
-      const whole = Math.round(value);
-      return whole === 1 ? '1 hour' : `${whole} hours`;
-    }
+      if (value === 1) return '1 day';
+      // Below a day, one decimal hides too much (a 0.125-day threshold would read 0.1).
+      return `${value < 1 ? value.toFixed(2) : oneDecimal(value)} days`;
+    case 'hours':
+      if (value === 1) return '1 hour';
+      return `${Number.isInteger(value) ? value : oneDecimal(value)} hours`;
     case 'tonnes':
       return `${grouped.format(value)} t`;
     case 'usd':

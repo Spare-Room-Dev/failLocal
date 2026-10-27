@@ -55,11 +55,18 @@ describe('AssumptionsEditor', () => {
     const price = formatQty(register.production.price.value, 'usdPerT');
     fireEvent.change(input('production.price'), { target: { value: '-1' } });
     expect(appStore.get().lastGood).toBe(good);
-    expect(within(row('production.price')).getByRole('alert').textContent).toMatch(/price/);
+    const alert = within(row('production.price')).getByRole('alert');
+    expect(alert.textContent).toMatch(/^Ore price: .*0/);
+    expect(alert.textContent).not.toContain('production.price');
+    expect(alert.getAttribute('data-path')).toBe('production.price');
+    expect(alert.hasAttribute('data-message')).toBe(true);
+    expect(document.getElementById(input('production.price').getAttribute('aria-describedby')!)).toBe(alert);
+    expect(untaggedNumbers(editor())).toEqual([]);
     expect(qtyTags(working(), price)).toEqual(['sourced']);
     expect(qtyTags(row('production.price'), price)).toEqual(['sourced']);
     fireEvent.change(input('production.price'), { target: { value: '120' } });
     expect(within(row('production.price')).queryByRole('alert')).toBeNull();
+    expect(input('production.price').hasAttribute('aria-describedby')).toBe(false);
     expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['sourced', 'changed by you']);
   });
 

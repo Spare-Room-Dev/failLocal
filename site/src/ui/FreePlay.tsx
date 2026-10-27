@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { FREE_PLAY_ID, scenarioAsFree } from '../model/freePlay.js';
 import type { FreeCut } from '../model/freePlay.js';
 import { register } from '../model/register.js';
@@ -32,27 +33,37 @@ interface DayInputProps {
   onCommit: (days: number) => void;
 }
 
-/** A day count. Typing keeps its own text; only a finite value within [min, max] reaches the store. */
+/** A day count. Typing keeps its own text; only a finite value within [min, max] reaches the store, and any other says why. */
 function DayInput({ label, value, min, max, onCommit }: DayInputProps) {
   const [draft, setDraft] = useDraft(value);
+  const messageId = useId();
   const inRange = (days: number) => Number.isFinite(days) && days >= min && days <= max;
+  const valid = inRange(parseDraft(draft));
   return (
-    <label className="free-cut-field">
-      <span>{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={1}
-        value={draft}
-        aria-invalid={!inRange(parseDraft(draft))}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          const days = parseDraft(e.target.value);
-          if (inRange(days)) onCommit(days);
-        }}
-      />
-    </label>
+    <div className="free-cut-field">
+      <label className="free-cut-label">
+        <span>{label}</span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={1}
+          value={draft}
+          aria-invalid={!valid}
+          aria-describedby={valid ? undefined : messageId}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            const days = parseDraft(e.target.value);
+            if (inRange(days)) onCommit(days);
+          }}
+        />
+      </label>
+      {!valid && (
+        <span id={messageId} className="free-cut-message" data-message>
+          {label} must be between {min} and {max}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -75,7 +86,7 @@ function CutRow({ cut, index }: { cut: FreeCut; index: number }) {
         max={MAX_DAYS - cut.atDays}
         onCommit={(forDays) => actions.updateCut(index, { forDays })}
       />
-      <button type="button" className="free-cut-remove" onClick={() => actions.removeCut(index)}>
+      <button type="button" className="free-cut-remove" aria-label={`Remove ${label} cut`} onClick={() => actions.removeCut(index)}>
         Remove
       </button>
     </div>

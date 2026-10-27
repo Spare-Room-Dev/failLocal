@@ -10,7 +10,7 @@
 }
 
 .free-play-picker,
-.free-cut-field {
+.free-cut-label {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -34,6 +34,17 @@
 
 .free-play input[aria-invalid='true'] {
   border-color: var(--stop-red);
+}
+
+.free-cut-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.free-cut-message {
+  max-width: 120px;
+  color: var(--stop-red-text);
 }
 
 .free-play-note {
