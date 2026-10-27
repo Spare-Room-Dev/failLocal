@@ -87,7 +87,8 @@
  *   and `access-revoked`; then service events; then asset events; then `stock-low` and
  *   `stock-empty`; then `process-state`, with processes in dependency order.
  * - `assumptionsUsed` records each input quantity the run read, by its id-keyed path: the
- *   scenario's own quantities, every stock and production input, every manual workaround's
+ *   scenario's own quantities, every stock and production input, every process's continuity
+ *   targets (`maxTolerableOutage`, `recoveryTarget`, which the UI shows), every manual workaround's
  *   `holdsFor`, and every post-restore hold's `holdFor` (in both variants, like `holdsFor`). A
  *   prepared run adds the effect durations and delays of each control whose capability works (a
  *   fallback with no delay, and a reconcile, have none); an unprepared run has no control paths.
@@ -411,7 +412,7 @@ function heldWindows(lost: Window[], holdHours: number): Window[] {
 }
 
 /**
- * The scenario's own quantities, every workaround duration, stock and production input, and the
+ * The scenario's own quantities, every workaround duration, continuity target, stock and production input, and the
  * effect durations of the applied controls, as the run used them.
  */
 function assumptionsUsed(
@@ -428,6 +429,7 @@ function assumptionsUsed(
       controlInputs.has(path) ||
       path.endsWith('.manualWorkaround.holdsFor') ||
       path.endsWith('.afterRestore.holdFor') ||
+      /^processes\.[^.]+\.continuity\./.test(path) ||
       path.startsWith('stocks.') ||
       path.startsWith('production.');
     if (read) {

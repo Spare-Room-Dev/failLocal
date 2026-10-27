@@ -26,7 +26,7 @@ describe('RevenueSection', () => {
     expect(qtyTags(working(), formatQty(price.value, 'usdPerT'))).toEqual(['sourced']);
     expect(qtyTags(working(), formatQty(annualTonnes.value, 'mtpa'))).toEqual(['assumed']);
     expect(qtyTags(working(), formatQty(degradedOutput.value, 'fraction'))).toEqual(['assumed']);
-    expect(screen.getByText('Revenue at risk, not revenue lost: shipments can recover once the stockpile refills.')).toBeTruthy();
+    expect(screen.getByText('Revenue at risk, not written off: shipments can recover once the stockpile refills.')).toBeTruthy();
     const priceTip = within(working()).getByRole('tooltip', { hidden: true });
     expect(priceTip.textContent).toBe(register.sources.find((s) => s.id === 'worldbank-pink-sheet-oct-2026')!.title);
   });
@@ -78,6 +78,44 @@ describe('AreaPanel', () => {
     act(() => actions.setVariant('prepared'));
     const control = register.controls.find((c) => c.id === 'independent-erp-restore')!;
     expect(copy().textContent).toBe(`Yes, via ${control.name}`);
+  });
+
+  test('after a failed recompute the copy row follows the run shown, not the store variant', () => {
+    actions.select('diesel-ordering');
+    render(<DetailPanel />);
+    act(() => actions.setOverride('production.price', -3));
+    expect(appStore.get().issues).not.toEqual([]);
+    act(() => actions.setVariant('prepared'));
+    expect(appStore.get().variant).toBe('prepared');
+    expect(appStore.get().lastGood!.variant).toBe('unprepared');
+    expect(within(area()).getByTestId('independent-copy').textContent).toBe('No');
+  });
+
+  test('why-this-stops explains a post-restore hold for diesel-ordering after hosted-erp comes back', () => {
+    actions.setScenario('s1-projection');
+    const timeline = appStore.get().lastGood!;
+    const up = timeline.events.find((e) => e.kind === 'service-up' && e.subject === 'hosted-erp')!;
+    actions.setClock({ hour: up.hour + 1 });
+    actions.select('diesel-ordering');
+    render(<DetailPanel />);
+    expect(timeline.samples[up.hour + 1]!.processes['diesel-ordering']).not.toBe('normal');
+    const dep = register.processes.find((p) => p.id === 'diesel-ordering')!.dependsOn.find((d) => d.on === 'hosted-erp')!;
+    const hold = timeline.assumptionsUsed['processes.diesel-ordering.dependsOn.hosted-erp.afterRestore.holdFor']!;
+    const items = within(whyStops()).getAllByRole('listitem');
+    expect(items).toHaveLength(1);
+    expect(items[0]!.textContent).toContain(`${serviceName('hosted-erp')}: Back up — ${dep.afterRestore!.description}`);
+    expect(qtyTags(items[0]!, formatQty(hold.value, 'hours'))).toEqual([hold.provenance.kind]);
+    expect(screen.queryByText("Nothing on this process's dependencies is down at this hour.")).toBeNull();
+  });
+
+  test('continuity targets come from the run, marking an override', () => {
+    actions.select('haulage');
+    render(<DetailPanel />);
+    const continuity = () => screen.getByRole('list', { name: 'Continuity' });
+    const mto = register.processes.find((p) => p.id === 'haulage')!.continuity.maxTolerableOutage;
+    expect(qtyTags(continuity(), formatQty(mto.value, 'hours'))).toEqual([mto.provenance.kind]);
+    act(() => actions.setOverride('processes.haulage.continuity.maxTolerableOutage', 6));
+    expect(qtyTags(continuity(), formatQty(6, 'hours'))).toEqual([mto.provenance.kind, 'changed by you']);
   });
 
   test('the fleet row shows eight trucks for haulage only, parked ones marked, with no count', () => {

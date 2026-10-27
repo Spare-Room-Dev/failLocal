@@ -1,7 +1,7 @@
 import { independentCopyFor } from '@faillocal/engine';
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import type { Dependency, Process, ProcessState, Register, Sample, Timeline, Variant } from '@faillocal/engine';
+import type { Dependency, Process, ProcessState, Register, Sample, Timeline, UsedInput, Variant } from '@faillocal/engine';
 import { sceneState } from '../model/sceneState.js';
 import type { SceneState } from '../model/sceneState.js';
 import { ProvenanceTag } from './ProvenanceTag.js';
@@ -56,6 +56,18 @@ function dependencyView(r: Register, timeline: Timeline, sample: Sample, d: Depe
   throw new Error(`register has nothing called ${d.on}`);
 }
 
+/** The input at `path` as the run used it. Throws if the run did not record it. */
+function usedInput(timeline: Timeline, path: string): UsedInput {
+  const used = timeline.assumptionsUsed[path];
+  if (!used) throw new Error(`the run did not record ${path}`);
+  return used;
+}
+
+/** A run input in hours with its tag, and "changed by you" when the visitor edited it. */
+function UsedHours({ used }: { used: UsedInput }) {
+  return <Qty value={used.value} kind="hours" display={used.provenance.kind} provenance={used.provenance} overridden={used.overridden} />;
+}
+
 /** Eight illustrative trucks (D-099): parked ones khaki with a pause marker. Never a count. */
 function FleetRow({ fleet, state }: { fleet: SceneState['fleet']; state: ProcessState }) {
   const trucks = [...Array<'moving'>(fleet.moving).fill('moving'), ...Array<'parked'>(fleet.parked).fill('parked')];
@@ -80,7 +92,8 @@ function IndependentCopy({ r, process, variant }: { r: Register; process: Proces
   if (!copy.value) return <span data-testid="independent-copy">No</span>;
   if (copy.source === 'register') return <span data-testid="independent-copy">Yes</span>;
   const { control } = copy.source;
-  const name = r.controls.find((c) => c.id === control)?.name ?? control;
+  const name = r.controls.find((c) => c.id === control)?.name;
+  if (!name) throw new Error(`register has no control ${control}`);
   return <span data-testid="independent-copy">{`Yes, via ${name}`}</span>;
 }
 
@@ -117,6 +130,13 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
   const area = scene.processes[processId]!;
   const deps = process.dependsOn.map((d) => ({ d, view: dependencyView(r, timeline, sample, d) }));
   const lost = deps.filter(({ view }) => view.lost);
+  // Nothing lost yet the area is down: a service it depends on is back up but its post-restore hold
+  // still keeps the dependency lost. The engine does not expose the hold window, so list the
+  // candidates with their hold length rather than re-deriving it.
+  const held =
+    lost.length === 0 && area.state !== 'normal'
+      ? process.dependsOn.filter((d) => d.afterRestore && sample.services[d.on] === 'up')
+      : [];
   const { continuity } = process;
 
   return (
@@ -152,6 +172,16 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
             <li key={d.on}>{`${view.name}: ${view.state}`}</li>
           ))}
         </ul>
+      ) : held.length ? (
+        <ul className="panel-list" aria-labelledby={`${ids}-why-stops`}>
+          {held.map((d) => (
+            <li key={d.on}>
+              {`${dependencyView(r, timeline, sample, d).name}: Back up — ${d.afterRestore!.description}. Held for `}
+              <UsedHours used={usedInput(timeline, `processes.${processId}.dependsOn.${d.on}.afterRestore.holdFor`)} />
+              {' after each restore.'}
+            </li>
+          ))}
+        </ul>
       ) : (
         <p className="panel-empty">Nothing on this process's dependencies is down at this hour.</p>
       )}
@@ -173,10 +203,10 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
       </h3>
       <ul className="panel-rows" aria-labelledby={`${ids}-continuity`}>
         <Row label="Maximum tolerable outage">
-          <Qty value={continuity.maxTolerableOutage.value} kind="hours" display={continuity.maxTolerableOutage.provenance.kind} provenance={continuity.maxTolerableOutage.provenance} />
+          <UsedHours used={usedInput(timeline, `processes.${processId}.continuity.maxTolerableOutage`)} />
         </Row>
         <Row label="Recovery target">
-          <Qty value={continuity.recoveryTarget.value} kind="hours" display={continuity.recoveryTarget.provenance.kind} provenance={continuity.recoveryTarget.provenance} />
+          <UsedHours used={usedInput(timeline, `processes.${processId}.continuity.recoveryTarget`)} />
         </Row>
         <Row label="Owner">{continuity.owner}</Row>
         <Row label="Last restore test">

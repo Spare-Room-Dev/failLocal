@@ -4,7 +4,7 @@ import { independentCopyFor } from '../src/continuity.js';
 import { judgementPaths, quantityPaths } from '../src/paths.js';
 import { toHours } from '../src/quantity.js';
 import type { ControlEffect, ScenarioEvent } from '../src/schema.js';
-import { simulate } from '../src/simulate.js';
+import { simulate, simulateWith } from '../src/simulate.js';
 import { deriveAssetTiers } from '../src/tiers.js';
 import type { Timeline } from '../src/simulate.js';
 import { loadRegisterYaml } from '../src/validate.js';
@@ -166,4 +166,14 @@ test('every assumed value and every judgement has a decision-log entry', () => {
     .filter((p) => p.quantity.provenance.kind === 'assumed')
     .map((p) => p.path);
   for (const path of [...assumed, ...judgementPaths(reg)]) expect(decisionLog).toContain(`**Path:** ${path}`);
+});
+
+test('assumptionsUsed records process continuity targets, marking overrides', () => {
+  const path = 'processes.haulage.continuity.maxTolerableOutage';
+  const haulage = reg.processes.find((p) => p.id === 'haulage')!;
+  const base = simulate(reg, 's1-projection', 'unprepared').assumptionsUsed;
+  expect(base[path]).toEqual({ ...haulage.continuity.maxTolerableOutage, overridden: false });
+  expect(base['processes.haulage.continuity.recoveryTarget']?.overridden).toBe(false);
+  const edited = simulateWith(reg, 's1-projection', 'unprepared', { [path]: 6 }).assumptionsUsed;
+  expect(edited[path]).toEqual({ ...haulage.continuity.maxTolerableOutage, value: 6, overridden: true });
 });

@@ -229,13 +229,15 @@ test('simulateScenario runs an ad-hoc scenario and rejects bad ids', () => {
   expect(() => simulateScenario(r, scenario([cut('ghost', 0, 24)]), 'unprepared')).toThrow(/ghost/);
 });
 
-test('assumptionsUsed lists the scenario, workaround, stock and production inputs the run read', () => {
+test('assumptionsUsed lists the scenario, workaround, continuity, stock and production inputs the run read', () => {
   const r = minimalRegister();
   dependency(r, 'ordering', 'erp').manualWorkaround = { description: 'paper orders', holdsFor: q(2, 'days') };
   const t = simulate(parseRegister(r), 'cut-erp', 'unprepared');
   const stockInputs = ['capacity', 'initial', 'lowThreshold', 'refillRate'];
+  const continuity = r.processes.flatMap((p) => ['maxTolerableOutage', 'recoveryTarget'].map((f) => `processes.${p.id}.continuity.${f}`));
   expect(Object.keys(t.assumptionsUsed).sort()).toEqual(
     [
+      ...continuity,
       'processes.ordering.dependsOn.erp.manualWorkaround.holdsFor',
       'production.annualTonnes',
       'production.degradedOutput',

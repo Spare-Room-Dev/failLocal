@@ -47,7 +47,7 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
           Shipping falls to <Input used={used['production.degradedOutput']} kind="fraction" sources={sources} /> when{' '}
           {shippingName} is degraded, and stops when it is stopped.
         </p>
-        <p className="revenue-note">Revenue at risk, not revenue lost: shipments can recover once the stockpile refills.</p>
+        <p className="revenue-note">Revenue at risk, not written off: shipments can recover once the stockpile refills.</p>
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import type { ServiceState, Timeline } from '@faillocal/engine';
 import type { ReactNode } from 'react';
+import { sampleAt } from '../model/clock.js';
 import { scenarioAsFree } from '../model/freePlay.js';
 import type { FreeCut } from '../model/freePlay.js';
 import { register } from '../model/register.js';
@@ -12,12 +13,10 @@ import './chrome.css';
 /** A free-play cut starts on the current day and runs for this many days. */
 const DEFAULT_CUT_DAYS = 12;
 
-/** The sample at `hour`, or the last one when the clock sits past a shortened horizon. */
+/** The service's state at `hour` (see `sampleAt`), or up when there is no run yet. */
 function stateAt(timeline: Timeline | null, service: string, hour: number): ServiceState {
   if (!timeline) return 'up';
-  const samples = timeline.samples;
-  const sample = samples[Math.min(Math.max(0, Math.floor(hour)), samples.length - 1)];
-  return sample?.services[service] ?? 'up';
+  return sampleAt(timeline, hour).services[service] ?? 'up';
 }
 
 /** The cuts the current spec makes: the free-play cuts, or a register scenario's `cut-service` events. */
