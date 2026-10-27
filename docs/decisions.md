@@ -741,3 +741,9 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** A visitor's what-if is not a public record, so it is never shown as one. Routing the visitor's values through overrides reuses the provenance machinery that already marks edited inputs, rather than inventing a second label. The 4-day margin shows the recovery after the last cut.
 - **Source / provenance:** modelling rule (site, `freePlay.ts`)
 - **Owner change:**
+
+## D-102 Every service a scenario can cut has its own card and cable
+- **Decision:** The stage shows five service cards and five cables: Hosted ERP, Cloud logins, Perth operations link, Corporate network, and Vendor remote access. Vendor remote access is one card and one cable with a row per vendor (vendor A and vendor B), each with its own status line and Cut/Restore button; the shared cable shows the worse of the two states. Card names are the register's service names, except "Hosted ERP" (the register name lists its modules and does not fit a card) and "Vendor remote access" (the card has no register entry of its own). A service brought down by another shows "Down via" the cause the run names.
+- **Reasoning:** Controller ruling R3. The corporate network is the lever in the precautionary isolation scenario, so it needs a card the visitor can cut, and the vendor scenario only revokes vendor A, which a single vendor status line would hide.
+- **Source / provenance:** modelling rule (site, `serviceGroups.ts`)
+- **Owner change:**

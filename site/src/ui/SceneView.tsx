@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
 import type { Cable, Flag, SceneState } from '../model/sceneState.js';
+import { groupState, SERVICE_GROUPS } from '../model/serviceGroups.js';
 import './scene.css';
 
 export interface SceneViewProps {
@@ -23,28 +24,9 @@ const GRID: string[][] = [
   ['control-room', 'drill-and-blast', 'haulage', 'crushing', 'rail'],
 ];
 
-/**
- * The four outside services the visitor sees (DESIGN.md "Overview"). The corporate network has no
- * cable of its own: the other services ride on it, so cutting it already brings theirs down. The two
- * vendor accesses share one cable, which breaks when either does.
- */
-const CABLES: { id: string; name: string; services: string[]; x: number }[] = [
-  { id: 'hosted-erp', name: 'Hosted ERP', services: ['hosted-erp'], x: 200 },
-  { id: 'cloud-identity', name: 'Cloud logins', services: ['cloud-identity'], x: 600 },
-  { id: 'iroc-link', name: 'Perth operations link', services: ['iroc-link'], x: 1000 },
-  { id: 'vendor-access', name: 'Vendor remote access', services: ['vendor-a-access', 'vendor-b-access'], x: 1400 },
-];
-
 const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' } as const;
 
-function cableState(scene: SceneState, services: string[]): Cable {
-  const cables = services.map((id) => scene.services[id]?.cable ?? 'live');
-  if (cables.includes('severed')) return 'severed';
-  if (cables.includes('revoked')) return 'revoked';
-  return 'live';
-}
-
-function FlagGlyph({ flag, x, y }: { flag: Flag; x: number; y: number }) {
+export function FlagGlyph({ flag, x, y }: { flag: Flag; x: number; y: number }) {
   return (
     <g data-flag={flag} transform={`translate(${x} ${y})`} aria-hidden="true">
       <line x1={0} y1={0} x2={0} y2={48} stroke="var(--ink)" strokeWidth={2} />
@@ -110,11 +92,11 @@ export function SceneView({ scene, selected, onSelect }: SceneViewProps) {
         </pattern>
       </defs>
 
-      {CABLES.map((c) => {
-        const state = cableState(scene, c.services);
+      {SERVICE_GROUPS.map((g, i) => {
+        const state = groupState(scene, g);
         return (
-          <g key={c.id} data-cable={c.id} data-state={state}>
-            <CableLine name={c.name} x={c.x} state={state} />
+          <g key={g.id} data-cable={g.id} data-state={state}>
+            <CableLine name={g.name} x={(WIDTH / (SERVICE_GROUPS.length + 1)) * (i + 1)} state={state} />
           </g>
         );
       })}

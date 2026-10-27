@@ -44,10 +44,10 @@ describe('SceneView', () => {
     expect(crushing.getAttribute('aria-pressed')).toBe('false');
   });
 
-  test('four cables from the top edge: severed is dashed and broken', () => {
+  test('a cable from the top edge per service group: severed is dashed and broken', () => {
     const { container } = render(<SceneView scene={sceneAt(0)} selected={null} onSelect={() => {}} reducedMotion={false} />);
-    const cables = container.querySelectorAll('[data-cable]');
-    expect(cables).toHaveLength(4);
+    const cables = [...container.querySelectorAll('[data-cable]')].map((c) => c.getAttribute('data-cable'));
+    expect(cables).toEqual(['hosted-erp', 'cloud-identity', 'iroc-link', 'corporate-network', 'vendor-access']);
     expect(container.querySelector('[data-cable="hosted-erp"]')?.getAttribute('data-state')).toBe('severed');
     expect(container.querySelector('[data-cable="hosted-erp"] [data-break]')).toBeTruthy();
     expect(container.querySelector('[data-cable="iroc-link"]')?.getAttribute('data-state')).toBe('live');
