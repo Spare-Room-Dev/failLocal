@@ -120,8 +120,10 @@ export const actions = {
     appStore.set((s) => ({ mode: 'free', spec: DEFAULT_SPEC, variant: 'unprepared', clock: paused(s.clock) }));
     actions.recompute();
   },
+  /** Enters the guided run, which always shows register values (R5). */
   startGuided(): void {
-    appStore.set({ mode: 'guided' });
+    appStore.set({ mode: 'guided', overrides: {} });
+    actions.recompute();
   },
   setClock(p: Partial<Clock>): void {
     appStore.set((s) => ({ clock: { ...s.clock, ...p } }));

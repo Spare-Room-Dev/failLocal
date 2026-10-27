@@ -1,0 +1,141 @@
+/* Guided run: caption strip and closing comparison card. Flat paper and ink. */
+.guided {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  max-width: 560px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.guided-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.guided-kicker {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 680;
+  font-variation-settings: 'wdth' 88;
+  text-transform: uppercase;
+}
+
+.guided-title {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 740;
+  line-height: 1.1;
+  font-variation-settings: 'wdth' 94;
+}
+
+.guided-variant {
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.guided-captions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guided-draft {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border: 1px dashed var(--line-2);
+  color: var(--ink-3);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.guided-caption {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.guided-caveat {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.guided-totals {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.guided-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.guided-totals dt {
+  color: var(--ink-2);
+}
+
+.guided-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.guided-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.guided-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.guided button {
+  padding: 6px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.guided button:hover {
+  background: var(--paper-2);
+}
+
+.guided button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.guided .guided-explore {
+  align-self: flex-start;
+  border-color: var(--hivis-pressed);
+  background: var(--hivis);
+}
+
+.guided .guided-explore:hover {
+  background: var(--hivis-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guided * {
+    transition: none;
+  }
+}

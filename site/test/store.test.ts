@@ -57,6 +57,17 @@ describe('app store', () => {
     expect(s.issues).toEqual([]);
   });
 
+  test('startGuided clears overrides so the guided run uses register values', () => {
+    actions.setOverride('stocks.diesel.initial', 1);
+    const edited = appStore.get().lastGood;
+    actions.startGuided();
+    const s = appStore.get();
+    expect(s.mode).toBe('guided');
+    expect(s.overrides).toEqual({});
+    expect(s.lastGood).not.toBe(edited);
+    expect(s.lastGood?.assumptionsUsed['stocks.diesel.initial']?.overridden).toBe(false);
+  });
+
   test('enterFreePlay gives its exact state', () => {
     actions.startGuided();
     actions.addCut({ service: 'hosted-erp', atDays: 0, forDays: 12 });
