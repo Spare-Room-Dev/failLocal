@@ -1,0 +1,204 @@
+/* Docked detail panel: DESIGN.md "Docked Detail Panel". Flat paper, hairlines, tabular numerals. */
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 372px;
+  height: 100%;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.panel-heading {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.panel-rule {
+  margin: 14px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+/* Revenue section */
+.revenue {
+  padding: 4px 20px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.odometer .qty {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--computed-fill);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.figure {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  font-variation-settings: 'wdth' 88;
+}
+
+.revenue-working {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.revenue-working p {
+  margin: 6px 0 0;
+}
+
+.revenue-note {
+  color: var(--ink-3);
+}
+
+/* Area panel */
+.area-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px 20px;
+}
+
+.area-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.area-name {
+  margin: 16px 0 4px;
+  font-size: 20px;
+  font-weight: 760;
+  font-variation-settings: 'wdth' 92;
+}
+
+.area-description {
+  margin: 0;
+  font-size: 13px;
+}
+
+.area-safety {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.area-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-top: 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.area-close:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.state-box {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--state-wash);
+}
+
+.state-flag {
+  flex: none;
+  width: 24px;
+  height: 36px;
+}
+
+.state-word {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.state-word.is-stopped {
+  color: var(--stop-red-text);
+}
+
+.state-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.fleet {
+  display: block;
+  width: 200px;
+  height: 18px;
+  margin-top: 8px;
+}
+
+.panel-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.panel-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.panel-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.panel-row:first-child {
+  border-top: 0;
+}
+
+.panel-row-label {
+  color: var(--ink-2);
+}
+
+.panel-row-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 650;
+  text-align: right;
+}
+
+.panel-row-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.is-lost {
+  color: var(--stop-red-text);
+}
