@@ -6,7 +6,7 @@ import { sceneState } from '../model/sceneState.js';
 import type { SceneState } from '../model/sceneState.js';
 import { ProvenanceTag } from './ProvenanceTag.js';
 import { Qty } from './Qty.js';
-import { FlagGlyph } from './SceneView.js';
+import { FlagGlyph } from './glyphs.js';
 
 export interface AreaPanelProps {
   register: Register;

@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react';
-import type { Cable, Flag, SceneState } from '../model/sceneState.js';
+import type { Cable, SceneState } from '../model/sceneState.js';
 import { cableFraction, groupState, SERVICE_GROUPS } from '../model/serviceGroups.js';
+import { BreakGlyph, FlagGlyph, HatchPattern } from './glyphs.js';
 import './scene.css';
 
 export interface SceneViewProps {
@@ -26,27 +27,6 @@ const GRID: string[][] = [
 
 const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' } as const;
 
-export function FlagGlyph({ flag, x, y }: { flag: Flag; x: number; y: number }) {
-  return (
-    <g data-flag={flag} transform={`translate(${x} ${y})`} aria-hidden="true">
-      <line x1={0} y1={0} x2={0} y2={48} stroke="var(--ink)" strokeWidth={2} />
-      {flag === 'pennant' && <path d="M0 0 L30 9 L0 18 Z" fill="var(--paper)" stroke="var(--ink)" strokeWidth={1.5} />}
-      {flag === 'half' && (
-        <>
-          <rect x={0} y={0} width={30} height={20} fill="var(--paper)" stroke="var(--ink)" strokeWidth={1.5} />
-          <path d="M0 0 L0 20 L30 20 Z" fill="var(--degraded-amber)" stroke="var(--ink)" strokeWidth={1.5} />
-        </>
-      )}
-      {flag === 'full' && (
-        <>
-          <rect x={0} y={0} width={30} height={20} fill="var(--stop-red)" stroke="var(--ink)" strokeWidth={1.5} />
-          <path d="M6 4 L24 16 M24 4 L6 16" stroke="var(--paper)" strokeWidth={2} />
-        </>
-      )}
-    </g>
-  );
-}
-
 function CableLine({ name, x, state }: { name: string; x: number; state: Cable }) {
   const post = <rect x={x - 8} y={BOARD_TOP - 24} width={16} height={24} fill={state === 'live' ? 'var(--galvanised)' : 'var(--ink-3)'} stroke="var(--ink)" />;
   if (state === 'live')
@@ -62,14 +42,11 @@ function CableLine({ name, x, state }: { name: string; x: number; state: Cable }
     <g data-cable-group>
       <title>{`${name}: ${state === 'severed' ? 'link cut' : 'access revoked'}`}</title>
       <line x1={x} y1={0} x2={x} y2={breakY - 16} stroke="var(--ink)" strokeWidth={3} />
-      <g data-break>
-        <line x1={x - 10} y1={breakY - 16} x2={x + 10} y2={breakY - 16} stroke="var(--ink)" strokeWidth={3} />
-        <circle cx={x} cy={breakY} r={6} fill="none" stroke="var(--stop-red)" strokeWidth={3} />
-        <line x1={x - 10} y1={breakY + 16} x2={x + 10} y2={breakY + 16} stroke="var(--ink)" strokeWidth={3} />
+      <BreakGlyph x={x} y={breakY} halfWidth={10} gap={16} r={6} strokeWidth={3}>
         <text x={x + 18} y={breakY + 6} className="scene-cable-label">
           {state === 'severed' ? 'Link cut' : 'Access revoked'}
         </text>
-      </g>
+      </BreakGlyph>
       <line x1={x} y1={breakY + 16} x2={x} y2={BOARD_TOP - 24} stroke="var(--ink)" strokeWidth={3} strokeDasharray="10 6" opacity={0.55} />
       {post}
     </g>
@@ -93,10 +70,7 @@ export function SceneView({ scene, selected, onSelect, reducedMotion }: SceneVie
       preserveAspectRatio="xMidYMin meet"
       role="group" aria-label="Model site schematic" data-reduced-motion={reducedMotion}>
       <defs>
-        <pattern id="scene-hatch" patternUnits="userSpaceOnUse" width={7} height={7} patternTransform="rotate(26.565)">
-          <rect width={7} height={7} fill="var(--hatch-ink)" opacity={0.08} />
-          <line x1={0} y1={3.5} x2={7} y2={3.5} stroke="var(--hatch-ink)" strokeWidth={1.5} opacity={0.62} />
-        </pattern>
+        <HatchPattern id="scene-hatch" size={7} wash={0.08} strokeWidth={1.5} opacity={0.62} />
       </defs>
 
       {SERVICE_GROUPS.map((g, i) => {

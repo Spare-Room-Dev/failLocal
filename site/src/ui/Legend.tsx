@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { FlagGlyph } from './SceneView.js';
+import { BreakGlyph, FlagGlyph, HatchPattern } from './glyphs.js';
 import './chrome.css';
 
 function Glyph({ children }: { children: ReactNode }) {
@@ -29,9 +29,7 @@ const ENTRIES: { word: string; shape: string; glyph: ReactNode }[] = [
       <>
         <defs>
           {/* Coarser than the scene's hatch, with no wash or outline, so it reads as ground at glyph size. */}
-          <pattern id="legend-hatch" patternUnits="userSpaceOnUse" width={8} height={8} patternTransform="rotate(26.565)">
-            <line x1={0} y1={4} x2={8} y2={4} stroke="var(--hatch-ink)" strokeWidth={2.5} opacity={0.8} />
-          </pattern>
+          <HatchPattern id="legend-hatch" size={8} strokeWidth={2.5} opacity={0.8} />
         </defs>
         <rect data-hatched x={0} y={36} width={40} height={16} fill="url(#legend-hatch)" />
         <FlagGlyph flag="full" x={8} y={2} />
@@ -53,13 +51,10 @@ const ENTRIES: { word: string; shape: string; glyph: ReactNode }[] = [
     word: 'Cut',
     shape: 'severed cable',
     glyph: (
-      <g data-break>
+      <BreakGlyph x={20} y={26} halfWidth={8} gap={12} r={4} strokeWidth={2}>
         <line x1={20} y1={0} x2={20} y2={14} stroke="var(--ink)" strokeWidth={2} />
-        <line x1={12} y1={14} x2={28} y2={14} stroke="var(--ink)" strokeWidth={2} />
-        <circle cx={20} cy={26} r={4} fill="none" stroke="var(--stop-red)" strokeWidth={2} />
-        <line x1={12} y1={38} x2={28} y2={38} stroke="var(--ink)" strokeWidth={2} />
         <line x1={20} y1={38} x2={20} y2={52} stroke="var(--ink)" strokeWidth={2} strokeDasharray="4 3" opacity={0.55} />
-      </g>
+      </BreakGlyph>
     ),
   },
 ];
