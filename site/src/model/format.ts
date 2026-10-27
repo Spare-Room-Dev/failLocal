@@ -6,11 +6,12 @@ const oneDecimal = (value: number): string => value.toFixed(1);
 /** The on-screen text for a quantity. Plan 2a's format table is the contract; units follow the number. */
 export function formatQty(value: number, kind: QtyKind): string {
   switch (kind) {
-    case 'days':
-      if (value === 1) return '1 day';
+    case 'days': {
       // Below a day, one decimal hides too much (a 0.125-day threshold would read 0.1); two, with
-      // trailing zeros trimmed, reads 0.13, 0.5 and 0.
-      return `${value < 1 ? Number(value.toFixed(2)) : oneDecimal(value)} days`;
+      // trailing zeros trimmed, reads 0.13, 0.5 and 0. A value that rounds to one is "1 day".
+      const shown = value < 1 ? Number(value.toFixed(2)) : Number(oneDecimal(value));
+      return shown === 1 ? '1 day' : `${value < 1 ? shown : oneDecimal(value)} days`;
+    }
     case 'hours':
       if (value === 1) return '1 hour';
       return `${Number.isInteger(value) ? value : oneDecimal(value)} hours`;

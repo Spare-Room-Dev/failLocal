@@ -11,6 +11,8 @@ describe('formatQty', () => {
     [0.48, 'days', '0.48 days'],
     [0.125, 'days', '0.13 days'],
     [0, 'days', '0 days'],
+    [0.996, 'days', '1 day'],
+    [1.04, 'days', '1 day'],
     [24, 'hours', '24 hours'],
     [1, 'hours', '1 hour'],
     [0.5, 'hours', '0.5 hours'],
