@@ -1,3 +1,4 @@
+import { toHours } from '@faillocal/engine';
 import type { Provenance, Register, Scenario } from '@faillocal/engine';
 
 export interface FreeCut {
@@ -47,4 +48,18 @@ export function freePlayScenario(
   const latestEnd = cuts.length ? Math.max(...cuts.map((c) => c.atDays + c.forDays)) + HORIZON_MARGIN_DAYS : MIN_HORIZON_DAYS;
   overrides[`${base}.horizon`] = Math.min(MAX_HORIZON_DAYS, Math.max(MIN_HORIZON_DAYS, latestEnd));
   return { scenario, overrides };
+}
+
+/**
+ * A register scenario as free-play input: each `cut-service` event becomes a cut in days, and the
+ * scenario's `workaroundsHold` carries over. Compromise events are left out, as free play is cut-only
+ * (R4). Throws when the register has no such scenario.
+ */
+export function scenarioAsFree(r: Register, scenarioId: string): { cuts: FreeCut[]; workaroundsHold: boolean } {
+  const scenario = r.scenarios.find((s) => s.id === scenarioId);
+  if (!scenario) throw new Error(`register has no scenario ${scenarioId}`);
+  const cuts = scenario.events.flatMap((e): FreeCut[] =>
+    e.kind === 'cut-service' ? [{ service: e.service, atDays: toHours(e.at) / 24, forDays: toHours(e.restoreAfter) / 24 }] : [],
+  );
+  return { cuts, workaroundsHold: scenario.workaroundsHold };
 }

@@ -60,7 +60,10 @@ describe('ServiceCard', () => {
 
     expect(appStore.get().spec).toEqual({
       kind: 'free',
-      cuts: [{ service: 'cloud-identity', atDays: 2, forDays: 12 }],
+      cuts: [
+        { service: 'hosted-erp', atDays: 0, forDays: 12 },
+        { service: 'cloud-identity', atDays: 2, forDays: 12 },
+      ],
       workaroundsHold: false,
     });
     const restore = within(cloud).getByRole('button', { name: /Restore/ });
@@ -70,7 +73,7 @@ describe('ServiceCard', () => {
     expect(within(cloud).getByText('2').closest('[data-clock]')).toBeTruthy();
 
     fireEvent.click(restore);
-    expect(appStore.get().spec).toMatchObject({ kind: 'free', cuts: [] });
+    expect(appStore.get().spec).toMatchObject({ kind: 'free', cuts: [{ service: 'hosted-erp' }] });
     expect(within(cloud).getByRole('button', { name: /Cut/ }).getAttribute('aria-pressed')).toBe('false');
     expect(within(cloud).getByText('Up')).toBeTruthy();
   });
@@ -84,6 +87,23 @@ describe('ServiceCard', () => {
     fireEvent.click(within(card('iroc-link')).getByRole('button'));
     expect(appStore.get().spec).toEqual({ kind: 'register', scenarioId: 's1-projection' });
     expect(within(card('hosted-erp')).getByText(/Cut since day/).textContent).toBe('Cut since day 0');
+  });
+
+  test("a guided card reads the scenario's own cut as pressed, still disabled", () => {
+    actions.startGuided();
+    render(<>{cards()}</>);
+    const erp = within(card('hosted-erp')).getByRole('button', { name: /Restore/ });
+    expect(erp.getAttribute('aria-pressed')).toBe('true');
+    expect((erp as HTMLButtonElement).disabled).toBe(true);
+    expect(within(card('iroc-link')).getByRole('button', { name: /Cut/ }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test("restoring a scenario's cut in free play keeps the rest of the scenario", () => {
+    actions.enterFreePlay();
+    render(<>{cards()}</>);
+    fireEvent.click(within(card('hosted-erp')).getByRole('button', { name: /Restore/ }));
+    expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: false });
+    expect(within(card('hosted-erp')).getByText('Up')).toBeTruthy();
   });
 
   test('an inherited outage names its cause, and each vendor row keeps its own status', () => {

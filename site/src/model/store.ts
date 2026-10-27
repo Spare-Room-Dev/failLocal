@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { Timeline, Variant } from '@faillocal/engine';
+import { scenarioAsFree } from './freePlay.js';
 import type { FreeCut } from './freePlay.js';
 import { register } from './register.js';
 import { deriveRun } from './run.js';
@@ -65,9 +66,9 @@ export const appStore = createStore<AppState>(initialAppState());
 
 const paused = (clock: Clock): Clock => ({ ...clock, hour: 0, playing: false });
 
-/** The free-play spec to edit: the current one, or an empty one when a register scenario is showing. */
+/** The free-play spec to edit: the current one, or one seeded from the register scenario showing (R4). */
 function freeSpec(s: AppState): Extract<RunSpec, { kind: 'free' }> {
-  return s.spec.kind === 'free' ? s.spec : { kind: 'free', cuts: [], workaroundsHold: false };
+  return s.spec.kind === 'free' ? s.spec : { kind: 'free', ...scenarioAsFree(register, s.spec.scenarioId) };
 }
 
 function setFree(change: (spec: Extract<RunSpec, { kind: 'free' }>) => Partial<Extract<RunSpec, { kind: 'free' }>>): void {

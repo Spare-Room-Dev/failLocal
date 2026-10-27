@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, test } from 'vitest';
+import type { RunSpec } from '../src/model/run.js';
 import { actions, appStore, createStore, initialAppState } from '../src/model/store.js';
 
 beforeEach(() => appStore.set(initialAppState()));
+
+const EMPTY_FREE: RunSpec = { kind: 'free', cuts: [], workaroundsHold: false };
 
 describe('createStore', () => {
   test('notifies subscribers until they unsubscribe', () => {
@@ -69,7 +72,8 @@ describe('app store', () => {
     expect(s.lastGood?.variant).toBe('unprepared');
   });
 
-  test('adding a cut switches the spec to free mode, keeping existing cuts', () => {
+  test('cut edits apply to the free spec', () => {
+    appStore.set({ spec: EMPTY_FREE });
     actions.addCut({ service: 'hosted-erp', atDays: 0, forDays: 12 });
     expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [{ service: 'hosted-erp', atDays: 0, forDays: 12 }], workaroundsHold: false });
     expect(appStore.get().lastGood?.scenarioId).toBe('free-play');
@@ -89,10 +93,43 @@ describe('app store', () => {
   });
 
   test('variant toggle recomputes with the same cuts', () => {
+    appStore.set({ spec: EMPTY_FREE });
     actions.addCut({ service: 'hosted-erp', atDays: 0, forDays: 12 });
     actions.setVariant('prepared');
     const s = appStore.get();
     expect(s.spec).toMatchObject({ kind: 'free', cuts: [{ service: 'hosted-erp' }] });
     expect(s.lastGood?.variant).toBe('prepared');
+  });
+
+  test("the first cut on a register scenario keeps the scenario's cuts", () => {
+    actions.addCut({ service: 'cloud-identity', atDays: 2, forDays: 12 });
+    expect(appStore.get().spec).toEqual({
+      kind: 'free',
+      cuts: [
+        { service: 'hosted-erp', atDays: 0, forDays: 12 },
+        { service: 'cloud-identity', atDays: 2, forDays: 12 },
+      ],
+      workaroundsHold: false,
+    });
+    expect(appStore.get().lastGood?.scenarioId).toBe('free-play');
+  });
+
+  test('removing a seeded cut leaves the rest of the scenario', () => {
+    actions.setScenario('s4-precautionary-isolation');
+    actions.removeCut(0);
+    expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: false });
+  });
+
+  test("setWorkaroundsHold seeds from the scenario, its workarounds included, and leaves out compromises", () => {
+    actions.setScenario('s1-as-reported');
+    actions.updateCut(0, { forDays: 3 });
+    expect(appStore.get().spec).toEqual({
+      kind: 'free',
+      cuts: [{ service: 'hosted-erp', atDays: 0, forDays: 3 }],
+      workaroundsHold: true,
+    });
+    actions.setScenario('s3-vendor-setpoint');
+    actions.setWorkaroundsHold(true);
+    expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: true });
   });
 });

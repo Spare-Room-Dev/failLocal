@@ -1,6 +1,10 @@
 import type { ServiceState, Timeline } from '@faillocal/engine';
 import type { ReactNode } from 'react';
-import { serviceName } from '../model/serviceGroups.js';
+import { scenarioAsFree } from '../model/freePlay.js';
+import type { FreeCut } from '../model/freePlay.js';
+import { register } from '../model/register.js';
+import type { RunSpec } from '../model/run.js';
+import { SERVICE_GROUPS, serviceName } from '../model/serviceGroups.js';
 import type { ServiceGroup } from '../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import './chrome.css';
@@ -16,16 +20,30 @@ function stateAt(timeline: Timeline | null, service: string, hour: number): Serv
   return sample?.services[service] ?? 'up';
 }
 
+/** The cuts the current spec makes: the free-play cuts, or a register scenario's `cut-service` events. */
+function specCuts(spec: RunSpec): FreeCut[] {
+  return spec.kind === 'free' ? spec.cuts : scenarioAsFree(register, spec.scenarioId).cuts;
+}
+
+/** The card name for a service: its group's display name. */
+function groupName(service: string): string {
+  const group = SERVICE_GROUPS.find((g) => g.services.includes(service));
+  if (!group) throw new Error(`no service group has ${service}`);
+  return group.name;
+}
+
 /** "Up", "Access revoked", "Down via <cause>" or "Cut since day N", from the run's events. */
 function statusLine(timeline: Timeline | null, service: string, state: ServiceState, hour: number): ReactNode {
   if (state === 'up') return 'Up';
   if (state === 'revoked') return 'Access revoked';
   const down = (timeline?.events ?? []).filter((e) => e.kind === 'service-down' && e.subject === service && e.hour <= Math.max(hour, 0));
   const start = down.at(-1);
-  if (start?.from) return `Down via ${serviceName(start.from)}`;
+  // The engine gives every outage a service-down event at its start, so a down sample always has one.
+  if (!start) throw new Error(`${service} is down at hour ${hour} with no service-down event`);
+  if (start.from) return `Down via ${groupName(start.from)}`;
   return (
     <>
-      Cut since day <span data-clock>{Math.floor((start?.hour ?? 0) / 24)}</span>
+      Cut since day <span data-clock>{Math.floor(start.hour / 24)}</span>
     </>
   );
 }
@@ -37,11 +55,13 @@ function ServiceRow({ service, label }: { service: string; label: string }) {
   const spec = useStore(appStore, (s) => s.spec);
 
   const state = stateAt(timeline, service, hour);
-  const pressed = spec.kind === 'free' && spec.cuts.some((c) => c.service === service);
+  const cuts = specCuts(spec);
+  const pressed = cuts.some((c) => c.service === service);
   const onClick = () => {
-    if (spec.kind === 'free' && pressed) {
-      // From the end, so the earlier indices stay valid as each cut goes.
-      for (let i = spec.cuts.length - 1; i >= 0; i--) if (spec.cuts[i]!.service === service) actions.removeCut(i);
+    if (pressed) {
+      // From the end, so the earlier indices stay valid as each cut goes. A register scenario's cuts
+      // share their indices with the free spec the store seeds from them (R4).
+      for (let i = cuts.length - 1; i >= 0; i--) if (cuts[i]!.service === service) actions.removeCut(i);
       return;
     }
     actions.addCut({ service, atDays: Math.floor(hour / 24), forDays: DEFAULT_CUT_DAYS });
