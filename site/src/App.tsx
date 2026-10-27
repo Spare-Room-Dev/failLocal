@@ -6,6 +6,7 @@ import { BuiltPage } from './ui/pages/BuiltPage.js';
 import { FooterNav } from './ui/pages/FooterNav.js';
 import { LimitsPage } from './ui/pages/LimitsPage.js';
 import { SitePage } from './ui/pages/SitePage.js';
+import { SiteErrorBoundary } from './ui/SiteErrorBoundary.js';
 import { SourcesPage } from './ui/pages/SourcesPage.js';
 import { TestedPage } from './ui/pages/TestedPage.js';
 import { WelcomePage } from './ui/pages/WelcomePage.js';
@@ -30,7 +31,11 @@ const PAGES: Record<Exclude<Route, 'site'>, () => ReactNode> = {
 export function App({ register = defaultRegister }: AppProps) {
   const route = useRoute();
   if (route === 'site')
-    return <SitePage footer={<FooterNav current={route} />} />;
+    return (
+      <SiteErrorBoundary>
+        <SitePage footer={<FooterNav current={route} />} />
+      </SiteErrorBoundary>
+    );
   const Page = PAGES[route];
   return (
     <>
