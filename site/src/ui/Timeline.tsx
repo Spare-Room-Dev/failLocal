@@ -69,7 +69,7 @@ export function Timeline() {
           </span>
           {run.projection && (
             <span className="timeline-note">
-              A projection,
+              A projection,{' '}
               <br />
               not what happened
             </span>

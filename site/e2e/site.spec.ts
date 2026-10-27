@@ -165,6 +165,15 @@ test('desktop frame', async ({ page }, info) => {
   expect(intersects(legend, await box('.scene-plinth'))).toBe(false);
   await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
 
+  // A cut card is taller; it still never crosses the stage top.
+  const cuts = page.locator('.service-card').getByRole('button', { name: /^Cut / });
+  for (let left = await cuts.count(); left > 0; left--) {
+    await cuts.first().click();
+    await expect(cuts).toHaveCount(left - 1);
+  }
+  for (const c of await page.locator('.service-card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as Box)))
+    expect(c.y).toBeGreaterThanOrEqual(stage.y);
+
   await scrubToDay(page, 13);
   await page.screenshot({ path: info.outputPath('desktop-1440x900.png') });
 });
@@ -212,6 +221,44 @@ test('phone layout', async ({ page }, info) => {
   );
   expect(overflowing).toEqual([]);
   await page.screenshot({ path: info.outputPath('phone-390x844.png'), fullPage: true });
+});
+
+test('tablet layout', async ({ page }, info) => {
+  test.skip(!info.project.name.startsWith('tablet'), 'the tablet layouts');
+  await open(page, '#/site');
+  const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!;
+  const viewport = page.viewportSize()!;
+
+  expect((await box('.timeline-axis')).width).toBeGreaterThan(200);
+  for (const name of ['Unprepared', 'Prepared']) await expect(page.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 });
+
+  // Cut every service still up, so every card is in its cut state.
+  const cuts = page.locator('.service-card').getByRole('button', { name: /^Cut / });
+  for (let left = await cuts.count(); left > 0; left--) {
+    await cuts.first().click();
+    await expect(cuts).toHaveCount(left - 1);
+  }
+  const stage = await box('.site-stage');
+  const cards = await page.locator('.service-card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as Box));
+  expect(cards).toHaveLength(5);
+  for (const c of cards) {
+    expect(c.y).toBeGreaterThanOrEqual(stage.y);
+    expect(c.x).toBeGreaterThanOrEqual(stage.x);
+    expect(c.x + c.width).toBeLessThanOrEqual(stage.x + stage.width);
+  }
+  await page.screenshot({ path: info.outputPath(`tablet-${viewport.width}x${viewport.height}-all-cut.png`) });
+
+  // Nothing outside the card scroller reaches past the viewport's right edge.
+  const overflowing = await page.evaluate(() =>
+    [...document.body.querySelectorAll('*')]
+      .filter((e) => !e.closest('.site-cards') && e.getBoundingClientRect().right > window.innerWidth + 0.5)
+      .map((e) => `${e.tagName.toLowerCase()}.${e.getAttribute('class') ?? ''}`),
+  );
+  expect(overflowing).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await scrubToDay(page, 13);
+  await page.screenshot({ path: info.outputPath(`tablet-${viewport.width}x${viewport.height}.png`) });
 });
 
 test('the site runs under the deployed CSP', async ({ page }) => {

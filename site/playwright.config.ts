@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 
-/** End-to-end checks against the built site under `vite preview`, on a laptop and a phone viewport. */
+/** End-to-end checks against the built site under `vite preview`, on a laptop, two tablet and a phone viewport. */
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -10,6 +10,8 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}` },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    { name: 'tablet-landscape', use: { ...devices['Desktop Chrome'], viewport: { width: 1024, height: 768 } } },
+    { name: 'tablet-portrait', use: { ...devices['Desktop Chrome'], viewport: { width: 820, height: 1180 }, hasTouch: true } },
     { name: 'phone', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
   ],
   // The workspace's one Vite (8); engine and site share it.
