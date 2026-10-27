@@ -76,15 +76,18 @@ function CableLine({ name, x, state }: { name: string; x: number; state: Cable }
   );
 }
 
-/** The 2a stand-in for the scene: a plain schematic SVG. Plan 2b replaces it with the PixiJS board. */
-export function SceneView({ scene, selected, onSelect }: SceneViewProps) {
+/**
+ * The 2a stand-in for the scene: a plain schematic SVG. Plan 2b replaces it with the PixiJS board.
+ * It draws no motion, so `reducedMotion` only marks the SVG; the animated board will honour it.
+ */
+export function SceneView({ scene, selected, onSelect, reducedMotion }: SceneViewProps) {
   const onKeyDown = (id: string) => (e: KeyboardEvent<SVGGElement>) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     onSelect(id);
   };
   return (
-    <svg className="scene" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="group" aria-label="Model site schematic">
+    <svg className="scene" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="group" aria-label="Model site schematic" data-reduced-motion={reducedMotion}>
       <defs>
         <pattern id="scene-hatch" patternUnits="userSpaceOnUse" width={7} height={7} patternTransform="rotate(26.565)">
           <rect width={7} height={7} fill="var(--hatch-ink)" opacity={0.08} />

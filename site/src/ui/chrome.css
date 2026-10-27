@@ -153,9 +153,7 @@
 }
 
 .service-row-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
   color: var(--ink-2);
   font-size: 12px;
   font-weight: 600;
@@ -171,6 +169,11 @@
   flex: none;
   width: 12px;
   height: 12px;
+}
+
+.service-row-status > .service-glyph {
+  margin-right: 4px;
+  vertical-align: -2px;
 }
 
 .service-button {

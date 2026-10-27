@@ -23,16 +23,14 @@ const PAGES: Record<Exclude<Route, 'site'>, () => ReactNode> = {
   limits: LimitsPage,
 };
 
-/** Hash-routed pages. The site view carries the badge in its top bar; every other page shows it above its copy. */
+/**
+ * Hash-routed pages. The site view carries the badge in its top bar and the footer at the end of its
+ * detail column; every other page shows the badge above its copy.
+ */
 export function App({ register = defaultRegister }: AppProps) {
   const route = useRoute();
   if (route === 'site')
-    return (
-      <>
-        <SitePage />
-        <FooterNav current={route} />
-      </>
-    );
+    return <SitePage footer={<FooterNav current={route} />} />;
   const Page = PAGES[route];
   return (
     <>

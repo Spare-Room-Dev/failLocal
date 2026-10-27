@@ -1,41 +1,15 @@
 import type { Timeline as Run } from '@faillocal/engine';
-import { useEffect } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
-import { SPEEDS, advance, horizonDays, horizonHours, scrubTo } from '../model/clock.js';
+import { SPEEDS, horizonDays, horizonHours, scrubTo } from '../model/clock.js';
 import { register } from '../model/register.js';
-import { serviceName } from '../model/serviceGroups.js';
+import { serviceLabel } from '../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import './chrome.css';
 import './timeline.css';
 
-/** The playback loop applies the clock at most this often. */
-const FRAME_MS = 30;
 /** Every tick carries its numeral up to this many days; past it, only the six-day ticks do. */
 const ALL_NUMERALS_UP_TO_DAYS = 24;
 const LONG_TICK_DAYS = 6;
-
-/**
- * Drives the clock while it plays: one requestAnimationFrame loop, applying `advance` about every
- * 30 ms. The store is read on each frame, so speed and scenario changes take effect at once.
- * `advance` pauses the clock at the horizon, which ends the loop.
- */
-export function usePlayback(): void {
-  const playing = useStore(appStore, (s) => s.clock.playing);
-  useEffect(() => {
-    if (!playing) return;
-    let last: number | null = null;
-    let id = requestAnimationFrame(function frame(now) {
-      if (last === null) last = now;
-      else if (now - last >= FRAME_MS) {
-        const { clock, lastGood } = appStore.get();
-        if (lastGood) actions.setClock(advance(clock, (now - last) / 1000, horizonHours(lastGood)));
-        last = now;
-      }
-      if (appStore.get().clock.playing) id = requestAnimationFrame(frame);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [playing]);
-}
 
 interface Marker {
   hour: number;
@@ -55,8 +29,8 @@ function markers(t: Run): Marker[] {
   const stopped = new Set<string>();
   const out: Marker[] = [];
   for (const e of t.events) {
-    if (e.kind === 'service-down') out.push({ hour: e.hour, kind: e.kind, name: serviceName(e.subject), word: 'down' });
-    else if (e.kind === 'service-up') out.push({ hour: e.hour, kind: e.kind, name: serviceName(e.subject), word: 'up' });
+    if (e.kind === 'service-down') out.push({ hour: e.hour, kind: e.kind, name: serviceLabel(e.subject), word: 'down' });
+    else if (e.kind === 'service-up') out.push({ hour: e.hour, kind: e.kind, name: serviceLabel(e.subject), word: 'up' });
     else if (e.kind === 'process-state' && e.to === 'stopped' && !stopped.has(e.subject)) {
       stopped.add(e.subject);
       out.push({ hour: e.hour, kind: 'process-stopped', name: processName(e.subject), word: 'stopped' });
@@ -68,11 +42,15 @@ function markers(t: Run): Marker[] {
 /** The horizon as written: whole days bare, a part day to one decimal. */
 const daysText = (d: number): string => (Number.isInteger(d) ? String(d) : d.toFixed(1));
 
-/** The day timeline (DESIGN.md "Day Timeline"): play controls, the "Day N of H" figure and the scrubbable axis. */
+/**
+ * The day timeline (DESIGN.md "Day Timeline"): play controls, the "Day N of H" figure and the
+ * scrubbable axis. The site page mounts the playback loop. In guided mode the run drives the clock,
+ * so play and scrubbing are disabled.
+ */
 export function Timeline() {
-  usePlayback();
   const run = useStore(appStore, (s) => s.lastGood);
   const clock = useStore(appStore, (s) => s.clock);
+  const locked = useStore(appStore, (s) => s.mode === 'guided');
   if (!run) return null;
 
   const maxHour = horizonHours(run);
@@ -90,6 +68,7 @@ export function Timeline() {
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (locked) return;
     const step = e.shiftKey ? 24 : 1;
     const to = { ArrowRight: whole + step, ArrowUp: whole + step, ArrowLeft: whole - step, ArrowDown: whole - step, Home: 0, End: maxHour }[e.key];
     if (to === undefined) return;
@@ -99,14 +78,14 @@ export function Timeline() {
 
   const scrubFromPointer = (e: PointerEvent<HTMLDivElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
-    if (box.width === 0) return;
+    if (locked || box.width === 0) return;
     actions.setClock({ hour: scrubTo(((e.clientX - box.left) / box.width) * axisHours, maxHour) });
   };
 
   return (
     <section className="timeline" aria-label="Day timeline">
       <div className="timeline-controls">
-        <button type="button" className="timeline-play" aria-label={clock.playing ? 'Pause' : 'Play'} onClick={togglePlay}>
+        <button type="button" className="timeline-play" aria-label={clock.playing ? 'Pause' : 'Play'} disabled={locked} onClick={togglePlay}>
           <svg viewBox="0 0 16 16" aria-hidden="true">
             {clock.playing ? <path d="M4 3h3v10H4zM9 3h3v10H9z" /> : <path d="M5 3l8 5-8 5z" />}
           </svg>
@@ -122,13 +101,6 @@ export function Timeline() {
               not what happened
             </span>
           )}
-        </div>
-        <div className="segmented timeline-speeds" role="group" aria-label="Playback speed">
-          {SPEEDS.map((hps) => (
-            <button key={hps} type="button" aria-pressed={clock.hoursPerSecond === hps} onClick={() => actions.setSpeed(hps)}>
-              <span data-clock>{hps} h/s</span>
-            </button>
-          ))}
         </div>
       </div>
       <div
@@ -161,7 +133,8 @@ export function Timeline() {
         <div
           className="timeline-track"
           role="slider"
-          tabIndex={0}
+          tabIndex={locked ? -1 : 0}
+          aria-disabled={locked || undefined}
           aria-label="Timeline"
           aria-valuemin={0}
           aria-valuemax={maxHour}
@@ -182,6 +155,13 @@ export function Timeline() {
           ))}
           <div className="timeline-now" style={{ left: pct(hour) }} />
         </div>
+      </div>
+      <div className="segmented timeline-speeds" role="group" aria-label="Playback speed">
+        {SPEEDS.map((hps) => (
+          <button key={hps} type="button" aria-pressed={clock.hoursPerSecond === hps} onClick={() => actions.setSpeed(hps)}>
+            <span data-clock>{hps} h/s</span>
+          </button>
+        ))}
       </div>
     </section>
   );

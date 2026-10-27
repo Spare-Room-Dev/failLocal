@@ -29,6 +29,13 @@ export const SERVICE_GROUPS: ServiceGroup[] = [
   { id: 'vendor-access', name: 'Vendor remote access', services: ['vendor-a-access', 'vendor-b-access'] },
 ];
 
+/** A service's own label on screen: its group's name when the group holds only it, the register's name otherwise. */
+export function serviceLabel(id: string): string {
+  const group = SERVICE_GROUPS.find((g) => g.services.includes(id));
+  if (!group) throw new Error(`no service group has ${id}`);
+  return group.services.length === 1 ? group.name : serviceName(id);
+}
+
 /** The group's cable: the worst state among its services (severed, then revoked, then live). */
 export function groupState(scene: SceneState, g: ServiceGroup): Cable {
   const cables = g.services.map((id) => scene.services[id]?.cable ?? 'live');

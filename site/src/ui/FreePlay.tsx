@@ -3,7 +3,7 @@ import { FREE_PLAY_ID, scenarioAsFree } from '../model/freePlay.js';
 import type { FreeCut } from '../model/freePlay.js';
 import { register } from '../model/register.js';
 import type { RunSpec } from '../model/run.js';
-import { SERVICE_GROUPS, serviceName } from '../model/serviceGroups.js';
+import { serviceLabel } from '../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import { parseDraft, useDraft } from './useDraft.js';
 import './freePlay.css';
@@ -16,13 +16,6 @@ const CUTS_ONLY_NOTE = "Vendor tampering isn't editable in free play; cuts only.
 /** The spec as free-play input: the free spec, or the register scenario the store would seed from (R4). */
 function asFree(spec: RunSpec): { cuts: FreeCut[]; workaroundsHold: boolean } {
   return spec.kind === 'free' ? spec : scenarioAsFree(register, spec.scenarioId);
-}
-
-/** A cut's name: its service group's, or the service's own when the group has several (vendor A, vendor B). */
-function cutLabel(service: string): string {
-  const group = SERVICE_GROUPS.find((g) => g.services.includes(service));
-  if (!group) throw new Error(`no service group has ${service}`);
-  return group.services.length === 1 ? group.name : serviceName(service);
 }
 
 interface DayInputProps {
@@ -68,7 +61,7 @@ function DayInput({ label, value, min, max, onCommit }: DayInputProps) {
 }
 
 function CutRow({ cut, index }: { cut: FreeCut; index: number }) {
-  const label = cutLabel(cut.service);
+  const label = serviceLabel(cut.service);
   return (
     <div className="free-cut" role="group" aria-label={`Cut: ${label}`}>
       <span className="free-cut-name">{label}</span>

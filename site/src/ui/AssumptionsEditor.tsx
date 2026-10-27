@@ -1,9 +1,10 @@
-import { useId, useSyncExternalStore } from 'react';
+import { useId } from 'react';
 import type { Timeline, Unit, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
 import { register } from '../model/register.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import { Qty } from './Qty.js';
+import { useMediaQuery } from './useMediaQuery.js';
 import { parseDraft, useDraft } from './useDraft.js';
 import './editor.css';
 
@@ -163,17 +164,6 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
   );
 }
 
-function useDesktop(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const media = window.matchMedia(DESKTOP);
-      media.addEventListener('change', onChange);
-      return () => media.removeEventListener('change', onChange);
-    },
-    () => window.matchMedia(DESKTOP).matches,
-  );
-}
-
 /**
  * The inputs the current run used, editable (desktop only). Each row shows the value the last good
  * run used, with its tag, beside an input; a value goes to the store's overrides once it parses. A
@@ -185,7 +175,7 @@ export function AssumptionsEditor() {
   const timeline = useStore(appStore, (s) => s.lastGood);
   const overrides = useStore(appStore, (s) => s.overrides);
   const issues = useStore(appStore, (s) => s.issues);
-  const desktop = useDesktop();
+  const desktop = useMediaQuery(DESKTOP);
   if (mode !== 'free' || !timeline) return null;
   if (!desktop) return <p className="editor-phone-note">{PHONE_NOTE}</p>;
 

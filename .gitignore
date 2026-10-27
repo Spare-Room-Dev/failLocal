@@ -5,3 +5,5 @@ dist/
 .impeccable/mocks/decision/
 .impeccable/questions/
 out/
+site/test-results/
+site/playwright-report/

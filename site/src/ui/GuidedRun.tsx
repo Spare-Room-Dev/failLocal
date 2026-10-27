@@ -5,10 +5,12 @@ import type { CaptionParts, GuidedStep } from '../model/guided.js';
 import { register as defaultRegister } from '../model/register.js';
 import { deriveRun } from '../model/run.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { timeScale } from '../model/timeScale.js';
 import { Qty } from './Qty.js';
 import './chrome.css';
 import './guided.css';
 
+/** A step's hold, in unscaled milliseconds; the e2e time scale divides it when a timer is set (R9). */
 const DWELL_MS = DWELL_SECONDS * 1000;
 /** How often the clock moves while the run travels between steps. */
 const TRAVEL_TICK_MS = 50;
@@ -40,7 +42,7 @@ function stepRun(register: Register, step: GuidedStep): Timeline {
 
 /**
  * One pass through the guided steps. It drives the store clock itself with `setTimeout` (never
- * `clock.playing`, so the timeline's playback loop stays idle): within a segment it moves the hour
+ * `clock.playing`, so the site page's playback loop stays idle): within a segment it moves the hour
  * forward at TRAVEL_HOURS_PER_SECOND, then holds DWELL_SECONDS on the step; between segments it
  * jumps. After the last step it shows the comparison card and stops.
  */
@@ -72,7 +74,7 @@ function GuidedSession({ register }: { register: Register }) {
         phase.current = 'arrive';
         dwellLeft.current = DWELL_MS;
         setIndex(index + 1);
-      }, dwellLeft.current);
+      }, dwellLeft.current / timeScale());
     };
 
     const travel = () => {
@@ -80,7 +82,7 @@ function GuidedSession({ register }: { register: Register }) {
       let last = Date.now();
       const tick = () => {
         const now = Date.now();
-        const hour = Math.min(appStore.get().clock.hour + ((now - last) / 1000) * TRAVEL_HOURS_PER_SECOND, step.hour);
+        const hour = Math.min(appStore.get().clock.hour + ((now - last) / 1000) * TRAVEL_HOURS_PER_SECOND * timeScale(), step.hour);
         last = now;
         actions.setClock({ hour, playing: false });
         timer.current = null;
@@ -102,7 +104,7 @@ function GuidedSession({ register }: { register: Register }) {
     }
 
     return () => {
-      if (phase.current === 'dwell') dwellLeft.current = Math.max(0, dwellLeft.current - (Date.now() - dwellStart.current));
+      if (phase.current === 'dwell') dwellLeft.current = Math.max(0, dwellLeft.current - (Date.now() - dwellStart.current) * timeScale());
       clear();
     };
   }, [paused, index, steps]);

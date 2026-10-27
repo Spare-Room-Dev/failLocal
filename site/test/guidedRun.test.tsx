@@ -1,9 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { formatQty } from '../src/model/format.js';
-import { comparison, guidedSteps } from '../src/model/guided.js';
+import { DWELL_SECONDS, comparison, guidedSteps } from '../src/model/guided.js';
 import { register } from '../src/model/register.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
+import { installE2eHook } from '../src/model/timeScale.js';
 import { GuidedRun } from '../src/ui/GuidedRun.js';
 import { untaggedNumbers } from './helpers/untagged.js';
 
@@ -19,6 +20,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  if (window.__faillocal) window.__faillocal.timeScale = 1;
+  delete window.__faillocal;
 });
 
 const section = () => screen.getByRole('region', { name: 'Guided run' });
@@ -37,6 +40,31 @@ function startGuided() {
 }
 
 describe('GuidedRun', () => {
+  test('at the default time scale the first step holds DWELL_SECONDS; the e2e scale divides the hold', () => {
+    const dwellMs = DWELL_SECONDS * 1000;
+    /** Fake milliseconds until the clock first leaves hour 0, in 10 ms steps. */
+    const msUntilTravel = () => {
+      let t = 0;
+      while (appStore.get().clock.hour === 0 && t < RUN_CAP_MS) {
+        act(() => vi.advanceTimersByTime(10));
+        t += 10;
+      }
+      return t;
+    };
+    startGuided();
+    // The hold, then one 50 ms travel tick.
+    expect(msUntilTravel()).toBe(dwellMs + TICK_MS);
+    expect(appStore.get().clock.hour).toBeCloseTo(40 * (TICK_MS / 1000));
+    cleanup();
+
+    appStore.set(initialAppState());
+    installE2eHook(window, true);
+    window.__faillocal!.timeScale = 40;
+    startGuided();
+    expect(msUntilTravel()).toBe(Math.ceil(dwellMs / 40 / 10) * 10 + TICK_MS);
+    expect(appStore.get().clock.hour).toBeCloseTo(40 * 40 * (TICK_MS / 1000));
+  });
+
   test('each step puts the store on its scenario, variant and hour, paused', () => {
     startGuided();
     steps.forEach((step, i) => {

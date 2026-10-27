@@ -37,3 +37,228 @@ body {
   border: 2px solid var(--gallery-floor);
   border-radius: 999px;
 }
+
+/*
+ * The site's app frame (DESIGN.md "Layout"). Desktop: a 60 px top bar, the stage and a 92 px
+ * timeline strip (186 px day and play / flexible axis / 250 px stocks), with the 372 px detail
+ * column docked right across all three rows. Phone (≤ 760 px): one column.
+ */
+.site-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  grid-template-rows: 60px minmax(0, 1fr) 92px;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 640px;
+}
+
+.site-frame > .top-bar {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.site-stage {
+  position: relative;
+  grid-area: 2 / 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
+}
+
+.site-stage > .scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* The cards scale down to share the stage width, never above 1×. */
+.site-cards {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  left: 20px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.site-cards > .service-card {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 240px;
+}
+
+.site-stage > .legend {
+  position: absolute;
+  box-sizing: border-box;
+  right: 20px;
+  bottom: 16px;
+  z-index: 1;
+  max-width: calc(50% - 40px);
+}
+
+.site-stage > .guided {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  z-index: 2;
+  max-width: min(560px, calc(50% - 20px));
+  max-height: calc(100% - 140px);
+  overflow-y: auto;
+}
+
+.site-strip {
+  display: flex;
+  grid-area: 3 / 1;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 92px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.site-strip > .timeline {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding-right: 0;
+  border-top: 0;
+}
+
+.site-strip .timeline-controls {
+  flex: 0 0 186px;
+  min-width: 0;
+}
+
+/* Two by two, so the axis keeps its width. */
+.site-strip .timeline-speeds {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(2, auto);
+}
+
+.site-strip > .stock-meters {
+  flex: 0 0 250px;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 20px;
+}
+
+.site-detail {
+  grid-area: 1 / 2 / 4 / 3;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.site-detail > .page-footer {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .site-frame {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .site-frame > .top-bar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    height: auto;
+    padding: 10px 16px;
+  }
+
+  .site-frame .top-bar-title {
+    flex-basis: 100%;
+    order: 1;
+    white-space: normal;
+  }
+
+  .site-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .site-stage > .scene,
+  .site-stage > .legend,
+  .site-stage > .guided,
+  .site-cards {
+    position: static;
+  }
+
+  .site-stage > .scene {
+    height: auto;
+  }
+
+  /* A horizontally scrolling strip of 210 px cards above the scene. */
+  .site-cards {
+    justify-content: flex-start;
+    padding: 2px 16px 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .site-cards > .service-card {
+    flex: 0 0 210px;
+    max-width: none;
+    scroll-snap-align: start;
+  }
+
+  .site-cards .service-icon {
+    display: none;
+  }
+
+  .site-stage > .legend,
+  .site-stage > .guided {
+    max-width: none;
+    max-height: none;
+    margin: 0 16px;
+  }
+
+  .site-strip {
+    flex-direction: column;
+    gap: 12px;
+    height: auto;
+    padding: 12px 16px;
+    overflow-x: clip;
+  }
+
+  .site-strip > .timeline {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 0;
+  }
+
+  .site-strip .timeline-controls {
+    flex: 1 1 auto;
+  }
+
+  .site-strip .timeline-speeds {
+    grid-template-columns: repeat(4, auto);
+  }
+
+  .site-strip .timeline-axis {
+    flex: 1 0 100%;
+    order: 1;
+    height: 92px;
+  }
+
+  .site-strip > .stock-meters {
+    flex: none;
+    padding: 0;
+  }
+
+  .site-detail {
+    overflow: visible;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}

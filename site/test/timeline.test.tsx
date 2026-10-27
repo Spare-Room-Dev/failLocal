@@ -4,16 +4,20 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { sampleAt } from '../src/model/clock.js';
 import { formatQty } from '../src/model/format.js';
 import { register } from '../src/model/register.js';
-import { serviceName } from '../src/model/serviceGroups.js';
+import { serviceLabel } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { StockMeters } from '../src/ui/StockMeters.js';
-import { Timeline, usePlayback } from '../src/ui/Timeline.js';
+import { Timeline } from '../src/ui/Timeline.js';
+import { usePlayback } from '../src/ui/usePlayback.js';
+import { installE2eHook, timeScale } from '../src/model/timeScale.js';
 import { untaggedNumbers } from './helpers/untagged.js';
 
 beforeEach(() => appStore.set(initialAppState()));
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  if (window.__faillocal) window.__faillocal.timeScale = 1;
+  delete window.__faillocal;
 });
 
 const slider = () => screen.getByRole('slider', { name: 'Timeline' });
@@ -119,7 +123,8 @@ describe('Timeline', () => {
     const { container } = render(<Timeline />);
     const events = [...container.querySelectorAll<HTMLElement>('[data-event]')];
     const down = events.filter((e) => e.dataset.event === 'service-down');
-    expect(down.map((e) => e.querySelector('.timeline-event-name')!.textContent)).toContain(serviceName('hosted-erp'));
+    expect(down.map((e) => e.querySelector('.timeline-event-name')!.textContent)).toContain(serviceLabel('hosted-erp'));
+    expect(serviceLabel('hosted-erp')).toBe('Hosted ERP');
     const stopped = events.filter((e) => e.dataset.event === 'process-stopped');
     const names = stopped.map((e) => e.querySelector('.timeline-event-name')!.textContent);
     expect(names.length).toBeGreaterThan(0);
@@ -127,6 +132,20 @@ describe('Timeline', () => {
     const processNames = register.processes.map((p) => p.name);
     for (const n of names) expect(processNames).toContain(n);
     for (const e of events) expect(e.querySelector('.timeline-event-name')!.getAttribute('title')).toBe(e.querySelector('.timeline-event-name')!.textContent);
+  });
+
+  test('in guided mode the run drives the clock: play and scrubbing are disabled', async () => {
+    const user = userEvent.setup();
+    render(<Timeline />);
+    act(() => appStore.set({ mode: 'guided' }));
+    expect(screen.getByRole('button', { name: 'Play' }).hasAttribute('disabled')).toBe(true);
+    expect(slider().getAttribute('aria-disabled')).toBe('true');
+    slider().focus();
+    await user.keyboard('{ArrowRight}{End}');
+    expect(appStore.get().clock).toMatchObject({ hour: 0, playing: false });
+    act(() => appStore.set({ mode: 'free' }));
+    expect(screen.getByRole('button', { name: 'Play' }).hasAttribute('disabled')).toBe(false);
+    expect(slider().getAttribute('aria-disabled')).toBeNull();
   });
 
   test('every numeral is a clock value', () => {
@@ -151,6 +170,30 @@ describe('usePlayback', () => {
     expect(appStore.get().clock.hour).toBe(0);
     frame(1040);
     expect(appStore.get().clock.hour).toBeCloseTo(0.96); // 24 h/s × 0.040 s
+  });
+
+  test('a frame applies at most a quarter second, so a hidden tab does not jump to the horizon', () => {
+    const frame = stubFrames();
+    render(<Player />);
+    act(() => actions.setClock({ playing: true }));
+    frame(0);
+    frame(60_000); // the tab was hidden for a minute
+    expect(appStore.get().clock).toMatchObject({ hour: 6, playing: true }); // 24 h/s × 0.25 s
+  });
+
+  test('at the default time scale of 1 the clock moves at its own speed; the e2e scale multiplies it', () => {
+    const frame = stubFrames();
+    installE2eHook(window, true);
+    render(<Player />);
+    expect(timeScale()).toBe(1);
+    act(() => actions.setClock({ playing: true }));
+    frame(0);
+    frame(100);
+    expect(appStore.get().clock.hour).toBeCloseTo(2.4);
+    window.__faillocal!.timeScale = 40;
+    frame(200);
+    expect(appStore.get().clock.hour).toBeCloseTo(2.4 + 96);
+    expect(appStore.get().clock.hoursPerSecond).toBe(24);
   });
 
   test('stops and pauses at the horizon', () => {
