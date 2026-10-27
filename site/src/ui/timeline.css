@@ -144,45 +144,116 @@
   pointer-events: none;
 }
 
+/*
+ * Each event is a hairline button (ruling R10). Only the focused or hovered hairline is labelled, and
+ * the latest event at or before now; the event list writes them all out. `--at` is the event's place
+ * on the axis (0 to 1), which slides its label from right of the hairline to left of it, so a label
+ * never leaves the axis.
+ */
 .timeline-event {
   position: absolute;
   top: 18px;
   bottom: 50%;
-  border-left: 1px dashed var(--ink-3);
+  width: 11px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateX(-50%);
 }
 
-.timeline-event.is-below {
-  top: 50%;
-  bottom: 18px;
+.timeline-event::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  border-left: 1px dashed var(--ink-3);
+  content: '';
+}
+
+.timeline-event:disabled {
+  cursor: default;
+}
+
+.timeline-event:hover::before,
+.timeline-event:focus-visible::before,
+.timeline-event.is-current::before {
+  border-left-color: var(--ink);
 }
 
 .timeline-event-label {
   position: absolute;
   bottom: 100%;
-  left: 3px;
-  display: flex;
+  left: 5px;
+  display: none;
   gap: 3px;
-  max-width: 140px;
+  max-width: 160px;
+  padding: 0 3px;
   font-size: 12px;
   line-height: 1.2;
   white-space: nowrap;
+  transform: translateX(calc(var(--at, 0) * -100%));
 }
 
-.timeline-event.is-below .timeline-event-label {
-  top: 100%;
-  bottom: auto;
+.timeline-event:hover .timeline-event-label,
+.timeline-event:focus-visible .timeline-event-label,
+.timeline-event.is-current .timeline-event-label {
+  display: flex;
+}
+
+/* While a hairline is hovered or focused, only its label shows. */
+.timeline-events:has(.timeline-event:hover, .timeline-event:focus-visible) .timeline-event.is-current:not(:hover, :focus-visible) .timeline-event-label {
+  display: none;
 }
 
 .timeline-event-name {
   overflow: hidden;
   color: var(--ink-2);
   text-overflow: ellipsis;
-  pointer-events: auto;
 }
 
 .timeline-event-word {
   flex: none;
   color: var(--ink-3);
+}
+
+/* Event list: every timeline event, written out. */
+.event-list {
+  padding: 4px 20px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.event-list-title {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.event-list ol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  list-style: none;
+}
+
+.event-list li {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px;
+}
+
+.event-list-when {
+  color: var(--ink-3);
+  font-feature-settings: 'tnum' 1;
+}
+
+.event-list-what {
+  color: var(--ink-2);
 }
 
 /* Stock meters */

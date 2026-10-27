@@ -6,6 +6,8 @@ export interface ServiceGroup {
   id: string;
   name: string;
   services: string[];
+  /** Short row labels on a card with several services; each row keeps the register's name as its title. */
+  rowLabels?: Record<string, string>;
 }
 
 /** The register's name for a service. Throws when the register has no such service. */
@@ -26,8 +28,18 @@ export const SERVICE_GROUPS: ServiceGroup[] = [
   { id: 'cloud-identity', name: serviceName('cloud-identity'), services: ['cloud-identity'] },
   { id: 'iroc-link', name: serviceName('iroc-link'), services: ['iroc-link'] },
   { id: 'corporate-network', name: serviceName('corporate-network'), services: ['corporate-network'] },
-  { id: 'vendor-access', name: 'Vendor remote access', services: ['vendor-a-access', 'vendor-b-access'] },
+  {
+    id: 'vendor-access',
+    name: 'Vendor remote access',
+    services: ['vendor-a-access', 'vendor-b-access'],
+    rowLabels: { 'vendor-a-access': 'Vendor A', 'vendor-b-access': 'Vendor B' },
+  },
 ];
+
+/** Where group `i`'s cable runs, as a fraction of the scene's width: evenly spaced, in card order. */
+export function cableFraction(i: number): number {
+  return (i + 1) / (SERVICE_GROUPS.length + 1);
+}
 
 /** A service's own label on screen: its group's name when the group holds only it, the register's name otherwise. */
 export function serviceLabel(id: string): string {

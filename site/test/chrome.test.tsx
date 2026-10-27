@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { SERVICE_GROUPS } from '../src/model/serviceGroups.js';
+import { SERVICE_GROUPS, serviceName } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { Legend } from '../src/ui/Legend.js';
 import { ServiceCard } from '../src/ui/ServiceCard.js';
@@ -50,6 +50,15 @@ describe('TopBar', () => {
 });
 
 describe('ServiceCard', () => {
+  test('the vendor card labels its rows Vendor A and Vendor B, keeping the register names for tooltips and buttons', () => {
+    render(<>{cards()}</>);
+    const vendor = card('vendor-access');
+    const rows = [...vendor.querySelectorAll('.service-row-name')];
+    expect(rows.map((r) => r.textContent)).toEqual(['Vendor A', 'Vendor B']);
+    expect(rows.map((r) => r.getAttribute('title'))).toEqual([serviceName('vendor-a-access'), serviceName('vendor-b-access')]);
+    expect(within(vendor).getByRole('button', { name: `Cut ${serviceName('vendor-a-access')}` })).toBeTruthy();
+  });
+
   test('cut in free play adds a cut and the card shows Restore with aria-pressed', () => {
     actions.enterFreePlay();
     actions.setClock({ hour: 50 });

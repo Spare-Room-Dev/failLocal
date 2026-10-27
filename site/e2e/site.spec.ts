@@ -43,6 +43,15 @@ function untaggedNumbers(page: Page): Promise<string[]> {
   });
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+const intersects = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/** The boxes of the hairline labels showing now. */
+const visibleLabels = (page: Page): Promise<Box[]> =>
+  page.locator('.timeline-event-name').evaluateAll((els) =>
+    els.filter((e) => e.getClientRects().length > 0).map((e) => e.getBoundingClientRect().toJSON() as Box),
+  );
+
 test('guided run plays and ends on the comparison', async ({ page }) => {
   await open(page, '#/');
   await page.getByRole('button', { name: 'Show me the site' }).click();
@@ -64,6 +73,15 @@ test('free play: cut hosted-erp, scrub to day 13, haulage reads Stopped', async 
   await open(page, '#/site');
   // Free play opens on s1-projection, whose own hosted-erp cut shows as Restore; restore it, then cut it plainly.
   await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+  // Negative control. With no cuts the run is one quiet day, so cut cloud logins alone to reach day 13:
+  // haulage keeps going without the ERP cut.
+  await page.locator('[data-service-group="cloud-identity"]').getByRole('button', { name: /^Cut / }).click();
+  await scrubToDay(page, 13);
+  await expect(page.getByRole('button', { name: /^Haulage: / })).not.toHaveAccessibleName(/^Haulage: Stopped/);
+  await expect(page.locator('.state-box')).not.toHaveAttribute('data-state', 'stopped');
+
+  // A cut starts on the current day, so go back to day 0 first.
+  await scrubToDay(page, 0);
   await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
   await expect(page.getByRole('button', { name: 'Restore Hosted ERP' })).toHaveAttribute('aria-pressed', 'true');
 
@@ -121,7 +139,9 @@ test('desktop frame', async ({ page }, info) => {
   expect((await box('.stock-meters')).width).toBe(250);
 
   const stage = await box('.site-stage');
-  const cards = await page.locator('.service-card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect));
+  const cards = await page.locator('.service-card').evaluateAll((els) =>
+    els.map((e) => ({ group: (e as HTMLElement).dataset.serviceGroup!, ...(e.getBoundingClientRect().toJSON() as Box) })),
+  );
   expect(cards).toHaveLength(5);
   for (const [i, c] of cards.entries()) {
     expect(c.x).toBeGreaterThanOrEqual(stage.x);
@@ -129,14 +149,43 @@ test('desktop frame', async ({ page }, info) => {
     expect(c.y).toBeGreaterThanOrEqual(stage.y);
     const next = cards[i + 1];
     if (next) expect(c.x + c.width).toBeLessThanOrEqual(next.x);
+    // Centred on its own cable, which starts below it and stays visible.
+    const cable = await box(`[data-cable="${c.group}"] [data-cable-group] line`);
+    expect(Math.abs(c.x + c.width / 2 - (cable.x + cable.width / 2))).toBeLessThanOrEqual(2);
+    expect(c.y + c.height).toBeLessThanOrEqual(cable.y);
+    expect(cable.height).toBeGreaterThan(20);
   }
+
+  // The legend sits in its own band: it never covers the plinth's honesty line.
   const legend = await box('.legend');
   expect(legend.x + legend.width).toBeLessThanOrEqual(stage.x + stage.width);
   expect(legend.y + legend.height).toBeLessThanOrEqual(stage.y + stage.height);
-  expect(legend.x).toBeGreaterThan(stage.x + stage.width / 2);
+  expect(intersects(legend, await box('.scene-plinth'))).toBe(false);
+  await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
 
   await scrubToDay(page, 13);
   await page.screenshot({ path: info.outputPath('desktop-1440x900.png') });
+});
+
+test('hairline labels never overlap', async ({ page }) => {
+  await open(page, '#/site');
+  for (const day of [0, 3, 12, 16]) {
+    await scrubToDay(page, day);
+    const labels = await visibleLabels(page);
+    expect(labels.length, `day ${day}`).toBeLessThanOrEqual(1);
+  }
+  // Hovering a hairline shows its label alone; focusing one does the same.
+  // Events at one hour share a spot; force the hover onto whichever hairline is on top.
+  await page.locator('.timeline-event').nth(2).hover({ force: true });
+  const hovered = await visibleLabels(page);
+  expect(hovered).toHaveLength(1);
+  await page.mouse.move(0, 0);
+  await page.locator('.timeline-event').nth(4).focus();
+  const focused = await visibleLabels(page);
+  for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
+  // Every event is still listed, with its hour.
+  const list = page.getByRole('region', { name: 'Events' }).filter({ visible: true });
+  await expect(list.getByRole('listitem')).toHaveCount(await page.locator('.timeline-event').count());
 });
 
 test('phone layout', async ({ page }, info) => {
@@ -153,5 +202,12 @@ test('phone layout', async ({ page }, info) => {
   await expect(card.getByRole('button', { name: /^Restore / })).toHaveAttribute('aria-pressed', 'true');
   await expect(card).toHaveAttribute('data-cut', 'true');
   expect(await noSideScroll()).toBe(true);
+  // Nothing outside the card scroller reaches past the viewport's right edge.
+  const overflowing = await page.evaluate(() =>
+    [...document.body.querySelectorAll('*')]
+      .filter((e) => !e.closest('.site-cards') && e.getBoundingClientRect().right > window.innerWidth + 0.5)
+      .map((e) => `${e.tagName.toLowerCase()}.${e.getAttribute('class') ?? ''}`),
+  );
+  expect(overflowing).toEqual([]);
   await page.screenshot({ path: info.outputPath('phone-390x844.png'), fullPage: true });
 });

@@ -1,43 +1,14 @@
 import type { Timeline as Run } from '@faillocal/engine';
-import type { KeyboardEvent, PointerEvent } from 'react';
+import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
 import { SPEEDS, horizonDays, horizonHours, scrubTo } from '../model/clock.js';
-import { register } from '../model/register.js';
-import { serviceLabel } from '../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { currentMarker, dayHour, timelineMarkers } from '../model/timelineEvents.js';
 import './chrome.css';
 import './timeline.css';
 
 /** Every tick carries its numeral up to this many days; past it, only the six-day ticks do. */
 const ALL_NUMERALS_UP_TO_DAYS = 24;
 const LONG_TICK_DAYS = 6;
-
-interface Marker {
-  hour: number;
-  kind: 'service-down' | 'service-up' | 'process-stopped';
-  name: string;
-  word: string;
-}
-
-function processName(id: string): string {
-  const process = register.processes.find((p) => p.id === id);
-  if (!process) throw new Error(`register has no process ${id}`);
-  return process.name;
-}
-
-/** Hairlines for every service outage start and end, and the first stop of each process. */
-function markers(t: Run): Marker[] {
-  const stopped = new Set<string>();
-  const out: Marker[] = [];
-  for (const e of t.events) {
-    if (e.kind === 'service-down') out.push({ hour: e.hour, kind: e.kind, name: serviceLabel(e.subject), word: 'down' });
-    else if (e.kind === 'service-up') out.push({ hour: e.hour, kind: e.kind, name: serviceLabel(e.subject), word: 'up' });
-    else if (e.kind === 'process-state' && e.to === 'stopped' && !stopped.has(e.subject)) {
-      stopped.add(e.subject);
-      out.push({ hour: e.hour, kind: 'process-stopped', name: processName(e.subject), word: 'stopped' });
-    }
-  }
-  return out;
-}
 
 /** The horizon as written: whole days bare, a part day to one decimal. */
 const daysText = (d: number): string => (Number.isInteger(d) ? String(d) : d.toFixed(1));
@@ -60,6 +31,8 @@ export function Timeline() {
   const hour = Math.min(clock.hour, maxHour);
   const whole = Math.floor(hour);
   const day = Math.floor(whole / 24);
+  const markers = timelineMarkers(run);
+  const current = currentMarker(markers, hour);
   const ticks = Array.from({ length: Math.floor(days) }, (_, i) => i + 1);
 
   const togglePlay = () => {
@@ -114,20 +87,25 @@ export function Timeline() {
         }}
       >
         <div className="timeline-events">
-          {markers(run).map((m, i) => (
-            <div
+          {markers.map((m, i) => (
+            <button
               key={i}
-              className={`timeline-event${i % 2 ? ' is-below' : ''}`}
+              type="button"
+              className={`timeline-event${i === current ? ' is-current' : ''}`}
               data-event={m.kind}
-              style={{ left: pct(m.hour) }}
+              aria-label={`${m.name} ${m.word}`}
+              disabled={locked}
+              style={{ left: pct(m.hour), '--at': Math.min(Math.max(m.hour / axisHours, 0), 1) } as CSSProperties}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => actions.setClock({ hour: scrubTo(m.hour, maxHour) })}
             >
-              <span className="timeline-event-label">
+              <span className="timeline-event-label" aria-hidden="true">
                 <span className="timeline-event-name" title={m.name}>
                   {m.name}
                 </span>{' '}
                 <span className="timeline-event-word">{m.word}</span>
               </span>
-            </div>
+            </button>
           ))}
         </div>
         <div
@@ -139,7 +117,7 @@ export function Timeline() {
           aria-valuemin={0}
           aria-valuemax={maxHour}
           aria-valuenow={whole}
-          aria-valuetext={`Day ${day}, hour ${whole % 24}`}
+          aria-valuetext={dayHour(whole)}
           onKeyDown={onKeyDown}
         >
           <div className="timeline-elapsed" style={{ width: pct(hour) }} />

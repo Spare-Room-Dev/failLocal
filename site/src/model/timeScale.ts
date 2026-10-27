@@ -20,9 +20,9 @@ export function timeScale(): number {
   return hook.timeScale;
 }
 
-/** Exposes the hook as `window.__faillocal` in a dev build, or when the query string names `e2e`. Returns whether it did. */
+/** Exposes the hook as `window.__faillocal` in a dev build, or when the query string has an `e2e` parameter. Returns whether it did. */
 export function installE2eHook(win: Window, dev: boolean): boolean {
-  if (!dev && !win.location.search.includes('e2e')) return false;
+  if (!dev && !new URLSearchParams(win.location.search).has('e2e')) return false;
   win.__faillocal = hook;
   return true;
 }

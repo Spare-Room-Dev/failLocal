@@ -57,56 +57,123 @@ body {
   min-width: 0;
 }
 
+/*
+ * The stage, a size container. Top to bottom: a band for the service cards, the scene (letterboxed,
+ * pinned to the band so the cables start under the cards), and a band for the legend, so nothing
+ * covers the board or its plinth. `--scene-w` is the scene's drawn width; each card is centred on its
+ * cable at `--cable` of it (ruling R11).
+ */
+.site-stage > * {
+  --card-band: 112px;
+  --legend-band: 56px;
+  /* Resolved where used, so the container units measure the stage. */
+  --scene-h: calc(100cqh - var(--card-band) - var(--legend-band));
+  --scene-w: min(100cqw, var(--scene-h) * 1.6);
+}
+
 .site-stage {
   position: relative;
   grid-area: 2 / 1;
   min-width: 0;
   min-height: 0;
   overflow: clip;
+  container-type: size;
 }
 
 .site-stage > .scene {
   position: absolute;
-  inset: 0;
+  top: var(--card-band);
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: var(--scene-h);
 }
 
-/* The cards scale down to share the stage width, never above 1×. */
-.site-cards {
+.site-card-slot {
   position: absolute;
-  top: 12px;
-  right: 20px;
-  left: 20px;
+  top: calc(var(--card-band) - 4px);
+  left: calc(50cqw - var(--scene-w) / 2 + var(--scene-w) * var(--cable));
+  width: min(240px, var(--scene-w) / 6 - 8px);
   z-index: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-around;
-  gap: 8px;
+  transform: translate(-50%, -100%);
+  container-type: inline-size;
 }
 
-.site-cards > .service-card {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 240px;
+.site-card-slot > .service-card {
+  width: 100%;
+}
+
+/*
+ * A card narrower than its 240 px goes compact (ruling R11): no icon, one-line names, compact
+ * buttons. Keyed on the card's own width, since cable spacing (a sixth of the scene) sets it.
+ */
+@container (max-width: 239px) {
+  .service-icon {
+    display: none;
+  }
+
+  .service-card {
+    min-height: 0;
+    padding: 6px 6px 6px 8px;
+  }
+
+  .service-card-name,
+  .service-row-name {
+    overflow: hidden;
+    font-variation-settings: 'wdth' 80;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .service-button {
+    height: 24px;
+    padding: 0 6px;
+  }
+
+  .service-button .service-glyph {
+    display: none;
+  }
+
+  /* A card with several services puts each row's status beside its short name. */
+  .service-card-name ~ .service-row .service-row-text {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+  }
+}
+
+/* Narrower still (a laptop's stage), the button keeps only its glyph; its accessible name is unchanged. */
+@container (max-width: 159px) {
+  .service-button .service-glyph {
+    display: block;
+  }
+
+  .service-button-text {
+    display: none;
+  }
+}
+
+@container (max-width: 860px) {
+  .site-stage > * {
+    --legend-band: 84px;
+  }
 }
 
 .site-stage > .legend {
   position: absolute;
-  box-sizing: border-box;
   right: 20px;
-  bottom: 16px;
+  bottom: 7px;
   z-index: 1;
-  max-width: calc(50% - 40px);
+  box-sizing: border-box;
+  max-width: calc(100% - 40px);
 }
 
 .site-stage > .guided {
   position: absolute;
-  bottom: 16px;
+  bottom: calc(var(--legend-band) + 8px);
   left: 20px;
   z-index: 2;
-  max-width: min(560px, calc(50% - 20px));
-  max-height: calc(100% - 140px);
+  max-width: min(560px, calc(100% - 40px));
+  max-height: calc(100% - var(--legend-band) - var(--card-band) - 16px);
   overflow-y: auto;
 }
 
@@ -147,6 +214,10 @@ body {
   padding: 0 20px;
 }
 
+.site-strip > .event-list--strip {
+  display: none;
+}
+
 .site-detail {
   grid-area: 1 / 2 / 4 / 3;
   min-height: 0;
@@ -185,12 +256,13 @@ body {
     flex-direction: column;
     gap: 12px;
     padding: 12px 0;
+    container-type: inline-size;
   }
 
   .site-stage > .scene,
   .site-stage > .legend,
   .site-stage > .guided,
-  .site-cards {
+  .site-card-slot {
     position: static;
   }
 
@@ -200,23 +272,25 @@ body {
 
   /* A horizontally scrolling strip of 210 px cards above the scene. */
   .site-cards {
-    justify-content: flex-start;
+    display: flex;
+    gap: 8px;
     padding: 2px 16px 8px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
   }
 
-  .site-cards > .service-card {
+  .site-card-slot {
     flex: 0 0 210px;
-    max-width: none;
+    width: 210px;
+    transform: none;
     scroll-snap-align: start;
   }
 
-  .site-cards .service-icon {
-    display: none;
+  .site-stage > .legend {
+    max-width: none;
+    margin: 0 16px;
   }
 
-  .site-stage > .legend,
   .site-stage > .guided {
     max-width: none;
     max-height: none;
@@ -228,7 +302,6 @@ body {
     gap: 12px;
     height: auto;
     padding: 12px 16px;
-    overflow-x: clip;
   }
 
   .site-strip > .timeline {
@@ -251,6 +324,12 @@ body {
     height: 92px;
   }
 
+  .site-strip > .event-list--strip {
+    display: block;
+    padding: 0;
+    border-top: 0;
+  }
+
   .site-strip > .stock-meters {
     flex: none;
     padding: 0;
@@ -260,5 +339,9 @@ body {
     overflow: visible;
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .site-detail > .event-list--detail {
+    display: none;
   }
 }

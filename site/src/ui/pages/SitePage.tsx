@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { register } from '../../model/register.js';
 import { sampleAt } from '../../model/clock.js';
 import { sceneState } from '../../model/sceneState.js';
-import { SERVICE_GROUPS } from '../../model/serviceGroups.js';
+import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../../model/store.js';
 import { AssumptionsEditor } from '../AssumptionsEditor.js';
 import { DetailPanel } from '../DetailPanel.js';
+import { EventList } from '../EventList.js';
 import { FreePlay } from '../FreePlay.js';
 import { GuidedRun } from '../GuidedRun.js';
 import { Legend } from '../Legend.js';
@@ -28,11 +29,11 @@ function Scene() {
 }
 
 /**
- * The model site in the DESIGN.md app frame: the top bar, the stage (service cards along its top,
- * the legend bottom-right, the guided caption over it), the timeline strip (day and play, the axis,
- * the stocks) and the detail column docked right, which holds free play, the assumptions editor and
- * `footer` below the area panel. Under 761 px it is one column. The playback loop is mounted here,
- * once.
+ * The model site in the DESIGN.md app frame: the top bar, the stage (service cards over their
+ * cables, the scene, the legend in a band below it, the guided caption over it), the timeline strip
+ * (day and play, the axis, the stocks) and the detail column docked right, which holds free play, the
+ * assumptions editor, the event list and `footer` below the area panel. Under 761 px it is one
+ * column, with the event list under the axis. The playback loop is mounted here, once.
  */
 export function SitePage({ footer }: { footer?: ReactNode }) {
   usePlayback();
@@ -46,8 +47,10 @@ export function SitePage({ footer }: { footer?: ReactNode }) {
       <TopBar />
       <div className="site-stage">
         <div className="site-cards">
-          {SERVICE_GROUPS.map((g) => (
-            <ServiceCard key={g.id} group={g} />
+          {SERVICE_GROUPS.map((g, i) => (
+            <div key={g.id} className="site-card-slot" style={{ '--cable': cableFraction(i) } as CSSProperties}>
+              <ServiceCard group={g} />
+            </div>
           ))}
         </div>
         <Scene />
@@ -56,6 +59,7 @@ export function SitePage({ footer }: { footer?: ReactNode }) {
       </div>
       <div className="site-strip">
         <Timeline />
+        <EventList className="event-list--strip" />
         <StockMeters />
       </div>
       <div className="site-detail">
@@ -66,6 +70,7 @@ export function SitePage({ footer }: { footer?: ReactNode }) {
             <AssumptionsEditor />
           </>
         )}
+        <EventList className="event-list--detail" />
         {footer}
       </div>
     </div>

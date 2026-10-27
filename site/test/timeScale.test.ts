@@ -18,6 +18,9 @@ describe('e2e speed hook (R9)', () => {
     const e2e = at('?e2e');
     expect(installE2eHook(e2e, false)).toBe(true);
     expect(e2e.__faillocal?.timeScale).toBe(1);
+    expect(installE2eHook(at('?x=e2e'), false)).toBe(false);
+    expect(installE2eHook(at('?noe2e'), false)).toBe(false);
+    expect(installE2eHook(at('?a=1&e2e'), false)).toBe(true);
     expect(installE2eHook(at(''), true)).toBe(true);
   });
 

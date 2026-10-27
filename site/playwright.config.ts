@@ -16,7 +16,8 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // Always a fresh build, so a stale server never answers for the current code.
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

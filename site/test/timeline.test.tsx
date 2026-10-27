@@ -7,7 +7,9 @@ import { register } from '../src/model/register.js';
 import { serviceLabel } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { StockMeters } from '../src/ui/StockMeters.js';
+import { EventList } from '../src/ui/EventList.js';
 import { Timeline } from '../src/ui/Timeline.js';
+import { timelineMarkers } from '../src/model/timelineEvents.js';
 import { usePlayback } from '../src/ui/usePlayback.js';
 import { installE2eHook, timeScale } from '../src/model/timeScale.js';
 import { untaggedNumbers } from './helpers/untagged.js';
@@ -148,9 +150,36 @@ describe('Timeline', () => {
     expect(slider().getAttribute('aria-disabled')).toBeNull();
   });
 
+  test('each hairline is a button named for its event; only the latest event at or before now is labelled', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Timeline />);
+    const markers = timelineMarkers(appStore.get().lastGood!);
+    const hairlines = () => [...container.querySelectorAll<HTMLButtonElement>('button[data-event]')];
+    expect(hairlines().map((b) => b.getAttribute('aria-label'))).toEqual(markers.map((m) => `${m.name} ${m.word}`));
+    const current = () => hairlines().filter((b) => b.classList.contains('is-current'));
+    expect(current()).toHaveLength(1); // hour 0 has the ERP going down
+    const target = markers.findIndex((m) => m.hour > 100);
+    act(() => actions.setClock({ hour: markers[target]!.hour }));
+    expect(current()).toEqual([hairlines()[markers.map((m) => m.hour).lastIndexOf(markers[target]!.hour)]]);
+    await user.click(hairlines()[0]!);
+    expect(appStore.get().clock.hour).toBe(markers[0]!.hour);
+  });
+
   test('every numeral is a clock value', () => {
     const { container } = render(<Timeline />);
     act(() => actions.setClock({ hour: 148 }));
+    expect(untaggedNumbers(container)).toEqual([]);
+  });
+});
+
+describe('EventList', () => {
+  test('writes out every timeline event with its day and hour as a clock value', () => {
+    const { container } = render(<EventList />);
+    const markers = timelineMarkers(appStore.get().lastGood!);
+    const items = within(screen.getByRole('region', { name: 'Events' })).getAllByRole('listitem');
+    expect(items).toHaveLength(markers.length);
+    const m = markers.at(-1)!;
+    expect(items.at(-1)!.textContent).toBe(`Day ${Math.floor(m.hour / 24)}, hour ${m.hour % 24} ${m.name} ${m.word}`);
     expect(untaggedNumbers(container)).toEqual([]);
   });
 });

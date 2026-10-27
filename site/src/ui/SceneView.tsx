@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from 'react';
 import type { Cable, Flag, SceneState } from '../model/sceneState.js';
-import { groupState, SERVICE_GROUPS } from '../model/serviceGroups.js';
+import { cableFraction, groupState, SERVICE_GROUPS } from '../model/serviceGroups.js';
 import './scene.css';
 
 export interface SceneViewProps {
@@ -87,7 +87,11 @@ export function SceneView({ scene, selected, onSelect, reducedMotion }: SceneVie
     onSelect(id);
   };
   return (
-    <svg className="scene" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="group" aria-label="Model site schematic" data-reduced-motion={reducedMotion}>
+    <svg
+      className="scene"
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      preserveAspectRatio="xMidYMin meet"
+      role="group" aria-label="Model site schematic" data-reduced-motion={reducedMotion}>
       <defs>
         <pattern id="scene-hatch" patternUnits="userSpaceOnUse" width={7} height={7} patternTransform="rotate(26.565)">
           <rect width={7} height={7} fill="var(--hatch-ink)" opacity={0.08} />
@@ -99,7 +103,7 @@ export function SceneView({ scene, selected, onSelect, reducedMotion }: SceneVie
         const state = groupState(scene, g);
         return (
           <g key={g.id} data-cable={g.id} data-state={state}>
-            <CableLine name={g.name} x={(WIDTH / (SERVICE_GROUPS.length + 1)) * (i + 1)} state={state} />
+            <CableLine name={g.name} x={WIDTH * cableFraction(i)} state={state} />
           </g>
         );
       })}

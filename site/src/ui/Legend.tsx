@@ -28,12 +28,12 @@ const ENTRIES: { word: string; shape: string; glyph: ReactNode }[] = [
     glyph: (
       <>
         <defs>
-          <pattern id="legend-hatch" patternUnits="userSpaceOnUse" width={7} height={7} patternTransform="rotate(26.565)">
-            <rect width={7} height={7} fill="var(--hatch-ink)" opacity={0.08} />
-            <line x1={0} y1={3.5} x2={7} y2={3.5} stroke="var(--hatch-ink)" strokeWidth={1.5} opacity={0.62} />
+          {/* Coarser than the scene's hatch, with no wash or outline, so it reads as ground at glyph size. */}
+          <pattern id="legend-hatch" patternUnits="userSpaceOnUse" width={8} height={8} patternTransform="rotate(26.565)">
+            <line x1={0} y1={4} x2={8} y2={4} stroke="var(--hatch-ink)" strokeWidth={2.5} opacity={0.8} />
           </pattern>
         </defs>
-        <rect data-hatched x={1} y={40} width={38} height={11} fill="url(#legend-hatch)" stroke="var(--hatch-ink)" strokeDasharray="5 3" />
+        <rect data-hatched x={0} y={36} width={40} height={16} fill="url(#legend-hatch)" />
         <FlagGlyph flag="full" x={8} y={2} />
       </>
     ),

@@ -47,7 +47,8 @@ function statusLine(timeline: Timeline | null, service: string, state: ServiceSt
   );
 }
 
-function ServiceRow({ service, label }: { service: string; label: string }) {
+/** One service's row. `label` names it to assistive technology and in the tooltip; `shown` is the text on the card. */
+function ServiceRow({ service, label, shown = label }: { service: string; label: string; shown?: string }) {
   const timeline = useStore(appStore, (s) => s.lastGood);
   const hour = useStore(appStore, (s) => s.clock.hour);
   const mode = useStore(appStore, (s) => s.mode);
@@ -69,7 +70,9 @@ function ServiceRow({ service, label }: { service: string; label: string }) {
   return (
     <div className="service-row" data-cut={state !== 'up'}>
       <div className="service-row-text">
-        <span className="service-row-name">{label}</span>
+        <span className="service-row-name" title={label}>
+          {shown}
+        </span>
         <span className="service-row-status">
           {state !== 'up' && <BreakGlyph />}
           {statusLine(timeline, service, state, hour)}
@@ -84,7 +87,7 @@ function ServiceRow({ service, label }: { service: string; label: string }) {
         onClick={onClick}
       >
         {pressed ? <JoinGlyph /> : <ScissorsGlyph />}
-        {pressed ? 'Restore' : 'Cut'}
+        <span className="service-button-text">{pressed ? 'Restore' : 'Cut'}</span>
       </button>
     </div>
   );
@@ -104,9 +107,13 @@ export function ServiceCard({ group }: { group: ServiceGroup }) {
     <section className="service-card" role="group" aria-label={group.name} data-service-group={group.id} data-cut={cut}>
       <ServiceIcon cut={cut} />
       <div className="service-card-body">
-        {!single && <span className="service-card-name">{group.name}</span>}
+        {!single && (
+          <span className="service-card-name" title={group.name}>
+            {group.name}
+          </span>
+        )}
         {group.services.map((id) => (
-          <ServiceRow key={id} service={id} label={single ? group.name : serviceName(id)} />
+          <ServiceRow key={id} service={id} label={single ? group.name : serviceName(id)} shown={group.rowLabels?.[id]} />
         ))}
       </div>
     </section>
