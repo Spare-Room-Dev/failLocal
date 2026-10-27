@@ -94,7 +94,13 @@ describe('pages', () => {
     go('#/built');
     render(<App />);
     expect(screen.getByText('Draft — awaiting owner review')).toBeTruthy();
-    expect(screen.getByText(/Claude Code/)).toBeTruthy();
+    expect(screen.getAllByText(/Claude Code/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        'Claude Code proposed every modelling judgement and recorded it in the decision log; I reviewed each one and accepted or changed it.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/every judgement call in the model/)).toBeNull();
     const review = screen.getByText('[Placeholder: whole-branch review — confirm once done]');
     expect(review.classList.contains('placeholder')).toBe(true);
     expect(screen.queryByText('A review of the whole branch before release.')).toBeNull();

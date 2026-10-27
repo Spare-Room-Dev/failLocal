@@ -7,12 +7,15 @@ export function BuiltPage() {
       </p>
       <h1>How I built this</h1>
       <p>
-        I set the goals for FailLocal, the honesty rules it follows and every judgement call in the model, and I approved
-        the design before it was built.
+        I set the goals for FailLocal and the honesty rules it follows, and I approved the design before it was built.
       </p>
       <p>
         Claude Code, Anthropic&rsquo;s coding agent, wrote the code and drafted the copy under that direction. Where it
         had to choose, it asked, or wrote the choice down for me to accept or change.
+      </p>
+      <p>
+        Claude Code proposed every modelling judgement and recorded it in the decision log; I reviewed each one and
+        accepted or changed it.
       </p>
       <h2>How it was checked</h2>
       <ul>

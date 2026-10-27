@@ -31,6 +31,7 @@ npm run build -w site   # build to site/dist, then run the build guard (scripts/
 npm run e2e -w site     # build, preview under the deployed headers, and run the Playwright checks
 ```
 
+Adding `?e2e` to the URL installs a test hook, `window.__faillocal`, that only changes playback speed, for the end-to-end tests.
 The build guard fails the build on inline script or style in `index.html`, on any URL other than the register's sources (and a short list of library namespace strings), and on more than 300 KB of gzipped JS.
 Deployment is the static `site/dist` folder on Cloudflare Pages; `site/public/_headers` is copied into it and sets the Content-Security-Policy and other security headers for every path.
 

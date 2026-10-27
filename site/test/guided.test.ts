@@ -20,6 +20,10 @@ const step = (steps: GuidedStep[], segment: GuidedStep['segment'], moment: Guide
 const firstHaulageStop = (r: Register) =>
   run(r, 's1-projection', 'unprepared').events.find((e) => e.kind === 'process-state' && e.subject === 'haulage' && e.to === 'stopped')?.hour;
 
+/** The as-reported restore step's caption text parts. */
+const steps1Caption = (t: ReturnType<typeof run>) =>
+  step(guidedSteps(register), 'as-reported', 'restore').caption(t).filter((p): p is string => typeof p === 'string');
+
 describe('guidedSteps', () => {
   test('fleet-park step hour equals the first haulage stopped event', () => {
     const hour = firstHaulageStop(register);
@@ -101,6 +105,15 @@ describe('guidedSteps', () => {
       ' ',
       'Fuel orders keep going.',
     ]);
+  });
+
+  test('"The trucks never stopped" holds: as reported, unprepared, haulage never reaches stopped', () => {
+    const reported = run(register, 's1-as-reported', 'unprepared');
+    expect(steps1Caption(reported)).toContain('. The trucks never stopped.');
+    expect(reported.samples.length).toBeGreaterThan(0);
+    expect(reported.samples.every((s) => s.processes['haulage'] !== undefined)).toBe(true);
+    expect(reported.samples.some((s) => s.processes['haulage'] === 'stopped')).toBe(false);
+    expect(reported.events.some((e) => e.kind === 'process-state' && e.subject === 'haulage' && e.to === 'stopped')).toBe(false);
   });
 
   test('the 12 days comes from the sourced restore', () => {
