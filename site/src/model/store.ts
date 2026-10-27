@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { Timeline, Variant } from '@faillocal/engine';
-import { scenarioAsFree } from './freePlay.js';
+import { FREE_PLAY_ID, scenarioAsFree } from './freePlay.js';
 import type { FreeCut } from './freePlay.js';
 import { register } from './register.js';
 import { deriveRun } from './run.js';
@@ -64,6 +64,9 @@ export function initialAppState(): AppState {
 
 export const appStore = createStore<AppState>(initialAppState());
 
+/** A path under one free-play event; group 1 is the event index. */
+const FREE_EVENT_PATH = new RegExp(`^scenarios\\.${FREE_PLAY_ID}\\.events\\[(\\d+)\\]\\.`);
+
 const paused = (clock: Clock): Clock => ({ ...clock, hour: 0, playing: false });
 
 /** The free-play spec to edit: the current one, or one seeded from the register scenario showing (R4). */
@@ -94,8 +97,20 @@ export const actions = {
   updateCut(i: number, c: Partial<FreeCut>): void {
     setFree((spec) => ({ cuts: spec.cuts.map((cut, j) => (j === i ? { ...cut, ...c } : cut)) }));
   },
+  /** Removes cut `i`, and any override on a free-play event that no longer exists, which would be an unknown path. */
   removeCut(i: number): void {
-    setFree((spec) => ({ cuts: spec.cuts.filter((_, j) => j !== i) }));
+    appStore.set((s) => {
+      const spec = freeSpec(s);
+      const cuts = spec.cuts.filter((_, j) => j !== i);
+      const overrides = Object.fromEntries(
+        Object.entries(s.overrides).filter(([path]) => {
+          const event = FREE_EVENT_PATH.exec(path);
+          return !event || Number(event[1]) < cuts.length;
+        }),
+      );
+      return { spec: { ...spec, cuts }, overrides };
+    });
+    actions.recompute();
   },
   setWorkaroundsHold(b: boolean): void {
     setFree(() => ({ workaroundsHold: b }));

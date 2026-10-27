@@ -1,0 +1,91 @@
+/* Assumptions editor (desktop only): flat paper, hairlines, tabular numerals. */
+.editor {
+  padding: 4px 20px 16px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.editor-title {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.editor-group-heading {
+  margin: 14px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.editor-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink-2);
+}
+
+.editor-label input {
+  width: 96px;
+  padding: 3px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-label input[aria-invalid='true'] {
+  border-color: var(--stop-red);
+}
+
+.editor-issue {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--stop-red-text);
+  font-size: 12px;
+}
+
+.editor-reset,
+.editor-reset-all {
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.editor-label input:focus-visible,
+.editor-reset:focus-visible,
+.editor-reset-all:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.editor-phone-note {
+  margin: 12px 20px;
+  color: var(--ink-3);
+  font-size: 12px;
+}

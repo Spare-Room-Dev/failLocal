@@ -57,6 +57,20 @@ describe('app store', () => {
     expect(s.issues).toEqual([]);
   });
 
+  test('removing a free-play cut prunes overrides on its event paths', () => {
+    appStore.set({ spec: EMPTY_FREE });
+    actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 1 });
+    actions.addCut({ service: 'hosted-erp', atDays: 1, forDays: 2 });
+    actions.setOverride('scenarios.free-play.events[1].at', 5);
+    actions.setOverride('scenarios.free-play.events[0].restoreAfter', 7);
+    actions.setOverride('production.price', 120);
+    expect(appStore.get().issues).toEqual([]);
+    actions.removeCut(1);
+    const s = appStore.get();
+    expect(s.overrides).toEqual({ 'scenarios.free-play.events[0].restoreAfter': 7, 'production.price': 120 });
+    expect(s.issues).toEqual([]);
+  });
+
   test('startGuided clears overrides so the guided run uses register values', () => {
     actions.setOverride('stocks.diesel.initial', 1);
     const edited = appStore.get().lastGood;

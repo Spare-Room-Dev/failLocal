@@ -1,0 +1,90 @@
+/* Free-play controls: scenario picker, cuts, workarounds and reset. Flat paper and ink. */
+.free-play {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+  color: var(--ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.free-play-picker,
+.free-cut-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink-2);
+}
+
+.free-play select,
+.free-play input[type='number'] {
+  padding: 3px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.free-play input[type='number'] {
+  width: 64px;
+}
+
+.free-play input[aria-invalid='true'] {
+  border-color: var(--stop-red);
+}
+
+.free-play-note {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+.free-cuts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.free-cut {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.free-cut-name {
+  flex: 1;
+  align-self: center;
+  font-weight: 680;
+}
+
+.free-play-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.free-cut-remove,
+.free-play-reset {
+  padding: 3px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.free-play-reset {
+  align-self: start;
+}
+
+.free-play select:focus-visible,
+.free-play input:focus-visible,
+.free-play button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
