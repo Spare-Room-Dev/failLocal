@@ -120,7 +120,8 @@ describe('guidedSteps', () => {
     const steps = guidedSteps(register);
     const reported = run(register, 's1-as-reported', 'unprepared');
     const qty = steps[1]!.caption(reported).find((p) => typeof p === 'object' && 'qty' in p);
-    expect(qty).toMatchObject({ qty: { value: 12, kind: 'days', display: 'sourced', provenance: { source: 'scope-incident-updates' } } });
+    expect(qty).toMatchObject({ qty: { value: 12, kind: 'days', provenance: { kind: 'sourced', source: 'scope-incident-updates' } } });
+    expect(qty).not.toHaveProperty('qty.overridden', true);
   });
 });
 

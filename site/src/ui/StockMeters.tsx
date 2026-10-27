@@ -52,7 +52,7 @@ export function StockMeters() {
               <div className="stock-fill" style={{ width: `${fill * 100}%` }} />
             </div>
             <span className="stock-value">
-              <Qty value={level} kind="days" display="computed" />
+              <Qty value={level} kind="days" computed />
             </span>
           </div>
         );

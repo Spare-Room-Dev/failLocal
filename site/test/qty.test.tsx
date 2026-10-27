@@ -7,26 +7,57 @@ afterEach(cleanup);
 
 describe('Qty', () => {
   it('Qty renders value and tag together', () => {
-    const { container } = render(<Qty value={1.4} kind="days" display="computed" />);
+    const { container } = render(<Qty value={1.4} kind="days" computed />);
     const quantity = container.querySelector('[data-quantity]');
     expect(quantity?.textContent).toBe('1.4 dayscomputed');
     expect(screen.getByLabelText('computed value').textContent).toBe('computed');
   });
 
-  it('overridden adds changed-by-you', () => {
-    render(<Qty value={0.6} kind="fraction" display="assumed" overridden />);
-    expect(screen.getByText('assumed')).toBeTruthy();
+  it('an overridden value shows only changed-by-you, never its register kind', () => {
+    render(
+      <Qty value={120} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} overridden original={97.7} sources={{ 'pink-sheet': 'World Bank Pink Sheet' }} />,
+    );
     expect(screen.getByText('changed by you')).toBeTruthy();
+    expect(screen.queryByText('sourced')).toBeNull();
+    expect(screen.queryByLabelText('sourced value')).toBeNull();
+  });
+
+  it("changed-by-you's tooltip names the register value, its kind and its source", () => {
+    render(
+      <Qty value={120} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} overridden original={97.7} sources={{ 'pink-sheet': 'World Bank Pink Sheet' }} />,
+    );
+    const tag = screen.getByText('changed by you');
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    expect(tip.textContent).toBe('Register value: US$97.7/t (sourced, World Bank Pink Sheet)');
+    expect(tag.getAttribute('aria-describedby')).toBe(tip.id);
+    expect(tip.hidden).toBe(true);
+    fireEvent.focus(tag);
+    expect(tip.hidden).toBe(false);
+    fireEvent.blur(tag);
+    expect(tip.hidden).toBe(true);
+  });
+
+  it("an overridden assumed value's tooltip names its kind alone", () => {
+    render(<Qty value={0.6} kind="fraction" provenance={{ kind: 'assumed', reasoning: 'r' }} overridden original={0.5} />);
+    expect(screen.getByRole('tooltip', { hidden: true }).textContent).toBe('Register value: 50% (assumed)');
   });
 
   it('has no changed-by-you tag unless overridden', () => {
-    render(<Qty value={0.6} kind="fraction" display="assumed" />);
+    render(<Qty value={0.6} kind="fraction" provenance={{ kind: 'assumed', reasoning: 'r' }} />);
     expect(screen.queryByText('changed by you')).toBeNull();
+    expect(screen.getByText('assumed')).toBeTruthy();
+  });
+
+  it('a sourced value whose source has no title shows the source id', () => {
+    render(<Qty value={97.7} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} sources={{}} />);
+    expect(screen.getByRole('tooltip', { hidden: true }).textContent).toBe('pink-sheet');
+    render(<Qty value={120} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} overridden original={97.7} />);
+    expect(screen.getAllByRole('tooltip', { hidden: true })[1]!.textContent).toBe('Register value: US$97.7/t (sourced, pink-sheet)');
   });
 
   it('an assumed tag carries the reasoning as its title', () => {
     render(
-      <Qty value={25} kind="mtpa" display="assumed" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine.' }} />,
+      <Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine.' }} />,
     );
     expect(screen.getByLabelText('assumed value').getAttribute('title')).toBe('A mid-size mine.');
   });
@@ -36,7 +67,6 @@ describe('Qty', () => {
       <Qty
         value={97.7}
         kind="usdPerT"
-        display="sourced"
         provenance={{ kind: 'sourced', source: 'pink-sheet' }}
         sources={{ 'pink-sheet': 'World Bank Pink Sheet' }}
       />,
@@ -59,9 +89,10 @@ describe('Qty', () => {
   it('each display kind gets its own tag class', () => {
     const { container } = render(
       <>
-        {(['computed', 'assumed', 'sourced', 'measured'] as const).map((d) => (
-          <Qty key={d} value={1} kind="hours" display={d} />
-        ))}
+        <Qty value={1} kind="hours" computed />
+        <Qty value={1} kind="hours" provenance={{ kind: 'assumed', reasoning: 'r' }} />
+        <Qty value={1} kind="hours" provenance={{ kind: 'sourced', source: 's' }} sources={{ s: 'S' }} />
+        <Qty value={1} kind="hours" provenance={{ kind: 'measured', runId: 'r1', date: '2026-01-01', evidence: 'e' }} />
       </>,
     );
     for (const d of ['computed', 'assumed', 'sourced', 'measured']) {
@@ -104,7 +135,9 @@ describe('untaggedNumbers', () => {
   });
 
   it('finds nothing untagged in a rendered Qty', () => {
-    const { container } = render(<Qty value={12400} kind="tonnes" display="computed" overridden />);
+    const { container } = render(
+      <Qty value={12400} kind="tonnes" provenance={{ kind: 'assumed', reasoning: 'r' }} overridden original={10000} />,
+    );
     expect(untaggedNumbers(container)).toEqual([]);
   });
 });

@@ -35,7 +35,7 @@ describe('RevenueSection', () => {
     render(<DetailPanel />);
     expect(qtyTags(working(), formatQty(register.production.price.value, 'usdPerT'))).toEqual(['sourced']);
     act(() => actions.setOverride('production.price', 120));
-    expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['sourced', 'changed by you']);
+    expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['changed by you']);
     expect(qtyTags(working(), formatQty(register.production.annualTonnes.value, 'mtpa'))).toEqual(['assumed']);
   });
 
@@ -116,7 +116,7 @@ describe('AreaPanel', () => {
     const mto = register.processes.find((p) => p.id === 'haulage')!.continuity.maxTolerableOutage;
     expect(qtyTags(continuity(), formatQty(mto.value, 'hours'))).toEqual([mto.provenance.kind]);
     act(() => actions.setOverride('processes.haulage.continuity.maxTolerableOutage', 6));
-    expect(qtyTags(continuity(), formatQty(6, 'hours'))).toEqual([mto.provenance.kind, 'changed by you']);
+    expect(qtyTags(continuity(), formatQty(6, 'hours'))).toEqual(['changed by you']);
   });
 
   test('the fleet row shows eight trucks for haulage only, parked ones marked, with no count', () => {

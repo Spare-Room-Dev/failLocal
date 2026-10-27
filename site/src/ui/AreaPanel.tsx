@@ -3,6 +3,7 @@ import { useId } from 'react';
 import type { ReactNode } from 'react';
 import type { Dependency, Process, ProcessState, Register, Sample, Timeline, UsedInput, Variant } from '@faillocal/engine';
 import { sceneState } from '../model/sceneState.js';
+import { usedTag } from '../model/tags.js';
 import type { SceneState } from '../model/sceneState.js';
 import { ProvenanceTag } from './ProvenanceTag.js';
 import { Qty } from './Qty.js';
@@ -56,16 +57,11 @@ function dependencyView(r: Register, timeline: Timeline, sample: Sample, d: Depe
   throw new Error(`register has nothing called ${d.on}`);
 }
 
-/** The input at `path` as the run used it. Throws if the run did not record it. */
-function usedInput(timeline: Timeline, path: string): UsedInput {
-  const used = timeline.assumptionsUsed[path];
+/** The run input at `path`, in hours, with its tag ("changed by you" when the visitor edited it). Throws if the run did not record it. */
+function UsedHours({ timeline, path, sources }: { timeline: Timeline; path: string; sources: Record<string, string> }) {
+  const used: UsedInput | undefined = timeline.assumptionsUsed[path];
   if (!used) throw new Error(`the run did not record ${path}`);
-  return used;
-}
-
-/** A run input in hours with its tag, and "changed by you" when the visitor edited it. */
-function UsedHours({ used }: { used: UsedInput }) {
-  return <Qty value={used.value} kind="hours" display={used.provenance.kind} provenance={used.provenance} overridden={used.overridden} />;
+  return <Qty value={used.value} kind="hours" {...usedTag(path, used)} sources={sources} />;
 }
 
 /** Eight illustrative trucks (D-099): parked ones khaki with a pause marker. Never a count. */
@@ -97,13 +93,13 @@ function IndependentCopy({ r, process, variant }: { r: Register; process: Proces
   return <span data-testid="independent-copy">{`Yes, via ${name}`}</span>;
 }
 
-function LastRestoreTest({ test }: { test: Process['continuity']['lastRestoreTest'] }) {
+function LastRestoreTest({ test, sources }: { test: Process['continuity']['lastRestoreTest']; sources: Record<string, string> }) {
   if (!test) return <>None recorded</>;
   // A dated record with provenance: it carries its tag like a quantity does.
   return (
     <span className="qty" data-quantity>
       {test.date}, {test.result === 'pass' ? 'passed' : 'failed'}
-      <ProvenanceTag display={test.provenance.kind} provenance={test.provenance} />
+      <ProvenanceTag provenance={test.provenance} sources={sources} />
     </span>
   );
 }
@@ -138,6 +134,7 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
       ? process.dependsOn.filter((d) => d.afterRestore && sample.services[d.on] === 'up')
       : [];
   const { continuity } = process;
+  const sources = Object.fromEntries(r.sources.map((s) => [s.id, s.title]));
 
   return (
     <section className="area-panel" aria-label={`Area: ${process.name}`}>
@@ -177,7 +174,7 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
           {held.map((d) => (
             <li key={d.on}>
               {`${dependencyView(r, timeline, sample, d).name}: Back up — ${d.afterRestore!.description}. Held for `}
-              <UsedHours used={usedInput(timeline, `processes.${processId}.dependsOn.${d.on}.afterRestore.holdFor`)} />
+              <UsedHours timeline={timeline} path={`processes.${processId}.dependsOn.${d.on}.afterRestore.holdFor`} sources={sources} />
               {' after each restore.'}
             </li>
           ))}
@@ -203,14 +200,14 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
       </h3>
       <ul className="panel-rows" aria-labelledby={`${ids}-continuity`}>
         <Row label="Maximum tolerable outage">
-          <UsedHours used={usedInput(timeline, `processes.${processId}.continuity.maxTolerableOutage`)} />
+          <UsedHours timeline={timeline} path={`processes.${processId}.continuity.maxTolerableOutage`} sources={sources} />
         </Row>
         <Row label="Recovery target">
-          <UsedHours used={usedInput(timeline, `processes.${processId}.continuity.recoveryTarget`)} />
+          <UsedHours timeline={timeline} path={`processes.${processId}.continuity.recoveryTarget`} sources={sources} />
         </Row>
         <Row label="Owner">{continuity.owner}</Row>
         <Row label="Last restore test">
-          <LastRestoreTest test={continuity.lastRestoreTest} />
+          <LastRestoreTest test={continuity.lastRestoreTest} sources={sources} />
         </Row>
         <Row label="Independent copy">
           <IndependentCopy r={r} process={process} variant={variant} />

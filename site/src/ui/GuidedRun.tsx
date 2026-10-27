@@ -1,9 +1,10 @@
 import type { Register, Timeline, UsedInput } from '@faillocal/engine';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DWELL_SECONDS, TRAVEL_HOURS_PER_SECOND, comparison, guidedSteps, travelHours } from '../model/guided.js';
+import { DWELL_SECONDS, HOLD_PATH, TRAVEL_HOURS_PER_SECOND, comparison, guidedSteps, travelHours } from '../model/guided.js';
 import type { CaptionParts, GuidedStep } from '../model/guided.js';
 import { register as defaultRegister } from '../model/register.js';
 import { deriveRun } from '../model/run.js';
+import { usedTag } from '../model/tags.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import { timeScale } from '../model/timeScale.js';
 import { Qty } from './Qty.js';
@@ -172,14 +173,7 @@ function Caption({ parts, sources }: { parts: CaptionParts; sources: Sources }) 
 function holdQty(hold: UsedInput, sources: Sources) {
   const days = hold.unit === 'days';
   return (
-    <Qty
-      value={hold.value}
-      kind={days ? 'days' : 'hours'}
-      display={hold.provenance.kind}
-      provenance={hold.provenance}
-      overridden={hold.overridden}
-      sources={sources}
-    />
+<Qty value={hold.value} kind={days ? 'days' : 'hours'} {...usedTag(HOLD_PATH, hold)} sources={sources} />
   );
 }
 
@@ -192,19 +186,19 @@ function ComparisonCard({ register, sources }: { register: Register; sources: So
         <div>
           <dt>Revenue at risk, unprepared</dt>
           <dd>
-            <Qty value={c.unprepared} kind="usd" display="computed" />
+            <Qty value={c.unprepared} kind="usd" computed />
           </dd>
         </div>
         <div>
           <dt>Revenue at risk, prepared</dt>
           <dd>
-            <Qty value={c.prepared} kind="usd" display="computed" />
+            <Qty value={c.prepared} kind="usd" computed />
           </dd>
         </div>
         <div>
           <dt>Being prepared protected</dt>
           <dd>
-            <Qty value={c.protected} kind="usd" display="computed" />
+            <Qty value={c.protected} kind="usd" computed />
           </dd>
         </div>
       </dl>

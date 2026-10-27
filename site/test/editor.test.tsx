@@ -71,7 +71,7 @@ describe('AssumptionsEditor', () => {
     fireEvent.change(input('production.price'), { target: { value: '120' } });
     expect(within(row('production.price')).queryByRole('alert')).toBeNull();
     expect(input('production.price').hasAttribute('aria-describedby')).toBe(false);
-    expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['sourced', 'changed by you']);
+    expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['changed by you']);
   });
 
   test('an issue on a path with no row is still shown', () => {
@@ -114,8 +114,14 @@ describe('AssumptionsEditor', () => {
     expect(qtyTags(row('production.price'), price)).toEqual(['sourced']);
     fireEvent.change(input('production.price'), { target: { value: '120' } });
     const edited = formatQty(120, 'usdPerT');
-    expect(qtyTags(row('production.price'), edited)).toEqual(['sourced', 'changed by you']);
-    expect(qtyTags(working(), edited)).toEqual(['sourced', 'changed by you']);
+    expect(qtyTags(row('production.price'), edited)).toEqual(['changed by you']);
+    expect(qtyTags(working(), edited)).toEqual(['changed by you']);
+    // Its tooltip names the register's value, not the edited one.
+    const source = register.sources.find((x) => x.id === (register.production.price.provenance as { source: string }).source)!;
+    for (const root of [row('production.price'), working()]) {
+      const tag = within(root).getByText('changed by you');
+      expect(document.getElementById(tag.getAttribute('aria-describedby')!)!.textContent).toBe(`Register value: ${price} (sourced, ${source.title})`);
+    }
     const tonnes = formatQty(register.production.annualTonnes.value, 'mtpa');
     expect(qtyTags(row('production.annualTonnes'), tonnes)).toEqual(['assumed']);
   });

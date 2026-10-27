@@ -3,6 +3,7 @@ import type { Timeline, Unit, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
 import { register } from '../model/register.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { usedTag } from '../model/tags.js';
 import { Qty } from './Qty.js';
 import { useMediaQuery } from './useMediaQuery.js';
 import { parseDraft, useDraft } from './useDraft.js';
@@ -148,7 +149,7 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
         />
       </label>
       <span className="editor-current">
-        <Qty value={used.value} kind={unit.kind} display={used.provenance.kind} provenance={used.provenance} overridden={used.overridden} sources={sources} />
+        <Qty value={used.value} kind={unit.kind} {...usedTag(path, used)} sources={sources} />
       </span>
       {override !== undefined && (
         <button type="button" className="editor-reset" aria-label={`Reset ${label}`} onClick={() => actions.setOverride(path, null)}>

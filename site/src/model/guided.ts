@@ -1,7 +1,9 @@
-import type { DisplayKind, Provenance, Register, Timeline, TimelineEvent, UsedInput, Variant } from '@faillocal/engine';
+import type { Register, Timeline, TimelineEvent, UsedInput, Variant } from '@faillocal/engine';
 import { horizonHours } from './clock.js';
 import type { QtyKind } from './format.js';
 import { deriveRun } from './run.js';
+import { usedTag } from './tags.js';
+import type { QtyTag } from './tags.js';
 
 /** Seconds the run holds on each step. */
 export const DWELL_SECONDS = 4.5;
@@ -9,13 +11,7 @@ export const DWELL_SECONDS = 4.5;
 export const TRAVEL_HOURS_PER_SECOND = 40;
 
 /** A quantity inside a caption, rendered by `<Qty>`. */
-export interface CaptionQty {
-  value: number;
-  kind: QtyKind;
-  display: DisplayKind;
-  provenance?: Provenance;
-  overridden?: boolean;
-}
+export type CaptionQty = QtyTag & { value: number; kind: QtyKind };
 
 /** A caption: text runs and quantities, in reading order. A date part is a calendar date, shown as written. */
 export type CaptionParts = Array<string | { qty: CaptionQty } | { date: string; text: string }>;
@@ -72,7 +68,7 @@ function findHour(t: Timeline, moment: Moment): number | undefined {
 const text = (s: string) => (): CaptionParts => [s];
 const totalCaption = (lead: string) => (t: Timeline): CaptionParts => [
   lead,
-  { qty: { value: t.totals.revenueAtRisk, kind: 'usd', display: 'computed' } },
+  { qty: { value: t.totals.revenueAtRisk, kind: 'usd', computed: true } },
   ' of revenue at risk.',
 ];
 
@@ -84,10 +80,10 @@ const CAPTIONS = {
   ],
   reportedRestore: (t: Timeline): CaptionParts => {
     const u = used(t, RESTORE_AFTER);
-    const days = u.unit === 'hours' ? u.value / 24 : u.value;
+    const scale = u.unit === 'hours' ? 1 / 24 : 1;
     return [
       'The ERP is back after ',
-      { qty: { value: days, kind: 'days', display: u.provenance.kind, provenance: u.provenance, overridden: u.overridden } },
+      { qty: { value: u.value * scale, kind: 'days', ...usedTag(RESTORE_AFTER, u, scale) } },
       '. The trucks never stopped.',
     ];
   },

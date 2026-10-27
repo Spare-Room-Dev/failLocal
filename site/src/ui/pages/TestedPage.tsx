@@ -17,7 +17,7 @@ export function TestedPage() {
         {register.controls.map((c) => (
           <li key={c.id}>
             <span className="control-name">{c.name}</span>
-            <ProvenanceTag display={c.capability.provenance.kind} provenance={c.capability.provenance} sources={sourceTitles} />
+            <ProvenanceTag provenance={c.capability.provenance} sources={sourceTitles} />
           </li>
         ))}
       </ul>
