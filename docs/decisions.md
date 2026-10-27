@@ -721,3 +721,23 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** Under local control, or with loadings cut back on a low stockpile, about half the usual trains run.
 - **Source / provenance:** assumed
 - **Owner change:**
+
+# The website
+
+## D-099 Display rules map engine state to art, never to a number
+- **Decision:** The haul fleet is drawn as an illustrative eight trucks: all moving when haulage is normal, four moving and four parked when degraded, none moving when stopped. The train runs at full speed when rail is normal, half speed when degraded, and stands when stopped. The stockpile, ROM pad and fuel-tank fill heights are the stock level over its capacity. No truck count is shown as a number: the panel says "Fleet rationed" or similar, never "3 of 8".
+- **Reasoning:** The scene shows state by shape; numbers on screen come only from the register or a run, with their provenance tags. Eight trucks is an illustration, not a modelled fleet size, so it must not read as one.
+- **Source / provenance:** assumed
+- **Owner change:**
+
+## D-100 The board is 1,600 × 1,000 m
+- **Decision:** The board grows from 720 × 480 m to 1,600 × 1,000 m, with zoom and pan and a default framing on the pit, ROM pad and crusher. The rail balloon loop has a radius of at least 200 m, and the explosives magazine sits at least 500 m from the workshop, fuel farm and camp. Plan 2b builds it and updates DESIGN.md's Layout section; Plan 2a's schematic keeps the same proportions.
+- **Reasoning:** The 720 × 480 m board forced a rail loop of about 82 m radius and a magazine too close to the workshop, fuel farm and camp, neither of which a real site would have. The new sizes are assumed values, chosen to be credible rather than to match a particular mine.
+- **Source / provenance:** assumed
+- **Owner change:**
+
+## D-101 Free play is a projection the visitor sets up
+- **Decision:** A free-play run is a projection (`projection: true`) with no basis (`basis: []`). The visitor chooses whether manual workarounds hold; the default is that they do not. Every value the visitor chooses (each cut's start and length, and the horizon) arrives as an override, so it is labelled "changed by you". The horizon is in days: the latest cut end plus 4 days, clamped to between 1 and 400 days, and 1 day when there are no cuts.
+- **Reasoning:** A visitor's what-if is not a public record, so it is never shown as one. Routing the visitor's values through overrides reuses the provenance machinery that already marks edited inputs, rather than inventing a second label. The 4-day margin shows the recovery after the last cut.
+- **Source / provenance:** modelling rule (site, `freePlay.ts`)
+- **Owner change:**

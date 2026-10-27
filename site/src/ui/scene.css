@@ -1,0 +1,59 @@
+/* Sizes are in the schematic's viewBox units (1600 wide), not screen pixels. */
+.scene {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scene text {
+  font-family: inherit;
+  fill: var(--ink);
+}
+
+.scene-area {
+  cursor: pointer;
+}
+
+.scene-area:focus {
+  outline: none;
+}
+
+.scene-area:focus-visible .scene-area-outline {
+  stroke-width: 6;
+}
+
+.scene .scene-area-name {
+  font-size: 20px;
+  font-weight: 680;
+  font-variation-settings: 'wdth' 88;
+}
+
+.scene .scene-area-state {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.scene .scene-area-state.is-stopped {
+  fill: var(--stop-red-text);
+}
+
+.scene .scene-area-note {
+  font-size: 16px;
+  font-weight: 600;
+  font-variation-settings: 'wdth' 88;
+  fill: var(--ink-2);
+}
+
+.scene .scene-cable-label {
+  font-size: 18px;
+  font-weight: 650;
+  fill: var(--stop-red);
+}
+
+.scene .scene-plinth {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  font-variation-settings: 'wdth' 92;
+  fill: var(--plate-engraving);
+}
