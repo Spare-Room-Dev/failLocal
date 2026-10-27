@@ -1,7 +1,15 @@
-const DECISION_LOG = 'https://github.com/[owner]/faillocal/blob/main/docs/decisions.md';
+import { caveatInputs } from '../../model/guided.js';
+import { register } from '../../model/register.js';
+import { AssumptionCaveat } from '../AssumptionCaveat.js';
+import { DECISION_LOG } from '../decisionLog.js';
+
+const PROJECTION = 's1-projection';
 
 /** What the model does not claim. */
 export function LimitsPage() {
+  const title = register.scenarios.find((s) => s.id === PROJECTION)?.title;
+  if (!title) throw new Error(`register has no scenario ${PROJECTION}`);
+  const sources = Object.fromEntries(register.sources.map((s) => [s.id, s.title]));
   return (
     <article className="page">
       <h1>Limitations</h1>
@@ -9,8 +17,8 @@ export function LimitsPage() {
         <li>This is a fictional site with synthetic data.</li>
         <li>Lab timings are not comparable with timings on a real site.</li>
         <li>
-          The dollar figure for the hosted ERP outage rests on an assumed hold: how long the manual workarounds last
-          before they run out.
+          <span className="limits-scenario">{title}.</span>{' '}
+          <AssumptionCaveat assumptionsUsed={caveatInputs(register)} sources={sources} />
         </li>
         <li>Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.</li>
       </ul>

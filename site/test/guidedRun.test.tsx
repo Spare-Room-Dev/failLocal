@@ -109,7 +109,7 @@ describe('GuidedRun', () => {
     advanceUntil(() => at() === '2');
   });
 
-  test('comparison shows both totals and the assumed-hold caveat with its tag', () => {
+  test('comparison shows both totals and the assumption caveat with its tags', () => {
     const { container } = startGuided();
     advanceUntil(() => at() === 'comparison');
     const c = comparison(register);
@@ -118,9 +118,9 @@ describe('GuidedRun', () => {
     expect(text).toContain(`Revenue at risk, prepared${formatQty(c.prepared, 'usd')}`);
     expect(text).toContain(`Being prepared protected${formatQty(c.protected, 'usd')}`);
     expect(c.protected).toBeGreaterThan(0);
-    const caveat = container.querySelector('.guided-caveat')!;
-    expect(caveat.textContent).toBe(`This rests on one assumed number: a ${formatQty(24, 'hours')}assumed hold on purchasing after the restore.`);
-    expect(caveat.querySelector('.qty-tag--assumed')).not.toBeNull();
+    const caveat = container.querySelector('.assumption-caveat')!;
+    expect(caveat.textContent).toMatch(/^This projection rests on two assumed numbers: /);
+    expect(caveat.querySelectorAll('.qty-tag--assumed')).toHaveLength(2);
     expect(container.querySelectorAll('.guided-totals .qty-tag--computed')).toHaveLength(3);
     expect(untaggedNumbers(container)).toEqual([]);
     expect(vi.getTimerCount()).toBe(0);

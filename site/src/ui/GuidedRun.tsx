@@ -1,12 +1,12 @@
-import type { Register, Timeline, UsedInput } from '@faillocal/engine';
+import type { Register, Timeline } from '@faillocal/engine';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DWELL_SECONDS, HOLD_PATH, TRAVEL_HOURS_PER_SECOND, comparison, guidedSteps, travelHours } from '../model/guided.js';
+import { DWELL_SECONDS, TRAVEL_HOURS_PER_SECOND, comparison, guidedSteps, travelHours } from '../model/guided.js';
 import type { CaptionParts, GuidedStep } from '../model/guided.js';
 import { register as defaultRegister } from '../model/register.js';
 import { deriveRun } from '../model/run.js';
-import { usedTag } from '../model/tags.js';
 import { actions, appStore, useStore } from '../model/store.js';
 import { timeScale } from '../model/timeScale.js';
+import { AssumptionCaveat } from './AssumptionCaveat.js';
 import { Qty } from './Qty.js';
 import './chrome.css';
 import './guided.css';
@@ -170,41 +170,35 @@ function Caption({ parts, sources }: { parts: CaptionParts; sources: Sources }) 
   );
 }
 
-function holdQty(hold: UsedInput, sources: Sources) {
-  const days = hold.unit === 'days';
-  return (
-<Qty value={hold.value} kind={days ? 'days' : 'hours'} {...usedTag(HOLD_PATH, hold)} sources={sources} />
-  );
-}
-
-/** The closing card: the projection's revenue at risk, unprepared against prepared, and the assumption it rests on. */
+/** The closing card: the projection's revenue at risk, unprepared against prepared, and the assumptions it rests on. */
 function ComparisonCard({ register, sources }: { register: Register; sources: Sources }) {
   const c = useMemo(() => comparison(register), [register]);
   return (
     <div className="guided-card">
-      <dl className="guided-totals">
-        <div>
-          <dt>Revenue at risk, unprepared</dt>
-          <dd>
-            <Qty value={c.unprepared} kind="usd" computed />
-          </dd>
-        </div>
-        <div>
-          <dt>Revenue at risk, prepared</dt>
-          <dd>
-            <Qty value={c.prepared} kind="usd" computed />
-          </dd>
-        </div>
-        <div>
-          <dt>Being prepared protected</dt>
-          <dd>
-            <Qty value={c.protected} kind="usd" computed />
-          </dd>
-        </div>
-      </dl>
-      <p className="guided-caveat">
-        This rests on one assumed number: a {holdQty(c.hold, sources)} hold on purchasing after the restore.
-      </p>
+      <div className="guided-captions guided-draft-region">
+        <span className="guided-draft">Draft copy</span>
+        <dl className="guided-totals">
+          <div>
+            <dt>Revenue at risk, unprepared</dt>
+            <dd>
+              <Qty value={c.unprepared} kind="usd" computed />
+            </dd>
+          </div>
+          <div>
+            <dt>Revenue at risk, prepared</dt>
+            <dd>
+              <Qty value={c.prepared} kind="usd" computed />
+            </dd>
+          </div>
+          <div>
+            <dt>Being prepared protected</dt>
+            <dd>
+              <Qty value={c.protected} kind="usd" computed />
+            </dd>
+          </div>
+        </dl>
+        <AssumptionCaveat assumptionsUsed={c.assumptionsUsed} sources={sources} />
+      </div>
       <button type="button" className="guided-explore" onClick={() => actions.enterFreePlay()}>
         Explore it yourself
       </button>

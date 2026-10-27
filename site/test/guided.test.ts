@@ -140,14 +140,13 @@ describe('pacing', () => {
 });
 
 describe('comparison', () => {
-  test('reads both totals and the assumed hold from the runs', () => {
+  test('reads both totals and the unprepared inputs from the runs', () => {
     const c = comparison(register);
     const unprepared = run(register, 's1-projection', 'unprepared');
     const prepared = run(register, 's1-projection', 'prepared');
     expect(c.unprepared).toBe(unprepared.totals.revenueAtRisk);
     expect(c.prepared).toBe(prepared.totals.revenueAtRisk);
     expect(c.protected).toBe(unprepared.totals.revenueAtRisk - prepared.totals.revenueAtRisk);
-    expect(c.hold).toBe(unprepared.assumptionsUsed['processes.diesel-ordering.dependsOn.hosted-erp.afterRestore.holdFor']);
-    expect(c.hold.provenance.kind).toBe('assumed');
+    expect(c.assumptionsUsed).toEqual(unprepared.assumptionsUsed);
   });
 });

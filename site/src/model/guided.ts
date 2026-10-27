@@ -32,7 +32,9 @@ export interface GuidedStep {
 const AS_REPORTED = 's1-as-reported';
 const PROJECTION = 's1-projection';
 const RESTORE_AFTER = `scenarios.${AS_REPORTED}.events[0].restoreAfter`;
-/** The one assumed number the comparison rests on (D-094). */
+/** The two assumed numbers the projection's revenue figure rests on: how long phone-and-email ordering keeps going (D-041)… */
+export const HOLDS_FOR_PATH = 'processes.diesel-ordering.dependsOn.hosted-erp.manualWorkaround.holdsFor';
+/** …and how long new orders are held after the ERP is back (D-094). */
 export const HOLD_PATH = 'processes.diesel-ordering.dependsOn.hosted-erp.afterRestore.holdFor';
 
 function timeline(r: Register, scenarioId: string, variant: Variant): Timeline {
@@ -181,10 +183,11 @@ export interface Comparison {
   unprepared: number;
   prepared: number;
   protected: number;
-  hold: UsedInput;
+  /** The unprepared run's inputs, for the caveat. */
+  assumptionsUsed: Record<string, UsedInput>;
 }
 
-/** The closing card: revenue at risk in the projection, unprepared and prepared, and the hold it rests on. */
+/** The closing card: revenue at risk in the projection, unprepared and prepared, and the inputs the caveat reads. */
 export function comparison(r: Register): Comparison {
   const unprepared = timeline(r, PROJECTION, 'unprepared');
   const prepared = timeline(r, PROJECTION, 'prepared');
@@ -192,6 +195,11 @@ export function comparison(r: Register): Comparison {
     unprepared: unprepared.totals.revenueAtRisk,
     prepared: prepared.totals.revenueAtRisk,
     protected: unprepared.totals.revenueAtRisk - prepared.totals.revenueAtRisk,
-    hold: used(unprepared, HOLD_PATH),
+    assumptionsUsed: unprepared.assumptionsUsed,
   };
+}
+
+/** The inputs of the register's own s1 projection, unprepared and unedited: what the assumption caveat describes. */
+export function caveatInputs(r: Register): Record<string, UsedInput> {
+  return timeline(r, PROJECTION, 'unprepared').assumptionsUsed;
 }

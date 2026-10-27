@@ -64,9 +64,11 @@ test('guided run plays and ends on the comparison', async ({ page }) => {
   await expect(totals.getByText('Revenue at risk, unprepared')).toBeVisible();
   await expect(totals.getByText('Revenue at risk, prepared')).toBeVisible();
   await expect(totals.locator('[data-quantity]')).toHaveCount(3);
-  const caveat = guided.locator('.guided-caveat');
-  await expect(caveat).toContainText('hold on purchasing');
-  await expect(caveat.locator('[data-quantity]')).toContainText('assumed');
+  const caveat = guided.locator('.assumption-caveat');
+  await expect(caveat).toContainText('This projection rests on two assumed numbers');
+  await expect(caveat.locator('[data-quantity]')).toHaveCount(2);
+  for (const qty of await caveat.locator('[data-quantity]').all()) await expect(qty).toContainText('assumed');
+  await expect(guided.locator('.guided-draft-region .guided-totals')).toBeVisible();
 });
 
 test('free play: cut hosted-erp, scrub to day 13, haulage reads Stopped', async ({ page }) => {

@@ -110,8 +110,10 @@ describe('pages', () => {
     go('#/limits');
     render(<App />);
     expect(screen.getByText('Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.')).toBeTruthy();
-    const log = screen.getByRole('link', { name: /decision log/i });
-    expect(log.getAttribute('href')).toBe('https://github.com/[owner]/faillocal/blob/main/docs/decisions.md');
+    // One in the assumption caveat, one in the closing line.
+    const logs = screen.getAllByRole('link', { name: /decision log/i });
+    expect(logs).toHaveLength(2);
+    for (const log of logs) expect(log.getAttribute('href')).toBe('https://github.com/[owner]/faillocal/blob/main/docs/decisions.md');
     expect(screen.getByText(/placeholder until the repo is public/i)).toBeTruthy();
   });
 

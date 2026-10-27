@@ -160,3 +160,13 @@
     font-size: 32px;
   }
 }
+
+/* The Limitations page's assumption caveat runs on from its scenario's title. */
+.limits-scenario {
+  font-weight: 620;
+}
+
+.page li > .assumption-caveat {
+  display: inline;
+  margin: 0;
+}
