@@ -61,6 +61,7 @@
 
 .timeline-speeds button {
   font-feature-settings: 'tnum' 1;
+  white-space: nowrap;
 }
 
 .timeline-axis {
