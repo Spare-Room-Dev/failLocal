@@ -163,3 +163,22 @@ test('a focused area button whose area leaves the frame stays where it was, visi
   act(() => pixi.onLayout!({ ...away }));
   expect(button('haulage').classList.contains('scene-hit--away')).toBe(true);
 });
+
+test('the keyboard camera controls are announced on the scene, and Fit has a fuller name that starts with its text (final review M5)', async () => {
+  const { container } = await mounted();
+  const host = screen.getByRole('group', { name: 'Model site' });
+  const hint = document.getElementById(host.getAttribute('aria-describedby')!)!;
+  expect(hint.textContent).toBe('Press plus or minus to zoom, and zero to fit the whole model in view.');
+  expect(hint.classList.contains('visually-hidden')).toBe(true);
+  expect(host.contains(hint)).toBe(true);
+  const fit = screen.getByRole('button', { name: 'Fit the whole model in view' });
+  expect(fit.textContent).toBe('Fit');
+  expect(container.querySelector('.scene-fit')).toBe(fit);
+});
+
+test('the decorative scene carries no camera hint', async () => {
+  const { container } = render(<DioramaScene scene={scene} selected={null} onSelect={() => {}} reducedMotion decorative />);
+  await waitFor(() => expect(pixi.options).not.toBeNull());
+  expect(container.querySelector('[aria-describedby]')).toBeNull();
+  expect(container.querySelector('.visually-hidden')).toBeNull();
+});

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
 import { defaultCamera } from '../../scene/framing.js';
@@ -23,6 +23,11 @@ const ANCHORS: Record<string, number> = Object.fromEntries(SERVICE_GROUPS.map((g
 /** Used until the renderer reports its first layout (and in jsdom, which measures nothing): the desktop stage's scene box. */
 const NOMINAL = { w: 1068, h: 580 };
 const NOMINAL_CAMERA = defaultCamera('site', NOMINAL, false);
+
+/** The scene host's description: the keys `keyMove` handles while the scene has focus (final review M5). */
+const CAMERA_HINT = 'Press plus or minus to zoom, and zero to fit the whole model in view.';
+/** Fit's accessible name starts with its visible text, so speech input can say "Fit". */
+const FIT_NAME = 'Fit the whole model in view';
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -61,6 +66,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [layout, setLayout] = useState<SceneLayout | null>(null);
+  const hintId = useId();
   const shown = useRef<Record<string, Box>>({});
   const focusedArea = () => {
     const el = document.activeElement;
@@ -154,8 +160,13 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
       className="scene scene--diorama"
       data-ready={ready}
       data-reduced-motion={reducedMotion}
-      {...(decorative ? { 'aria-hidden': true } : { role: 'group', 'aria-label': 'Model site', tabIndex: 0 })}
+      {...(decorative ? { 'aria-hidden': true } : { role: 'group', 'aria-label': 'Model site', 'aria-describedby': hintId, tabIndex: 0 })}
     >
+      {!decorative && (
+        <p id={hintId} className="visually-hidden">
+          {CAMERA_HINT}
+        </p>
+      )}
       {!decorative &&
         Object.keys(LAYOUT.areas).map((id) => {
           const p = scene.processes[id];
@@ -190,7 +201,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
         {scene.plate.text}
       </p>
       {!decorative && (
-        <button type="button" className="scene-fit" onClick={() => handle.current?.fit()}>
+        <button type="button" className="scene-fit" aria-label={FIT_NAME} onClick={() => handle.current?.fit()}>
           Fit
         </button>
       )}

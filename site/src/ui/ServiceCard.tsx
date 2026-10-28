@@ -14,10 +14,12 @@ import './chrome.css';
 /** A free-play cut starts on the current day and runs for this many days. */
 const DEFAULT_CUT_DAYS = 12;
 
-/** The service's state at `hour` (see `sampleAt`), or up when there is no run yet. */
+/** The service's state at `hour` (see `sampleAt`), or up when there is no run yet. A run that lacks the service throws, as `sceneState` does. */
 function stateAt(timeline: Timeline | null, service: string, hour: number): ServiceState {
   if (!timeline) return 'up';
-  return sampleAt(timeline, hour).services[service] ?? 'up';
+  const state = sampleAt(timeline, hour).services[service];
+  if (!state) throw new Error(`sample has no service ${service}`);
+  return state;
 }
 
 /** The cuts the current spec makes: the free-play cuts, or a register scenario's `cut-service` events. */

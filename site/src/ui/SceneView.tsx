@@ -10,7 +10,8 @@ import { SchematicFallback } from './scene/SchematicFallback.js';
  *   `aria-label="<label>: <State word>"`, `aria-pressed` from `selected`; click, Enter and Space call `onSelect`;
  * - one `.scene-plinth` element holding `scene.plate.text` as DOM text;
  * - one marker per service group with `data-cable-group="<id>"` and `data-cable-state`;
- * - `onAnchors` after layout and whenever the anchors change.
+ * - `onAnchors` once mounted, reporting the stage-top anchors: `cableFraction` per group, identical to
+ *   SitePage's fallback before it is called (ruling R-n). They are fixed fractions, not a measurement of the drawing.
  * `decorative` (the welcome hero) renders no buttons and hides the scene from assistive tech.
  */
 export interface SceneViewProps {
@@ -19,7 +20,7 @@ export interface SceneViewProps {
   onSelect(processId: string): void;
   reducedMotion: boolean;
   decorative?: boolean;
-  /** Group id → x where its cable enters the top of the scene, under its card, as a fraction (0..1) of the scene box's width (ruling R-n). */
+  /** Group id → x where its cable enters the top of the scene, under its card, as a fraction (0..1) of the scene box's width: `cableFraction`, by ruling R-n, not measured. */
   onAnchors?(anchors: Record<string, number>): void;
 }
 

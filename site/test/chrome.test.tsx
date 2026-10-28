@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { register } from '../src/model/register.js';
 import { SERVICE_GROUPS, serviceName } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
@@ -149,6 +149,18 @@ describe('ServiceCard', () => {
     expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([`Cut ${serviceName('vendor-a-access')}`, `Cut ${serviceName('vendor-b-access')}`]);
     expect(buttons.map((b) => b.textContent)).toEqual(['A', 'B']);
     expect(buttons.map((b) => b.getAttribute('title'))).toEqual([serviceName('vendor-a-access'), serviceName('vendor-b-access')]);
+  });
+
+  test('a run with no state for a service throws rather than calling it up (final review M4)', () => {
+    const run = appStore.get().lastGood!;
+    const samples = run.samples.map((x) => {
+      const { 'hosted-erp': _, ...services } = x.services;
+      return { ...x, services };
+    });
+    appStore.set({ lastGood: { ...run, samples } as typeof run });
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<ServiceCard group={group('hosted-erp')} />)).toThrow(/hosted-erp/);
+    quiet.mockRestore();
   });
 
   test('each card has its own line icon, hidden from assistive technology, slashed when cut', () => {
