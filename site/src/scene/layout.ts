@@ -62,6 +62,8 @@ const PIT_CENTRE: Vec3 = { x: 500, y: 560, z: 0 };
 const CREST = { x: 270, y: 210 };
 const STEP = BATTER_RUN + BERM;
 const RAMP_HEAD = -0.9;
+/** Where trucks tip into the primary crusher, 14 m off its west face. */
+const DUMP_POCKET: Vec3 = { x: 976, y: 380, z: 0 };
 
 const box = (id: string, kind: Structure['kind'], x: number, y: number, w: number, d: number, h: number, base: string): Structure => ({
   id,
@@ -110,13 +112,29 @@ export const LAYOUT: Layout = {
   },
   roads: [
     // Dump pocket to the ramp head, arriving along the ramp's tangent.
-    { id: 'haul-rom', width: 26, points: [{ x: 976, y: 380 }, { x: 880, y: 400 }, { x: 790, y: 420 }, rampApproach(45), pitRing(RAMP_HEAD, 0)] },
+    { id: 'haul-rom', width: 26, points: [{ x: DUMP_POCKET.x, y: DUMP_POCKET.y }, { x: 880, y: 400 }, { x: 790, y: 420 }, rampApproach(45), pitRing(RAMP_HEAD, 0)] },
     // Branch from the ROM road to the workshop hardstand and fuel bay.
     { id: 'haul-workshop', width: 26, points: [{ x: 790, y: 420 }, { x: 760, y: 330 }, { x: 660, y: 240 }, { x: 560, y: 205 }] },
-    // Light-vehicle access road, camp to the admin block; kept apart from the haul roads.
-    { id: 'access', width: 10, points: [{ x: 1260, y: 150 }, { x: 1100, y: 150 }, { x: 900, y: 140 }, { x: 860, y: 120 }] },
-    // Magazine track down the west side, under the ridge.
-    { id: 'magazine-track', width: 7, points: [{ x: 395, y: 190 }, { x: 280, y: 260 }, { x: 170, y: 450 }, { x: 140, y: 700 }, { x: 150, y: 860 }] },
+    // Spur from the ramp head round the pit's east side to the waste dump.
+    { id: 'haul-dump', width: 26, points: [rampApproach(45), { x: 790, y: 500 }, { x: 820, y: 650 }, { x: 800, y: 805 }] },
+    // Light-vehicle road: camp, admin block, between the fuel bund and bay, to the haul road's end at the
+    // workshop hardstand (the one controlled crossing to the haul network), then on to the magazine track.
+    {
+      id: 'access',
+      width: 10,
+      points: [
+        { x: 1260, y: 150 },
+        { x: 1100, y: 150 },
+        { x: 900, y: 140 },
+        { x: 860, y: 120 },
+        { x: 680, y: 115 },
+        { x: 560, y: 115 },
+        { x: 560, y: 205 },
+        { x: 400, y: 195 },
+      ],
+    },
+    // Magazine track from the end of the access road down the west side, under the ridge.
+    { id: 'magazine-track', width: 7, points: [{ x: 400, y: 195 }, { x: 280, y: 260 }, { x: 170, y: 450 }, { x: 140, y: 700 }, { x: 150, y: 860 }] },
   ],
   structures: [
     box('workshop', 'shed', 420, 100, 90, 45, 17, 'galvanised'), // four 14 m roller doors on the south-west face
@@ -133,7 +151,7 @@ export const LAYOUT: Layout = {
     box('magazine-1', 'magazine', 100, 900, 22, 20, 3.4, 'oxide-high'),
     box('magazine-2', 'magazine', 160, 940, 22, 20, 3.4, 'oxide-high'),
     box('crusher', 'box', 990, 360, 35, 40, 26, 'galvanised'), // primary gyratory; dump pocket on the west face
-    box('overland-gallery', 'gallery', 1025, 378, 205, 4, 10, 'roof-steel'),
+    box('overland-gallery', 'gallery', 1045, 378, 165, 4, 10, 'roof-steel'), // belt level on top; inclines at each end
     box('windrow-1', 'cone', 1250, 320, 300, 40, 14, 'ore-load'),
     box('windrow-2', 'cone', 1250, 410, 300, 40, 14, 'ore-load'),
     box('stacker', 'box', 1300, 377, 12, 10, 20, 'galvanised'),
@@ -150,7 +168,7 @@ export const LAYOUT: Layout = {
     'control-room': { anchor: { x: 795, y: 65, z: 0 }, pad: quad(752, 30, 48, 40) },
     'remote-operations': { anchor: { x: 855, y: 80, z: 0 }, pad: quad(805, 30, 55, 55) },
     'drill-and-blast': { anchor: { ...pitRing(DRILL_ANGLE, 10.5), z: -BENCH_HEIGHT }, pad: drillPad },
-    haulage: { anchor: { x: 805, y: 445, z: 0 }, pad: quad(745, 395, 70, 55) },
+    haulage: { anchor: { x: 800, y: 400, z: 0 }, pad: quad(745, 395, 70, 55) },
     crushing: { anchor: { x: 1020, y: 450, z: 0 }, pad: quad(820, 300, 210, 160) },
     rail: { anchor: { x: 1300, y: 590, z: 0 }, pad: quad(1290, 520, 100, 80) },
   },
@@ -163,7 +181,7 @@ export const LAYOUT: Layout = {
   },
   railLoop: { centre: { x: 1340, y: 770, z: 0 }, radius: 210 },
   stockyard: { windrows: 2, at: { x: 1230, y: 290, w: 340, h: 190 } },
-  dumpPocket: { x: 976, y: 380, z: 0 },
+  dumpPocket: DUMP_POCKET,
   creek: [
     { x: 1065, y: 0 },
     { x: 1090, y: 150 },

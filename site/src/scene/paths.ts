@@ -89,32 +89,26 @@ const DEPTH = -pit.benches[pit.benches.length - 1]!.floorZ;
 const FLOOR_INSET = pit.benches[0]!.radiusX - pit.benches[pit.benches.length - 1]!.radiusX + BATTER_RUN + pit.rampWidth / 2;
 const RAMP_SAMPLES = 160;
 
-function spiral(sweep: number): Vec3[] {
-  const out: Vec3[] = [];
-  for (let i = 0; i <= RAMP_SAMPLES; i++) {
-    const t = i / RAMP_SAMPLES;
-    out.push({ ...pitRing(pit.rampHeadAngle - sweep * t, FLOOR_INSET * t), z: -DEPTH * t });
-  }
-  return out;
+/** The spiral's ground track for a given sweep, with z falling in proportion to ground run: constant grade throughout. */
+function spiral(sweep: number): { pts: Vec3[]; run: number } {
+  const ring = Array.from({ length: RAMP_SAMPLES + 1 }, (_, i) => pitRing(pit.rampHeadAngle - (sweep * i) / RAMP_SAMPLES, (FLOOR_INSET * i) / RAMP_SAMPLES));
+  const cum = [0];
+  for (let i = 1; i < ring.length; i++) cum.push(cum[i - 1]! + Math.hypot(ring[i]!.x - ring[i - 1]!.x, ring[i]!.y - ring[i - 1]!.y));
+  const run = cum[cum.length - 1]!;
+  return { pts: ring.map((p, i) => ({ ...p, z: (-DEPTH * cum[i]!) / run })), run };
 }
 
-function groundRun(pts: Vec3[]): number {
-  let run = 0;
-  for (let i = 1; i < pts.length; i++) run += Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
-  return run;
-}
-
-/** The ramp centreline, crest to floor: a spiral cut into the walls whose sweep is solved for the design grade. */
+/** The ramp centreline, crest to floor: a constant-grade spiral cut into the walls, its sweep solved for the design grade. */
 export function rampCentreline(): Vec3[] {
   const target = DEPTH / pit.rampGrade;
   let lo = 0.1;
   let hi = 2 * Math.PI;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    if (groundRun(spiral(mid)) < target) lo = mid;
+    if (spiral(mid).run < target) lo = mid;
     else hi = mid;
   }
-  return spiral((lo + hi) / 2);
+  return spiral((lo + hi) / 2).pts;
 }
 
 // --- Paths ------------------------------------------------------------------------
@@ -150,14 +144,26 @@ export const RAIL_LOOP: Path = (() => {
 
 export const LV_LOOP: Path = polylinePath(twoLaneLoop(ground(road('access').points), LV_LANE_OFFSET), true);
 
+/** Belt heights off the gallery: the crusher discharge and the stockyard belt. */
+const DISCHARGE_Z = 4;
+const YARD_BELT_Z = 3;
+
 /** Ore from the crusher discharge, up onto the overland gallery over the creek, down to the stockyard belt. */
-export const CONVEYOR: Path = polylinePath(
-  [
-    { x: 1025, y: 380, z: 4 },
-    { x: 1045, y: 380, z: 10 },
-    { x: 1210, y: 380, z: 10 },
-    { x: 1235, y: 380, z: 3 },
-    { x: 1560, y: 380, z: 3 },
-  ],
-  false,
-);
+export const CONVEYOR: Path = (() => {
+  const s = (id: string) => LAYOUT.structures.find((t) => t.id === id)!;
+  const crusher = s('crusher');
+  const gallery = s('overland-gallery');
+  const yard = LAYOUT.stockyard.at;
+  const y = gallery.at.y + gallery.size.y / 2;
+  const top = gallery.size.z;
+  return polylinePath(
+    [
+      { x: crusher.at.x + crusher.size.x, y, z: DISCHARGE_Z },
+      { x: gallery.at.x, y, z: top },
+      { x: gallery.at.x + gallery.size.x, y, z: top },
+      { x: yard.x + 5, y, z: YARD_BELT_Z },
+      { x: yard.x + yard.w - 10, y, z: YARD_BELT_Z },
+    ],
+    false,
+  );
+})();

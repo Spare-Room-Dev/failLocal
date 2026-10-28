@@ -69,15 +69,26 @@ describe('pit (DESIGN.md Mining Accuracy)', () => {
     }
   });
 
-  it('cuts a ramp 25 ± 3 m wide at 11 ± 2 % grade, measured on the ramp itself', () => {
+  it('cuts a ramp 25 ± 3 m wide at 11 ± 2 % grade on every segment, measured on the ramp itself', () => {
     expect(Math.abs(pit.rampWidth - 25)).toBeLessThanOrEqual(3);
     expect(Math.abs(pit.rampGrade - 0.11)).toBeLessThanOrEqual(0.02);
     const ramp = rampCentreline();
-    let run = 0;
-    for (let i = 1; i < ramp.length; i++) run += Math.hypot(ramp[i]!.x - ramp[i - 1]!.x, ramp[i]!.y - ramp[i - 1]!.y);
-    const drop = ramp[0]!.z - ramp[ramp.length - 1]!.z;
-    expect(drop).toBeCloseTo(60, 6);
-    expect(Math.abs(drop / run - 0.11)).toBeLessThanOrEqual(0.02);
+    expect(ramp[0]!.z - ramp[ramp.length - 1]!.z).toBeCloseTo(60, 6);
+    for (let i = 1; i < ramp.length; i++) {
+      const [a, b] = [ramp[i - 1]!, ramp[i]!];
+      const grade = (a.z - b.z) / Math.hypot(b.x - a.x, b.y - a.y);
+      expect(Math.abs(grade - 0.11), `segment ${i}`).toBeLessThanOrEqual(0.02);
+    }
+    // And per 12 m bench interval, the grade a truck feels over a whole bench.
+    for (let k = 0; k < 5; k++) {
+      let run = 0;
+      for (let i = 1; i < ramp.length; i++) {
+        const [a, b] = [ramp[i - 1]!, ramp[i]!];
+        const overlap = Math.min(a.z, -12 * k) - Math.max(b.z, -12 * (k + 1)); // metres of this segment's drop within bench k
+        if (overlap > 0) run += (Math.hypot(b.x - a.x, b.y - a.y) * overlap) / (a.z - b.z);
+      }
+      expect(Math.abs(12 / run - 0.11), `bench ${k + 1}`).toBeLessThanOrEqual(0.02);
+    }
   });
 
   it('starts the ramp on the crest and ends it on the floor, inside the bottom toe', () => {
@@ -126,6 +137,34 @@ describe('roads', () => {
     const rom = roads.find((r) => r.id === 'haul-rom')!;
     const end = rom.points[rom.points.length - 1]!;
     expect(Math.hypot(end.x - rampHead.x, end.y - rampHead.y)).toBeLessThan(1e-6);
+    expect(rom.points[0]).toEqual({ x: LAYOUT.dumpPocket.x, y: LAYOUT.dumpPocket.y });
+  });
+
+  it('form one connected network: every road joins another at an endpoint', () => {
+    const joined = (a: (typeof roads)[number], b: (typeof roads)[number]) =>
+      [a.points[0]!, a.points[a.points.length - 1]!].some((p) => distToPolyline(p, b.points) < 0.5) ||
+      [b.points[0]!, b.points[b.points.length - 1]!].some((p) => distToPolyline(p, a.points) < 0.5);
+    const reached = new Set([roads[0]!.id]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const r of roads) {
+        if (reached.has(r.id)) continue;
+        if (roads.some((q) => reached.has(q.id) && joined(r, q))) {
+          reached.add(r.id);
+          grew = true;
+        }
+      }
+    }
+    expect([...reached].sort()).toEqual(roads.map((r) => r.id).sort());
+  });
+
+  it('serve the magazine, the waste dump and the workshop by road', () => {
+    const near = (s: Structure, r: (typeof roads)[number]) => rectDistance(footprint(s), { x: r.points[r.points.length - 1]!.x, y: r.points[r.points.length - 1]!.y, w: 0, h: 0 });
+    const ends = (id: string) => roads.filter((r) => near(byId(id), r) < 60);
+    expect(ends('magazine-1').map((r) => r.id)).toContain('magazine-track');
+    expect(ends('waste-dump').map((r) => r.id)).toContain('haul-dump');
+    const access = roads.find((r) => r.id === 'access')!;
+    expect(Math.min(...rectPerimeter(footprint(byId('workshop'))).map((p) => distToPolyline(p, access.points)))).toBeLessThan(80);
   });
 });
 
@@ -220,6 +259,13 @@ describe('arrangement (screen compass: north is up the screen)', () => {
     const overCreek = pts.filter((p) => distToPolyline(p, LAYOUT.creek) < 5);
     expect(overCreek.length).toBeGreaterThan(0);
     overCreek.forEach((p) => expect(p.z).toBeGreaterThanOrEqual(8));
+    const gallery = byId('overland-gallery');
+    const onGallery = pts.filter((p) => p.x >= gallery.at.x && p.x <= gallery.at.x + gallery.size.x);
+    expect(onGallery.length).toBeGreaterThan(100);
+    onGallery.forEach((p) => {
+      expect(p.z).toBeCloseTo(gallery.size.z, 9);
+      expect(p.y).toBeCloseTo(gallery.at.y + gallery.size.y / 2, 9);
+    });
     const yard = LAYOUT.stockyard.at;
     expect(insidePolygon(pts[pts.length - 1]!, [
       { x: yard.x, y: yard.y }, { x: yard.x + yard.w, y: yard.y }, { x: yard.x + yard.w, y: yard.y + yard.h }, { x: yard.x, y: yard.y + yard.h },
