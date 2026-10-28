@@ -48,8 +48,11 @@ export function TopBar() {
   // The scenario's first public source: the register has no shorter "modelled on" line, so its title stands.
   const basis = register.sources.find((s) => s.id === scenario?.basis[0]);
   // "Modelled on" only when the scenario reproduces that record: one of its event times is sourced to it
-  // (s1's 12-day restore). Otherwise the source informs the scenario: "Based on" (ruling R-aa).
+  // (s1's 12-day restore), and it is not a projection, which extends the record counterfactually and
+  // must not put a real company's name beside a stopped fleet. Otherwise the source informs the
+  // scenario: "Based on" (ruling R-aa, final review I4).
   const reproduces =
+    !projection &&
     !!basis &&
     !!scenario?.events.some((e) =>
       Object.values(e).some((q) => typeof q === 'object' && q !== null && 'provenance' in q && q.provenance.kind === 'sourced' && q.provenance.source === basis.id),

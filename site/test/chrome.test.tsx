@@ -29,9 +29,9 @@ describe('TopBar', () => {
   });
 
   test('under the title, the public source the scenario is modelled on, tagged sourced (finish B7)', () => {
-    actions.setScenario('s1-projection');
+    actions.setScenario('s1-as-reported');
     const { container } = render(<TopBar />);
-    const scenario = register.scenarios.find((s) => s.id === 's1-projection')!;
+    const scenario = register.scenarios.find((s) => s.id === 's1-as-reported')!;
     const source = register.sources.find((s) => s.id === scenario.basis[0])!;
     const line = container.querySelector('.top-bar-basis')!;
     expect(line.querySelector(".top-bar-basis-text")!.textContent).toBe(`Modelled on ${source.title}`);
@@ -48,6 +48,15 @@ describe('TopBar', () => {
     expect(container.querySelector('.top-bar-basis-text')!.textContent).toBe(`Based on ${source.title}`);
     act(() => actions.setScenario('s1-as-reported'));
     expect(container.querySelector('.top-bar-basis-text')!.textContent).toMatch(/^Modelled on /);
+  });
+
+  test('the s1 projection reads "Based on": it extends the record counterfactually (final review I4, ruling R-aa)', () => {
+    actions.setScenario('s1-projection');
+    const { container } = render(<TopBar />);
+    const source = register.sources.find((s) => s.id === register.scenarios.find((x) => x.id === 's1-projection')!.basis[0])!;
+    expect(container.querySelector('.top-bar-basis-text')!.textContent).toBe(`Based on ${source.title}`);
+    act(() => actions.setScenario('s1-as-reported'));
+    expect(container.querySelector('.top-bar-basis-text')!.textContent).toBe(`Modelled on ${source.title}`);
   });
 
   test('free play has no modelled-on line', () => {
