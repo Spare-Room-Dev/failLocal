@@ -153,7 +153,7 @@ describe('ServiceCard', () => {
     const erp = card('hosted-erp');
     expect(within(erp).getByText(/^Restored/).textContent).toBe(`Restored day ${Math.floor(up.hour / 24)}`);
     expect(within(erp).queryByText('Up')).toBeNull();
-    const remove = within(erp).getByRole('button', { name: 'Remove the Hosted ERP cut' });
+    const remove = within(erp).getByRole('button', { name: 'Remove cut: Hosted ERP' });
     expect(remove.textContent).toBe('Remove cut');
     expect(remove.getAttribute('aria-pressed')).toBe('true');
     expect(within(erp).queryByRole('button', { name: /^Restore/ })).toBeNull();
@@ -171,7 +171,7 @@ describe('ServiceCard', () => {
     act(() => actions.setClock({ hour: 10 }));
     const cloud = card('cloud-identity');
     expect(within(cloud).getByText(/^Cut from/).textContent).toBe('Cut from day 2');
-    expect(within(cloud).getByRole('button', { name: /^Remove the/ }).textContent).toBe('Remove cut');
+    expect(within(cloud).getByRole('button', { name: /^Remove cut: / }).textContent).toBe('Remove cut');
   });
 
   test('cut in free play adds a cut and the card shows Restore with aria-pressed', () => {

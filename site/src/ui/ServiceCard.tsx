@@ -115,7 +115,7 @@ function CutButton({ view, keyLetter }: { view: ServiceView; keyLetter?: string 
       type="button"
       className={`service-button${restores ? ' is-restore' : ''}${view.cut && !restores ? ' is-remove' : ''}${keyLetter ? ' is-keyed' : ''}`}
       aria-pressed={view.cut}
-      aria-label={verb === 'Remove cut' ? `Remove the ${view.label} cut` : `${verb} ${view.label}`}
+      aria-label={verb === 'Remove cut' ? `Remove cut: ${view.label}` : `${verb} ${view.label}`}
       title={keyLetter ? view.label : undefined}
       disabled={mode !== 'free'}
       onClick={onClick}
