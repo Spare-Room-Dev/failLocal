@@ -1,0 +1,9 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "site/src/ui/scene.css"
+    ],
+    "ignoreValues": []
+  }
+}
