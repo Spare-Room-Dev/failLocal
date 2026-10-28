@@ -446,7 +446,7 @@ Three rows (Diesel, ROM pad, Stockpile): a 64 px name in ink-2, a 6 px track (`m
 ### Motion
 The animation renders engine output; nothing on the board moves unless the process it depicts is working (D-099, D-108).
 - **Haulage:** eight illustrative trucks: all running when haulage is normal, four when degraded, none when stopped; the rest stand in eight bays south of the fuel-bay canopy. A running truck travels the haul cycle at a display 12 m/s in lanes ±4.6 m off the centreline, empty down the ramp and loaded back up, turning on a half circle at the shovel and hidden for the moment it tips into the dump pocket. Dust puffs every 0.22 s fade over 2.6 s.
-- **Rail:** three locomotives and 34 wagons run the balloon loop at 8 m/s times the rail speed (half when degraded, standing when stopped); a wagon fills under the loadout while the conveyor runs, and each lap starts empty.
+- **Rail:** three locomotives and 34 wagons run the balloon loop at 8 m/s times the rail speed (half when degraded, standing when stopped); a wagon fills under the loadout while the train runs, because the loadout is fed from the stockpile by the reclaimer and rail runs only while the stockpile feeds it (ruling R-ab), and each lap starts empty. The belt's ore dashes still run only while the conveyor runs.
 - **Conveyor:** 2.2 m ore dashes every 5.6 m, one 56 m cycle every 9 s, while the conveyor runs.
 - **Light vehicles** circulate on the access road at 13 m/s only while haulage is not stopped; when it stops they stand where they are.
 - **Cables:** travelling dots on live cables; the cut-link ring pulses.

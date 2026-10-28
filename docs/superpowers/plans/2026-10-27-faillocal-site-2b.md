@@ -358,6 +358,7 @@ export function stillFrame(scene: SceneState): AnimState;                       
     - `scene.fleet.moving` trucks advance on `HAUL_CYCLE`, spaced evenly, and run loaded on the way up;
     - parked trucks sit at the fuel bay, are drawn in `hivis-parked`, and carry the pause marker.
   - **Train:** it advances at `train.speed`. Wagons fill as they pass the loadout bin while `motion.conveyor` is true.
+    - *Correction (final review, ruling R-ab):* wagons fill while the train runs (`train.speed > 0`), not while `motion.conveyor` is true: the loadout is fed from the stockpile, and rail runs only while the stockpile feeds it. The belt stays bound to `motion.conveyor`.
   - **Belt:** the dashes move only while `motion.conveyor` is true.
   - **Fills:**
     - the stockpile windrow height is ∝ `fills.stockpile`;

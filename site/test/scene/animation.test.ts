@@ -5,7 +5,7 @@ import { register } from '../../src/model/register.js';
 import { sceneState } from '../../src/model/sceneState.js';
 import type { SceneState } from '../../src/model/sceneState.js';
 import { SERVICE_GROUPS } from '../../src/model/serviceGroups.js';
-import { initAnim, PARK_SLOTS, stepAnim, stillFrame } from '../../src/scene/animation.js';
+import { PARK_SLOTS, stepAnim, stillFrame } from '../../src/scene/animation.js';
 import type { AnimState } from '../../src/scene/animation.js';
 import { LAYOUT } from '../../src/scene/layout.js';
 
@@ -23,7 +23,7 @@ const scene = (processes: Partial<Sample['processes']> = {}, sample: Sample = ba
 const HAULAGE = { normal: [8, 0], degraded: [4, 4], stopped: [0, 8] } as const;
 
 /** Run `n` steps of `dt` seconds. */
-function run(s: SceneState, n: number, dt = 0.1, from: AnimState = initAnim(s)): AnimState {
+function run(s: SceneState, n: number, dt = 0.1, from: AnimState = stillFrame(s)): AnimState {
   let a = from;
   for (let i = 0; i < n; i++) a = stepAnim(a, s, dt);
   return a;
@@ -43,8 +43,8 @@ function stateOf(a: AnimState, s: SceneState, still: AnimState) {
     moving: a.trucks.filter((t) => !t.parked).length,
     parked: a.trucks.filter((t) => t.parked).length,
     parkedSlots: a.trucks.filter((t) => t.parked).map((t) => t.pos),
-    // No ore reaches a wagon unless the conveyor runs.
-    wagonsLoadedWithoutConveyor: !s.motion.conveyor && a.train.wagonsFilled > 0,
+    // A wagon fills only while the train runs past the loadout (ruling R-ab: rail runs only while the stockpile feeds it).
+    wagonsLoadedStanding: s.train.speed === 0 && a.train.wagonsFilled > 0,
     // A train at speed 0 stands where the still frame has it.
     trainStandsWhenStopped: s.train.speed > 0 || a.train.head === still.train.head,
     // Dust only behind moving trucks.
@@ -60,7 +60,7 @@ describe('animation', () => {
     for (const [state, [moving, parked]] of Object.entries(HAULAGE)) {
       const s = scene({ haulage: state as keyof typeof HAULAGE });
       expect(s.fleet).toEqual({ moving, parked });
-      for (const a of [initAnim(s), run(s, 40), stillFrame(s)]) {
+      for (const a of [stillFrame(s), run(s, 40), stillFrame(s)]) {
         expect(a.trucks).toHaveLength(8);
         expect(a.trucks.filter((t) => !t.parked)).toHaveLength(moving);
         const bay = a.trucks.filter((t) => t.parked);
@@ -78,7 +78,7 @@ describe('animation', () => {
 
   it('moving trucks run loaded on the way up and empty on the way down', () => {
     const s = scene();
-    let a = initAnim(s);
+    let a = stillFrame(s);
     let sawLoadedClimbing = false;
     let sawEmptyDescending = false;
     for (let i = 0; i < 2000; i++) {
@@ -101,7 +101,7 @@ describe('animation', () => {
 
   it('trucks turn round at the shovel and the dump pocket instead of crabbing sideways', () => {
     const s = scene();
-    let a = initAnim(s);
+    let a = stillFrame(s);
     for (let i = 0; i < 4000; i++) {
       const b = stepAnim(a, s, 0.05);
       for (let j = 0; j < 8; j++) {
@@ -123,7 +123,7 @@ describe('animation', () => {
 
   it('animation step caps dt', () => {
     const s = scene();
-    const a = initAnim(s);
+    const a = stillFrame(s);
     expect(stepAnim(a, s, 30)).toEqual(stepAnim(a, s, 0.25));
     expect(stepAnim(a, s, 30)).not.toEqual(stepAnim(a, s, 0.1));
   });
@@ -142,14 +142,14 @@ describe('animation', () => {
       const moving = run(s, 37, 0.13);
       expect(stateOf(still, s, still)).toEqual(stateOf(moving, s, still));
       const facts = stateOf(moving, s, still);
-      expect(facts.wagonsLoadedWithoutConveyor).toBe(false);
+      expect(facts.wagonsLoadedStanding).toBe(false);
       expect(facts.trainStandsWhenStopped).toBe(true);
       expect(facts.dustWithoutHaulage).toBe(false);
       expect(facts.lvsStand).toBe(true);
       // The still frame shows no ambient motion: no dust in the air.
       expect(stillFrame(s).dust).toEqual([]);
-      // Wagons only take ore while the conveyor runs.
-      if (!s.motion.conveyor) expect(stillFrame(s).train.wagonsFilled).toBe(0);
+      // Wagons only take ore while the train runs (R-ab).
+      if (s.train.speed === 0) expect(stillFrame(s).train.wagonsFilled).toBe(0);
       expect(Object.keys(stillFrame(s).cableDots).sort()).toEqual(SERVICE_GROUPS.map((g) => g.id).sort());
     }
   });
@@ -161,26 +161,29 @@ describe('animation', () => {
     expect(a.dust).toEqual([]);
 
     const railStopped = scene({ rail: 'stopped' });
-    const r0 = initAnim(railStopped);
-    expect(run(railStopped, 60, 0.1, r0).train.head).toBe(r0.train.head);
+    const r0 = stillFrame(railStopped);
+    const r1 = run(railStopped, 60, 0.1, r0);
+    expect(r1.train.head).toBe(r0.train.head);
+    expect(r1.train.wagonsFilled).toBe(0);
 
+    // The belt stands with the crusher; the train, fed from the stockpile, keeps loading (R-ab).
     const crushStopped = scene({ crushing: 'stopped' });
-    const c0 = initAnim(crushStopped);
+    const c0 = stillFrame(crushStopped);
     const c1 = run(crushStopped, 60, 0.1, c0);
     expect(c1.beltOffset).toBe(c0.beltOffset);
-    expect(c1.train.wagonsFilled).toBe(0);
+    expect(c1.train.wagonsFilled).toBeGreaterThan(0);
 
     // A severed cable's dot stays put; a live one travels.
     const live = scene();
     const cut = sceneState(register, { ...base, services: { ...base.services, 'hosted-erp': 'down' } });
     expect(cut.cables['hosted-erp']).toBe('severed');
-    expect(run(cut, 30).cableDots['hosted-erp']).toBe(initAnim(cut).cableDots['hosted-erp']);
-    expect(run(live, 30).cableDots['cloud-identity']).not.toBe(initAnim(live).cableDots['cloud-identity']);
+    expect(run(cut, 30).cableDots['hosted-erp']).toBe(stillFrame(cut).cableDots['hosted-erp']);
+    expect(run(live, 30).cableDots['cloud-identity']).not.toBe(stillFrame(live).cableDots['cloud-identity']);
   });
 
   it('moving things do move while their state runs', () => {
     const s = scene();
-    const a0 = initAnim(s);
+    const a0 = stillFrame(s);
     const a1 = run(s, 20);
     expect(a1.train.head).toBeGreaterThan(a0.train.head);
     expect(a1.beltOffset).not.toBe(a0.beltOffset);
@@ -188,7 +191,7 @@ describe('animation', () => {
     expect(a1.dust.length).toBeGreaterThan(0);
     // Half speed covers half the ground.
     const half = scene({ rail: 'degraded' });
-    expect(run(half, 20).train.head - initAnim(half).train.head).toBeCloseTo((a1.train.head - a0.train.head) / 2, 6);
+    expect(run(half, 20).train.head - stillFrame(half).train.head).toBeCloseTo((a1.train.head - a0.train.head) / 2, 6);
   });
 
   it('dust puffs every 0.22 s behind moving trucks only and fades over 2.6 s', () => {
@@ -201,18 +204,23 @@ describe('animation', () => {
     for (const d of a.dust) expect(PARK_SLOTS.every((p) => dist(p, d.pos) > 10)).toBe(true);
   });
 
-  it('wagons fill passing the loadout only while the conveyor runs', () => {
-    const s = scene();
-    const a = run(s, 400, 0.25);
-    const stopped = scene({ crushing: 'stopped' });
-    expect(run(stopped, 400, 0.25).train.wagonsFilled).toBe(0);
-    expect(a.train.wagonsFilled).toBeGreaterThan(0);
+  it('wagons fill passing the loadout while the train runs, whether or not the crusher does (ruling R-ab)', () => {
+    expect(run(scene(), 400, 0.25).train.wagonsFilled).toBeGreaterThan(0);
+    expect(run(scene({ rail: 'stopped' }), 400, 0.25).train.wagonsFilled).toBe(0);
+    expect(run(scene({ crushing: 'stopped' }), 400, 0.25).train.wagonsFilled).toBeGreaterThan(0);
+    // s1 projection, unprepared, day 13: crushing stopped, rail normal, the stockpile still feeding it.
+    const d13 = sceneState(register, at(13 * 24));
+    expect(d13.processes.crushing!.state).toBe('stopped');
+    expect(d13.train.speed).toBeGreaterThan(0);
+    expect(d13.motion.conveyor).toBe(false);
+    expect(stillFrame(d13).train.wagonsFilled).toBeGreaterThan(0);
+    expect(run(d13, 400, 0.25).train.wagonsFilled).toBeGreaterThan(0);
   });
 
   it('light vehicles circulate only while haulage runs', () => {
     for (const state of ['normal', 'degraded'] as const) {
       const s = scene({ haulage: state });
-      expect(run(s, 20).lvs).not.toEqual(initAnim(s).lvs);
+      expect(run(s, 20).lvs).not.toEqual(stillFrame(s).lvs);
     }
     const stopped = scene({ haulage: 'stopped' });
     expect(run(stopped, 60).lvs).toEqual(stillFrame(stopped).lvs);
@@ -224,18 +232,18 @@ describe('animation', () => {
   it('refuses a scene without haulage rather than letting the light vehicles run by default', () => {
     const s = scene();
     const { haulage: _, ...rest } = s.processes;
-    expect(() => stepAnim(initAnim(s), { ...s, processes: rest }, 0.1)).toThrow(/haulage/);
+    expect(() => stepAnim(stillFrame(s), { ...s, processes: rest }, 0.1)).toThrow(/haulage/);
   });
 
   it('refuses a fleet that is not the illustrative eight', () => {
     const s = scene();
-    expect(() => initAnim({ ...s, fleet: { moving: 5, parked: 4 } })).toThrow();
+    expect(() => stillFrame({ ...s, fleet: { moving: 5, parked: 4 } })).toThrow();
   });
 
   it('deterministic', () => {
     const s = sceneState(register, at(150));
     expect(run(s, 50, 0.07)).toEqual(run(s, 50, 0.07));
-    expect(initAnim(s)).toEqual(initAnim(s));
+    expect(stillFrame(s)).toEqual(stillFrame(s));
     expect(stillFrame(s)).toEqual(stillFrame(s));
   });
 });

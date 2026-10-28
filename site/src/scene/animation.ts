@@ -8,8 +8,9 @@ import type { Path } from './paths.js';
 /**
  * The scene's moving parts as a pure function of engine state and time (DESIGN.md Motion). Which
  * things move, and how many, comes from `SceneState` alone (D-099): `fleet.moving` trucks run the
- * haul cycle and the rest park at the fuel bay, the train runs at `train.speed`, the belt and the
- * loadout run while `motion.conveyor` is true, a cable's dot travels only while the cable is live,
+ * haul cycle and the rest park at the fuel bay, the train runs at `train.speed` and its wagons fill
+ * under the loadout while it runs (ruling R-ab: the loadout is fed from the stockpile, and rail runs
+ * only while the stockpile feeds it), the belt runs while `motion.conveyor` is true, a cable's dot travels only while the cable is live,
  * and light vehicles circulate only while haulage is not stopped (ruling R-r: haulage keeps trucks,
  * crewed vehicles and people apart, so when it stops the crewed vehicles are stood down where they
  * are). Dust follows moving trucks. The speeds below are display values (assumed).
@@ -170,18 +171,13 @@ export function stillFrame(scene: SceneState): AnimState {
   return {
     trucks: trucks(scene, START.haul),
     dust: [],
-    train: { head: START.head, wagonsFilled: scene.motion.conveyor ? passed(pastLoadout(START.head)) : 0 },
+    train: { head: START.head, wagonsFilled: scene.train.speed > 0 ? passed(pastLoadout(START.head)) : 0 },
     beltOffset: 0,
     cableDots: Object.fromEntries(SERVICE_GROUPS.map((g, i) => [g.id, (i * 0.37) % 1])),
     lvs: lvs(START.lv),
     haul: START.haul,
     lv: START.lv,
   };
-}
-
-/** The first frame of a moving scene: the still pose. */
-export function initAnim(scene: SceneState): AnimState {
-  return stillFrame(scene);
 }
 
 /** The frame `dtSeconds` later (capped at `MAX_DT`). Pure: the same inputs give the same frame. */
@@ -201,13 +197,13 @@ export function stepAnim(a: AnimState, scene: SceneState, dtSeconds: number): An
     }
   }
 
-  // The train: wagons crossing under the loadout take ore while the conveyor runs; a new lap starts empty.
+  // The train: wagons crossing under the loadout take ore from the stockpile while the train runs (R-ab); a new lap starts empty.
   const head = a.train.head + TRAIN_SPEED * scene.train.speed * dt;
   const d0 = pastLoadout(a.train.head);
   const d1 = pastLoadout(head);
   const lapped = head - a.train.head >= RAIL_LENGTH || d1 < d0;
   let filled = lapped ? 0 : a.train.wagonsFilled;
-  if (scene.motion.conveyor) filled = Math.min(WAGONS.length, filled + passed(d1) - (lapped ? 0 : passed(d0)));
+  if (scene.train.speed > 0) filled = Math.min(WAGONS.length, filled + passed(d1) - (lapped ? 0 : passed(d0)));
 
   const cableDots: Record<string, number> = {};
   SERVICE_GROUPS.forEach((g, i) => {
