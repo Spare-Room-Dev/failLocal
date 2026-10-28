@@ -26,15 +26,69 @@
   border-bottom: 1px solid var(--line);
 }
 
-.odometer .qty {
+.odometer {
+  margin: 7px 0 5px;
+}
+
+/* DESIGN.md: 21 × 30 px cells, 3 px radius, grouped in threes with 5 px gaps, the number's own digits lit, the unit after. */
+.qty--odometer {
   display: inline-flex;
   align-items: center;
-  padding: 3px 6px;
+}
+
+.odometer-cells {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.odometer-cell {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 30px;
   border-radius: 3px;
   background: var(--computed-fill);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  box-shadow: var(--odometer-cell-edge);
+  color: var(--odometer-unlit);
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.odometer-cell.starts-group {
+  margin-left: 5px;
+}
+
+.odometer-cell.is-lit {
+  background: var(--odometer-lit-fill);
+  color: var(--ink);
+}
+
+.odometer-unit {
+  margin-left: 6px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.revenue-state {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.revenue-rate {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.revenue-rate-working {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
 }
 
 .figure {

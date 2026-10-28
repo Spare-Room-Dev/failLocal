@@ -1,5 +1,6 @@
 import type { Register, Sample, Timeline, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
+import { revenueAtRiskPerDay, stockpileDaysLeft } from '../model/revenueOutlook.js';
 import { usedTag } from '../model/tags.js';
 import { Qty } from './Qty.js';
 
@@ -26,18 +27,33 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
   const shipping = register.processes.find((p) => p.id === register.production.shippingProcess);
   if (!shipping) throw new Error(`register has no shipping process ${register.production.shippingProcess}`);
   const shippingName = shipping.name.toLowerCase();
+  const daysLeft = stockpileDaysLeft(register, timeline, sample);
 
   return (
     <section className="revenue" aria-label="Production and revenue">
       <h2 className="panel-heading">Production deferred so far</h2>
       <div className="odometer">
-        <Qty value={sample.tonnesDeferred} kind="tonnes" computed />
+        <Qty value={sample.tonnesDeferred} kind="tonnes" computed odometer />
       </div>
+      {daysLeft !== null && (
+        <p className="revenue-state" data-outlook="stockpile">
+          Stockpile still feeding rail: <Qty value={daysLeft} kind="days" computed /> left
+        </p>
+      )}
       <hr className="panel-rule" />
       <h2 className="panel-heading">Revenue at risk</h2>
       <p className="figure">
         <Qty value={sample.revenueAtRisk} kind="usd" computed />
       </p>
+      {daysLeft !== null && (
+        <p className="revenue-rate" data-outlook="rate">
+          Revenue at risk once the stockpile runs dry: ≈ <Qty value={revenueAtRiskPerDay(timeline)} kind="usd" computed /> per day
+          <span className="revenue-rate-working">
+            <Input timeline={timeline} path="production.annualTonnes" kind="mtpa" sources={sources} /> ×{' '}
+            <Input timeline={timeline} path="production.price" kind="usdPerT" sources={sources} />, spread over the days of a year.
+          </span>
+        </p>
+      )}
       <div className="revenue-working" role="group" aria-label="How revenue at risk is worked out">
         <p>
           <Input timeline={timeline} path="production.annualTonnes" kind="mtpa" sources={sources} /> ×{' '}

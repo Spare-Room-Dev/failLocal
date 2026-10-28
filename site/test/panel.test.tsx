@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { Variant } from '@faillocal/engine';
 import { formatQty } from '../src/model/format.js';
 import { register } from '../src/model/register.js';
+import { revenueAtRiskPerDay, shippingStock } from '../src/model/revenueOutlook.js';
 import { serviceName } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { DetailPanel } from '../src/ui/DetailPanel.js';
@@ -53,6 +54,94 @@ describe('RevenueSection', () => {
     const panel = screen.getByRole('region', { name: 'Production and revenue' });
     expect(qtyTags(panel, formatQty(sample.tonnesDeferred, 'tonnes'))).toEqual(['computed']);
     expect(qtyTags(panel, formatQty(sample.revenueAtRisk, 'usd'))).toEqual(['computed']);
+  });
+});
+
+describe('the stockpile outlook (B1)', () => {
+  const stock = shippingStock(register);
+  const shipping = register.production.shippingProcess;
+  /** The first hour of the run on screen for which `when` holds. */
+  const firstHour = (when: (s: { stocks: Record<string, number>; processes: Record<string, string> }) => boolean) => {
+    const sample = appStore.get().lastGood!.samples.find(when);
+    if (!sample) throw new Error('no such hour');
+    return sample.hour;
+  };
+  const stateLine = () => document.querySelector('[data-outlook="stockpile"]');
+  const rateLine = () => document.querySelector('[data-outlook="rate"]');
+
+  test('the stockpile is the stock rail draws on', () => {
+    expect(stock.id).toBe('ore-stockpile');
+  });
+
+  test('while the stockpile is drawn on and rail is normal: days left and the rate, both computed', () => {
+    actions.setScenario('s1-projection');
+    const hour = firstHour((s) => s.stocks[stock.id]! < stock.capacity.value && s.stocks[stock.id]! > 0 && s.processes[shipping] === 'normal');
+    act(() => actions.setClock({ hour }));
+    render(<DetailPanel />);
+    const days = appStore.get().lastGood!.samples[hour]!.stocks[stock.id]!;
+    expect(stateLine()!.textContent).toBe(`Stockpile still feeding rail: ${formatQty(days, 'days')}computed left`);
+    const perDay = (register.production.annualTonnes.value * 1e6 * register.production.price.value) / 365;
+    expect(revenueAtRiskPerDay(appStore.get().lastGood!)).toBeCloseTo(perDay);
+    expect(rateLine()!.textContent).toMatch(new RegExp(`^Revenue at risk once the stockpile runs dry: ≈ ${formatQty(perDay, 'usd').replace(/[$.]/g, '\\$&')}computed per day`));
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(perDay, 'usd'))).toEqual(['computed']);
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(register.production.annualTonnes.value, 'mtpa'))).toEqual(['assumed']);
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(register.production.price.value, 'usdPerT'))).toEqual(['sourced']);
+    expect(untaggedNumbers(screen.getByRole('region', { name: 'Production and revenue' }))).toEqual([]);
+  });
+
+  test('hidden while the stockpile is full (nothing draws on it yet)', () => {
+    actions.setScenario('s1-projection');
+    render(<DetailPanel />);
+    expect(appStore.get().lastGood!.samples[0]!.stocks[stock.id]).toBe(stock.capacity.value);
+    expect(stateLine()).toBeNull();
+    expect(rateLine()).toBeNull();
+  });
+
+  test('hidden once rail is degraded or stopped', () => {
+    actions.setScenario('s1-projection');
+    const hour = firstHour((s) => s.processes[shipping] !== 'normal');
+    act(() => actions.setClock({ hour }));
+    render(<DetailPanel />);
+    expect(stateLine()).toBeNull();
+    expect(rateLine()).toBeNull();
+  });
+
+  test('the rate follows an overridden price, still computed', () => {
+    actions.setScenario('s1-projection');
+    act(() => actions.setOverride('production.price', 120));
+    const hour = firstHour((s) => s.stocks[stock.id]! < stock.capacity.value && s.stocks[stock.id]! > 0 && s.processes[shipping] === 'normal');
+    act(() => actions.setClock({ hour }));
+    render(<DetailPanel />);
+    const perDay = (register.production.annualTonnes.value * 1e6 * 120) / 365;
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(perDay, 'usd'))).toEqual(['computed']);
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(120, 'usdPerT'))).toEqual(['changed by you']);
+  });
+});
+
+describe('the odometer (B6)', () => {
+  test('production deferred reads as one number to assistive technology, drawn as grouped cells', () => {
+    const sample = appStore.get().lastGood!.samples.at(-1)!;
+    actions.setClock({ hour: sample.hour });
+    render(<DetailPanel />);
+    const qty = document.querySelector('.odometer [data-quantity]') as HTMLElement;
+    const text = formatQty(sample.tonnesDeferred, 'tonnes');
+    expect(qty.querySelector('.visually-hidden')!.textContent).toBe(text);
+    const cells = qty.querySelector('.odometer-cells')!;
+    expect(cells.getAttribute('aria-hidden')).toBe('true');
+    const digits = String(Math.round(sample.tonnesDeferred));
+    const all = [...cells.querySelectorAll('.odometer-cell')];
+    expect(all.length).toBe(Math.max(8, digits.length));
+    expect(all.filter((c) => c.classList.contains('is-lit')).map((c) => c.textContent).join('')).toBe(digits);
+    // Grouped in threes from the right.
+    const starts = all.flatMap((c, i) => (c.classList.contains('starts-group') ? [all.length - i] : []));
+    expect(starts.every((n) => n % 3 === 0)).toBe(true);
+    expect(qtyTags(qty.parentElement!, text)).toEqual(['computed']);
+  });
+
+  test('zero tonnes lights only the last cell', () => {
+    render(<DetailPanel />);
+    const lit = [...document.querySelectorAll('.odometer .odometer-cell.is-lit')];
+    expect(lit.map((c) => c.textContent)).toEqual(['0']);
   });
 });
 
