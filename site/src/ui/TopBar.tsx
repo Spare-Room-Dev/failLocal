@@ -47,6 +47,13 @@ export function TopBar() {
   const title = kind === 'free' ? FREE_PLAY_TITLE : scenario?.title;
   // The scenario's first public source: the register has no shorter "modelled on" line, so its title stands.
   const basis = register.sources.find((s) => s.id === scenario?.basis[0]);
+  // "Modelled on" only when the scenario reproduces that record: one of its event times is sourced to it
+  // (s1's 12-day restore). Otherwise the source informs the scenario: "Based on" (ruling R-aa).
+  const reproduces =
+    !!basis &&
+    !!scenario?.events.some((e) =>
+      Object.values(e).some((q) => typeof q === 'object' && q !== null && 'provenance' in q && q.provenance.kind === 'sourced' && q.provenance.source === basis.id),
+    );
 
   return (
     <header className="top-bar">
@@ -56,7 +63,7 @@ export function TopBar() {
         {basis && (
           <p className="top-bar-basis">
             <span className="top-bar-basis-text">
-              Modelled on <cite>{basis.title}</cite>
+              {reproduces ? 'Modelled on' : 'Based on'} <cite>{basis.title}</cite>
             </span>
             <ProvenanceTag provenance={{ kind: 'sourced', source: basis.id }} sources={{ [basis.id]: basis.title }} />
           </p>

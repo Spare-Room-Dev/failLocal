@@ -198,11 +198,10 @@ export function Timeline({ figure = true }: { figure?: boolean }) {
             key={hps}
             type="button"
             data-clock
-            aria-label={`${hps} hours per second`}
             aria-pressed={clock.hoursPerSecond === hps}
             onClick={() => actions.setSpeed(hps)}
           >
-            {hps} h per s
+            {`${hps}×`} <span className="visually-hidden">({hps} hours per second)</span>
           </button>
         ))}
       </div>

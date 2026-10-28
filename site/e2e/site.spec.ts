@@ -405,14 +405,33 @@ test('cards sit on their cables, and every post and plaque is in frame without c
     expect(card.x, `${id} left edge`).toBeGreaterThanOrEqual(stage.x);
     expect(card.x + card.width, `${id} right edge`).toBeLessThanOrEqual(stage.x + stage.width);
   }
-  // One height along the band, the two-vendor card included (finish B3); full cards (icon and button glyph) wherever the slot allows.
-  const cardBoxes = await page.locator('.service-card').evaluateAll((els) =>
-    els.map((e) => ({ cut: (e as HTMLElement).dataset.cut === 'true', h: e.getBoundingClientRect().height, icon: !!(e.querySelector('.service-icon') as SVGElement | null)?.getBoundingClientRect().width })),
-  );
-  // A cut card may grow (its status is longer); every card in its up state is one height.
-  const upCards = cardBoxes.filter((c) => !c.cut);
-  expect(upCards.length).toBeGreaterThanOrEqual(4);
-  for (const c of upCards) expect(Math.abs(c.h - upCards[0]!.h), 'card heights').toBeLessThanOrEqual(1);
+  // One height along the band, the two-vendor card and a cut card included (finish B3, D4), and every
+  // status line starts at one height; full cards (icon and button glyph) wherever the slot allows.
+  const cardRow = () =>
+    page.locator('.service-card').evaluateAll((els) =>
+      els.map((e) => ({
+        h: e.getBoundingClientRect().height,
+        status: e.querySelector('.service-card-status')!.getBoundingClientRect().top,
+        icon: !!(e.querySelector('.service-icon') as SVGElement | null)?.getBoundingClientRect().width,
+      })),
+    );
+  const sameRow = async (when: string) => {
+    const row = await cardRow();
+    for (const c of row) {
+      expect(Math.abs(c.h - row[0]!.h), `${when}: card heights`).toBeLessThanOrEqual(1);
+      expect(Math.abs(c.status - row[0]!.status), `${when}: status lines`).toBeLessThanOrEqual(1);
+    }
+    return row;
+  };
+  const cardBoxes = await sameRow('day 0, Hosted ERP cut');
+  // Restore and Remove cut keep their words, even on a compact card (F1).
+  const words = (name: RegExp) =>
+    page.getByRole('button', { name }).locator('.service-button-text').evaluate((e) => [e.textContent, e.getBoundingClientRect().width > 0] as const);
+  expect(await words(/^Restore Hosted ERP$/)).toEqual(['Restore', true]);
+  await scrubToDay(page, 13);
+  await sameRow('day 13, Hosted ERP restored');
+  expect(await words(/^Remove cut: Hosted ERP$/)).toEqual(['Remove cut', true]);
+  await scrubToDay(page, 0);
   if (info.project.name === 'desktop') {
     for (const c of cardBoxes) expect(c.icon, 'a full card at 1440 has its icon').toBe(true);
     const glyphs = await page.locator('.service-button .service-glyph').evaluateAll((els) => els.filter((e) => (e as SVGElement).getBoundingClientRect().width > 0).length);

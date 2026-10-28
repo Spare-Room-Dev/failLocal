@@ -44,7 +44,7 @@ function Day({ hour }: { hour: number }) {
 /**
  * A service's status from the run's events: "Up", "Access revoked", "Down via <cause>" or "Cut since
  * day N" while it is out; with a cut of its own that has not started, "Cut from day N"; once that cut
- * has ended, "Restored day N". `quiet` is true for a plain "Up".
+ * has ended, "Restored day N" (its own restore: an inherited outage's end is not its cut's). `quiet` is true for a plain "Up".
  */
 function status(timeline: Timeline | null, service: string, state: ServiceState, hour: number, cut: boolean): { text: ReactNode; quiet: boolean } {
   const events = timeline?.events ?? [];
@@ -58,7 +58,10 @@ function status(timeline: Timeline | null, service: string, state: ServiceState,
     return { text: <>Cut since <Day hour={start.hour} /></>, quiet: false };
   }
   if (cut) {
-    const restored = events.filter((e) => e.kind === 'service-up' && e.subject === service && e.hour <= now).at(-1);
+    // Its own restore: the last service-up whose outage began with its own cut, not one inherited from
+    // another service (the engine marks the inherited outage's service-down with `from`; its service-up carries none).
+    const own = events.filter((e) => e.subject === service && (e.kind === 'service-down' || e.kind === 'service-up'));
+    const restored = own.filter((e, i) => e.kind === 'service-up' && !e.from && e.hour <= now && own[i - 1]?.kind === 'service-down' && !own[i - 1]!.from).at(-1);
     if (restored) return { text: <>Restored <Day hour={restored.hour} /></>, quiet: false };
     const upcoming = events.find((e) => e.kind === 'service-down' && e.subject === service && !e.from && e.hour > now);
     if (upcoming) return { text: <>Cut from <Day hour={upcoming.hour} /></>, quiet: false };

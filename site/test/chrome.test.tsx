@@ -41,6 +41,15 @@ describe('TopBar', () => {
     expect(untaggedNumbers(container)).toEqual([]);
   });
 
+  test('a scenario that only draws on its source reads "Based on" (ruling R-aa)', () => {
+    actions.setScenario('s4-precautionary-isolation');
+    const { container } = render(<TopBar />);
+    const source = register.sources.find((s) => s.id === register.scenarios.find((x) => x.id === 's4-precautionary-isolation')!.basis[0])!;
+    expect(container.querySelector('.top-bar-basis-text')!.textContent).toBe(`Based on ${source.title}`);
+    act(() => actions.setScenario('s1-as-reported'));
+    expect(container.querySelector('.top-bar-basis-text')!.textContent).toMatch(/^Modelled on /);
+  });
+
   test('free play has no modelled-on line', () => {
     actions.enterFreePlay();
     actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 2 });
@@ -161,6 +170,21 @@ describe('ServiceCard', () => {
     fireEvent.click(remove);
     expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: false });
     expect(within(erp).getByRole('button', { name: 'Cut Hosted ERP' })).toBeTruthy();
+  });
+
+  test("an inherited outage's end is not the card's own restore (D7)", () => {
+    actions.enterFreePlay();
+    actions.removeCut(0);
+    actions.addCut({ service: 'corporate-network', atDays: 0, forDays: 5 });
+    actions.addCut({ service: 'hosted-erp', atDays: 6, forDays: 1 });
+    // Hour 130: the corporate network (and with it the ERP) came back at day 5; the ERP's own cut starts at day 6.
+    actions.setClock({ hour: 130 });
+    render(<>{cards()}</>);
+    const erp = card('hosted-erp');
+    expect(within(erp).queryByText(/^Restored/)).toBeNull();
+    expect(within(erp).getByText(/^Cut from/).textContent).toBe('Cut from day 6');
+    act(() => actions.setClock({ hour: 200 }));
+    expect(within(erp).getByText(/^Restored/).textContent).toBe('Restored day 7');
   });
 
   test('a cut that has not started yet reads "Cut from day N", with Remove cut', () => {

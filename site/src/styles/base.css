@@ -173,12 +173,26 @@ body {
   .service-card-name {
     min-height: calc(2 * 1.15em);
   }
+
+  /*
+   * The status gets its own line and the button(s) sit under it at the right, whatever the status says
+   * ("Up", "Cut since day 0", "Restored day 12"), so every card along the band is one height and every
+   * status line starts at the same place (finish D4).
+   */
+  .service-card-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .service-card-buttons {
+    align-self: flex-end;
+  }
 }
 
 /*
  * The card keeps its icon and its button glyphs down to a 150 px slot (a 1440 px window's slots are about
- * 170 px). Narrower (a tablet's), it goes compact: no icon, and a lone service's button keeps only its
- * glyph, with its accessible name unchanged. A keyed button keeps its letter.
+ * 170 px). Narrower (a tablet's), it goes compact: no icon, and a lone service's Cut button keeps only its
+ * glyph, with its accessible name unchanged; Restore and Remove cut keep their words. A keyed button keeps its letter.
  */
 @container (max-width: 149px) {
   .service-icon {
@@ -199,7 +213,8 @@ body {
     padding: 0 6px;
   }
 
-  .service-button-text {
+  /* A plain Cut keeps only its scissors; Restore and Remove cut keep their words, so neither reads as "close" (F1). */
+  .service-button:not(.is-restore, .is-remove) .service-button-text {
     display: none;
   }
 }
@@ -252,11 +267,11 @@ body {
   min-width: 0;
 }
 
-/* Two by two, so the axis keeps its width. */
+/* One row of short "12×" segments (D2). */
 .site-strip .timeline-speeds {
   display: grid;
   flex: none;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(4, auto);
 }
 
 .site-strip > .stock-meters {

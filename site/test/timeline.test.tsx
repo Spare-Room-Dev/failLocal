@@ -110,8 +110,10 @@ describe('Timeline', () => {
     await user.click(within(speeds).getAllByRole('button')[3]!);
     expect(appStore.get().clock.hoursPerSecond).toBe(96);
     expect(within(speeds).getAllByRole('button')[3]!.getAttribute('aria-pressed')).toBe('true');
-    // Spelt out for assistive technology; "h per s" on screen (finish B8).
-    expect(within(speeds).getByRole('button', { name: '12 hours per second' }).textContent).toBe('12 h per s');
+    // "12×" on screen; its accessible name starts with that and spells it out (D2, WCAG 2.5.3).
+    const twelve = within(speeds).getByRole('button', { name: '12× (12 hours per second)' });
+    expect(twelve.firstChild!.textContent).toBe('12×');
+    expect(twelve.querySelector('.visually-hidden')!.textContent).toBe('(12 hours per second)');
   });
 
   test('play at the horizon starts again from hour 0', async () => {
