@@ -256,6 +256,7 @@ describe('AreaPanel', () => {
     expect(rows[0]!.textContent).toContain('Stops on loss');
   });
 
+  // About 750 renders: past the 5 s default when the whole suite runs in parallel.
   test('no untagged numbers in the panel', () => {
     const scenarios = register.scenarios.map((s) => s.id);
     const variants: Variant[] = ['unprepared', 'prepared'];
@@ -284,5 +285,5 @@ describe('AreaPanel', () => {
         }
       }
     }
-  });
+  }, 30_000);
 });
