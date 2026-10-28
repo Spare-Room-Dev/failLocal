@@ -89,13 +89,28 @@ const DEPTH = -pit.benches[pit.benches.length - 1]!.floorZ;
 const FLOOR_INSET = pit.benches[0]!.radiusX - pit.benches[pit.benches.length - 1]!.radiusX + BATTER_RUN + pit.rampWidth / 2;
 const RAMP_SAMPLES = 160;
 
-/** The spiral's ground track for a given sweep, with z falling in proportion to ground run: constant grade throughout. */
+/**
+ * The spiral's ground track for a given sweep at constant grade: z falls in proportion to ground run, and the
+ * inset from the crest grows in proportion to depth, so the ramp follows the overall wall slope and never dips
+ * below the benches. Inset and run depend on each other; a few fixed-point passes settle them.
+ */
 function spiral(sweep: number): { pts: Vec3[]; run: number } {
-  const ring = Array.from({ length: RAMP_SAMPLES + 1 }, (_, i) => pitRing(pit.rampHeadAngle - (sweep * i) / RAMP_SAMPLES, (FLOOR_INSET * i) / RAMP_SAMPLES));
-  const cum = [0];
-  for (let i = 1; i < ring.length; i++) cum.push(cum[i - 1]! + Math.hypot(ring[i]!.x - ring[i - 1]!.x, ring[i]!.y - ring[i - 1]!.y));
-  const run = cum[cum.length - 1]!;
-  return { pts: ring.map((p, i) => ({ ...p, z: (-DEPTH * cum[i]!) / run })), run };
+  const angle = (i: number) => pit.rampHeadAngle - (sweep * i) / RAMP_SAMPLES;
+  let frac = Array.from({ length: RAMP_SAMPLES + 1 }, (_, i) => i / RAMP_SAMPLES);
+  let ring: { x: number; y: number }[] = [];
+  let run = 0;
+  for (let pass = 0; pass < 30; pass++) {
+    ring = frac.map((f, i) => pitRing(angle(i), FLOOR_INSET * f));
+    const cum = [0];
+    for (let i = 1; i < ring.length; i++) cum.push(cum[i - 1]! + Math.hypot(ring[i]!.x - ring[i - 1]!.x, ring[i]!.y - ring[i - 1]!.y));
+    run = cum[cum.length - 1]!;
+    const next = cum.map((c) => c / run);
+    const moved = Math.max(...next.map((f, i) => Math.abs(f - frac[i]!)));
+    frac = next;
+    if (moved < 1e-12) break;
+  }
+  ring = frac.map((f, i) => pitRing(angle(i), FLOOR_INSET * f));
+  return { pts: ring.map((p, i) => ({ ...p, z: -DEPTH * frac[i]! })), run };
 }
 
 /** The ramp centreline, crest to floor: a constant-grade spiral cut into the walls, its sweep solved for the design grade. */

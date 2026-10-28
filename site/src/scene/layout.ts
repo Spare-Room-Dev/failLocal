@@ -62,6 +62,10 @@ const PIT_CENTRE: Vec3 = { x: 500, y: 560, z: 0 };
 const CREST = { x: 270, y: 210 };
 const STEP = BATTER_RUN + BERM;
 const RAMP_HEAD = -0.9;
+/** Every road edge keeps this clear of the pit crest (windrow and geotechnical setback)... */
+export const ROAD_CREST_SETBACK = 20;
+/** ...except within this distance of the ramp head, where the haul road meets the ramp. */
+export const RAMP_HEAD_APPROACH = 100;
 /** Where trucks tip into the primary crusher, 14 m off its west face. */
 const DUMP_POCKET: Vec3 = { x: 976, y: 380, z: 0 };
 
@@ -115,8 +119,8 @@ export const LAYOUT: Layout = {
     { id: 'haul-rom', width: 26, points: [{ x: DUMP_POCKET.x, y: DUMP_POCKET.y }, { x: 880, y: 400 }, { x: 790, y: 420 }, rampApproach(45), pitRing(RAMP_HEAD, 0)] },
     // Branch from the ROM road to the workshop hardstand and fuel bay.
     { id: 'haul-workshop', width: 26, points: [{ x: 790, y: 420 }, { x: 760, y: 330 }, { x: 660, y: 240 }, { x: 560, y: 205 }] },
-    // Spur from the ramp head round the pit's east side to the waste dump.
-    { id: 'haul-dump', width: 26, points: [rampApproach(45), { x: 790, y: 500 }, { x: 820, y: 650 }, { x: 800, y: 805 }] },
+    // Spur from the ROM road's junction near the ramp head, round the pit's east side (clear of the crest) to the waste dump.
+    { id: 'haul-dump', width: 26, points: [{ x: 790, y: 420 }, { x: 840, y: 520 }, { x: 850, y: 650 }, { x: 800, y: 805 }] },
     // Light-vehicle road: camp, admin block, between the fuel bund and bay, to the haul road's end at the
     // workshop hardstand (the one controlled crossing to the haul network), then on to the magazine track.
     {
@@ -133,6 +137,8 @@ export const LAYOUT: Layout = {
         { x: 400, y: 195 },
       ],
     },
+    // Site road in from the north edge (deliveries, explosives included) to the workshop end of the access road.
+    { id: 'site-road', width: 10, points: [{ x: 300, y: 0 }, { x: 400, y: 195 }] },
     // Magazine track from the end of the access road down the west side, under the ridge.
     { id: 'magazine-track', width: 7, points: [{ x: 400, y: 195 }, { x: 280, y: 260 }, { x: 170, y: 450 }, { x: 140, y: 700 }, { x: 150, y: 860 }] },
   ],

@@ -6,6 +6,8 @@ import {
   BATTER_RUN,
   BOARD,
   LAYOUT,
+  RAMP_HEAD_APPROACH,
+  ROAD_CREST_SETBACK,
   TRUCK,
   crestValue,
   distToPolyline,
@@ -91,6 +93,36 @@ describe('pit (DESIGN.md Mining Accuracy)', () => {
     }
   });
 
+  it('never sits below the bench surface at its own inset, and its inset deepens with it', () => {
+    const ramp = rampCentreline();
+    const step = crest.radiusX - pit.benches[1]!.radiusX;
+    const surfaceZ = (d: number) => {
+      const i = Math.floor(d / step);
+      const r = d - i * step;
+      if (i >= pit.benches.length - 1 && r >= BATTER_RUN) return floor.floorZ;
+      if (i >= pit.benches.length) return floor.floorZ;
+      return r < BATTER_RUN ? -12 * i - (12 * r) / BATTER_RUN : -12 * (i + 1);
+    };
+    const insetOf = (p: Vec3) => {
+      let lo = 0;
+      let hi = Math.min(crest.radiusX, crest.radiusY) - 1;
+      for (let k = 0; k < 60; k++) {
+        const d = (lo + hi) / 2;
+        const v = ((p.x - pit.centre.x) / (crest.radiusX - d)) ** 2 + ((p.y - pit.centre.y) / (crest.radiusY - d)) ** 2;
+        if (v > 1) hi = d;
+        else lo = d;
+      }
+      return (lo + hi) / 2;
+    };
+    let prev = -1;
+    for (const p of ramp) {
+      const d = insetOf(p);
+      expect(p.z, `inset ${d.toFixed(1)}`).toBeGreaterThanOrEqual(surfaceZ(d) - 1e-6);
+      expect(d).toBeGreaterThanOrEqual(prev - 1e-6);
+      prev = d;
+    }
+  });
+
   it('starts the ramp on the crest and ends it on the floor, inside the bottom toe', () => {
     const ramp = rampCentreline();
     expect(crestValue(ramp[0]!, 0)).toBeCloseTo(1, 6);
@@ -134,6 +166,28 @@ describe('roads', () => {
       }
     }
     const rampHead = rampCentreline()[0]!;
+    // Road edges keep a windrow/setback clear of the crest, except on the declared approach to the ramp head.
+    const crestLine = Array.from({ length: 4001 }, (_, i) => ({
+      x: pit.centre.x + crest.radiusX * Math.cos((2 * Math.PI * i) / 4000),
+      y: pit.centre.y + crest.radiusY * Math.sin((2 * Math.PI * i) / 4000),
+    }));
+    let closest = Infinity;
+    for (const r of roads) {
+      for (let i = 1; i < r.points.length; i++) {
+        const [a, b] = [r.points[i - 1]!, r.points[i]!];
+        const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
+        for (let j = 0; j <= n; j++) {
+          const p = { x: a.x + ((b.x - a.x) * j) / n, y: a.y + ((b.y - a.y) * j) / n };
+          if (r.id === 'haul-rom' && Math.hypot(p.x - rampHead.x, p.y - rampHead.y) < RAMP_HEAD_APPROACH) continue;
+          const edgeGap = distToPolyline(p, crestLine) - r.width / 2;
+          closest = Math.min(closest, edgeGap);
+          expect(edgeGap, `${r.id} edge at ${p.x.toFixed(0)},${p.y.toFixed(0)}`).toBeGreaterThanOrEqual(ROAD_CREST_SETBACK);
+        }
+      }
+    }
+    expect(ROAD_CREST_SETBACK).toBeGreaterThanOrEqual(20);
+    expect(RAMP_HEAD_APPROACH).toBeLessThanOrEqual(100);
+    expect(closest).toBeGreaterThanOrEqual(ROAD_CREST_SETBACK);
     const rom = roads.find((r) => r.id === 'haul-rom')!;
     const end = rom.points[rom.points.length - 1]!;
     expect(Math.hypot(end.x - rampHead.x, end.y - rampHead.y)).toBeLessThan(1e-6);
@@ -156,6 +210,15 @@ describe('roads', () => {
       }
     }
     expect([...reached].sort()).toEqual(roads.map((r) => r.id).sort());
+  });
+
+  it('bring site deliveries in from the north edge to the workshop end, where the magazine track starts', () => {
+    const site = roads.find((r) => r.id === 'site-road')!;
+    expect(site.points[0]!.y).toBe(0);
+    const track = roads.find((r) => r.id === 'magazine-track')!;
+    expect(site.points[site.points.length - 1]).toEqual(track.points[0]);
+    const camp = footprint(byId('camp'));
+    for (const r of [site, track]) for (const p of r.points) expect(rectDistance({ x: p.x, y: p.y, w: 0, h: 0 }, camp)).toBeGreaterThan(500);
   });
 
   it('serve the magazine, the waste dump and the workshop by road', () => {
