@@ -398,6 +398,9 @@ test('cards sit on their cables, and every post and plaque is in frame without c
     expect(post.y, id).toBeGreaterThan(0);
     expect(post.y, id).toBeLessThan(scene.height);
   }
+  // The first view shows the model on its plinth: the plate is engraved on the front-left face, not pinned.
+  await expect(page.locator('.scene-plinth')).toHaveAttribute('data-placement', 'face');
+  await expect(page.locator('.scene-plinth')).toBeVisible();
 
   for (const day of [0, 13]) {
     await scrubToDay(page, day);
@@ -441,25 +444,49 @@ test('cards sit on their cables, and every post and plaque is in frame without c
   await page.screenshot({ path: info.outputPath(`plaques-${page.viewportSize()!.width}.png`) });
 });
 
-/** Plaques (from the probe) that overlap any of the scene's DOM elements matching `selectors`, as "plaque/selector". */
+/**
+ * Plaques (from the probe) that overlap any of the scene's DOM elements matching `selectors`, as "plaque/selector".
+ * An element set in the plinth face's plane (the engraved plate) is tested as the slanted strip it is drawn as,
+ * not as the box round its slant.
+ */
 function plaquesOver(page: Page, selectors: string[]): Promise<string[]> {
   return page.evaluate((sels) => {
+    type P = { x: number; y: number };
     const host = document.querySelector('.scene--diorama')!.getBoundingClientRect();
     const plaques = window.__faillocal!.diorama!.plaques();
-    return sels.flatMap((sel) => {
-      const e = document.querySelector(sel)!.getBoundingClientRect();
-      const box = { x: e.left - host.left, y: e.top - host.top, w: e.width, h: e.height };
-      return Object.entries(plaques).flatMap(([id, p]) => {
-        const r = p.rect;
-        if (!r) return [];
-        const hit = r.x < box.x + box.w && box.x < r.x + r.w && r.y < box.y + box.h && box.y < r.y + r.h;
-        return hit ? [`${id}/${sel}`] : [];
+    // The element's four corners as drawn, in stage pixels.
+    const quad = (el: HTMLElement): P[] => {
+      const css = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      if (css.transform === 'none') return [{ x: r.left, y: r.top }, { x: r.right, y: r.top }, { x: r.right, y: r.bottom }, { x: r.left, y: r.bottom }].map((p) => ({ x: p.x - host.left, y: p.y - host.top }));
+      const m = new DOMMatrix(css.transform);
+      const [ox, oy] = css.transformOrigin.split(' ').map(parseFloat) as [number, number];
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      return [[0, 0], [w, 0], [w, h], [0, h]].map(([x, y]) => {
+        const t = m.transformPoint(new DOMPoint(x! - ox, y! - oy));
+        return { x: el.offsetLeft + ox + t.x, y: el.offsetTop + oy + t.y };
       });
+    };
+    // Separating axis test between a convex quad and an axis-aligned box.
+    const overlaps = (q: P[], b: { x: number; y: number; w: number; h: number }) => {
+      const box = [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }, { x: b.x + b.w, y: b.y + b.h }, { x: b.x, y: b.y + b.h }];
+      const axes = [{ x: 1, y: 0 }, { x: 0, y: 1 }, ...q.map((p, i) => { const n = q[(i + 1) % q.length]!; return { x: p.y - n.y, y: n.x - p.x }; })];
+      return axes.every((a) => {
+        const span = (pts: P[]) => { const d = pts.map((p) => p.x * a.x + p.y * a.y); return [Math.min(...d), Math.max(...d)] as const; };
+        const [a0, a1] = span(q);
+        const [b0, b1] = span(box);
+        return a0 < b1 && b0 < a1;
+      });
+    };
+    return sels.flatMap((sel) => {
+      const q = quad(document.querySelector<HTMLElement>(sel)!);
+      return Object.entries(plaques).flatMap(([id, p]) => (p.rect && overlaps(q, p.rect) ? [`${id}/${sel}`] : []));
     });
   }, selectors);
 }
 
-test('zoomed out, the plate hangs on the plinth face and no plaque covers it', async ({ page }, info) => {
+test('zoomed out, the plate is engraved on the plinth face and no plaque covers it', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'one viewport is enough for the zoomed-out plate');
   await openStill(page);
   await page.locator('.scene--diorama').focus();

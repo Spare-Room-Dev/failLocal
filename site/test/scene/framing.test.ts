@@ -4,16 +4,38 @@ import { clampCamera, fitCamera, K_MAX, project, unproject } from '../../src/sce
 import { BOARD, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../../src/scene/layout.js';
 import { placePlaques, PLAQUE_H, POLE_LENGTHS } from '../../src/scene/plaques.js';
 import type { PlaqueRequest } from '../../src/scene/plaques.js';
-import { platePosition } from '../../src/scene/plate.js';
+import { placePlate, plateBoxes, plateCorners, plateFont, platePosition } from '../../src/scene/plate.js';
 
 type Box = { x: number; y: number; w: number; h: number };
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a: Box, view: { w: number; h: number }) => a.x >= 0 && a.y >= 0 && a.x + a.w <= view.w && a.y + a.h <= view.h;
 
 describe('default framing', () => {
-  test('the site frames the pit, ROM pad and crusher', () => {
-    const view = { w: 1068, h: 580 };
-    expect(defaultCamera('site', view, false)).toEqual(clampCamera(fitCamera(BOARD, view, LAYOUT.defaultFocus), BOARD, view));
+  // The diorama's box at 1440 × 900, 1150 × 800, 1024 × 768 and 820 × 1180.
+  const SITE_VIEWS = [{ w: 1068, h: 580 }, { w: 1150, h: 440 }, { w: 1024, h: 408 }, { w: 820, h: 512.5 }];
+  const onStage = (p: { sx: number; sy: number }, view: { w: number; h: number }, m = 0) => p.sx >= m && p.sx <= view.w - m && p.sy >= m && p.sy <= view.h - m;
+
+  test('the site opens on the model as an object: the front-left corner, its cut-away face and the gallery floor beyond', () => {
+    for (const view of SITE_VIEWS) {
+      const cam = defaultCamera('site', view, false);
+      // The board's front-left corner, down to the foot of the plinth, is in frame with floor to its left.
+      const corner = project({ x: 0, y: BOARD.h, z: -SLAB_DEPTH - PLINTH_DEPTH }, cam);
+      expect(onStage(corner, view, 12), `${view.w}`).toBe(true);
+      // The plinth face runs down-right from it far enough to carry the engraved plate.
+      const plate = { w: 300, h: 12 };
+      const at = platePosition(cam, view, plate);
+      expect(at, `${view.w}`).not.toBeNull();
+      // It is a crop of the board, not the whole board shrunk to a map.
+      expect(cam.k, `${view.w}`).toBeGreaterThan(fitCamera(BOARD, view).k * 1.1);
+    }
+  });
+
+  test("the site opens with every area's flag in frame", () => {
+    for (const view of SITE_VIEWS) {
+      const cam = defaultCamera('site', view, false);
+      for (const [id, a] of Object.entries(LAYOUT.areas)) expect(onStage(project(a.anchor, cam), view, 10), `${id} at ${view.w}`).toBe(true);
+      for (const p of [LAYOUT.pit.centre, LAYOUT.areas.crushing!.anchor, LAYOUT.areas.haulage!.anchor]) expect(onStage(project(p, cam), view, 40)).toBe(true);
+    }
   });
 
   test('a phone crops to the working area, pit to crusher to stockyard', () => {
@@ -123,27 +145,55 @@ describe('plaque placement', () => {
 });
 
 describe('the honesty plate', () => {
-  const size = { w: 420, h: 22 };
+  const size = { w: 330, h: 12 };
+  const view = { w: 1068, h: 580 };
 
-  test('with the front edge in view it hangs under the board\'s front-left plinth face, whole and inside the stage', () => {
-    const view = { w: 1068, h: 580 };
-    const cam = clampCamera(fitCamera(BOARD, view), BOARD, view);
+  test('with the front edge in view it is engraved along the front-left plinth face, whole and inside the stage', () => {
+    const cam = defaultCamera('site', view, false);
     const at = platePosition(cam, view, size)!;
     expect(at).not.toBeNull();
-    expect(inside({ x: at.x, y: at.y, ...size }, view)).toBe(true);
-    // Its top-right corner is on the plinth face along the board's front-left edge (y = BOARD.h), between its arrises.
-    const x = (at.x + size.w - cam.ox) / cam.k + BOARD.h;
-    expect(x).toBeGreaterThan(0);
-    expect(x).toBeLessThan(BOARD.w);
-    const top = project({ x, y: BOARD.h, z: -SLAB_DEPTH }, cam).sy;
-    const bottom = project({ x, y: BOARD.h, z: -SLAB_DEPTH - PLINTH_DEPTH }, cam).sy;
-    expect(at.y).toBeGreaterThanOrEqual(top);
-    expect(at.y).toBeLessThanOrEqual(bottom);
+    // Its left-centre is on the plinth face along the board's front-left edge (y = BOARD.h), half way down it, from 40 m along.
+    const x = (at.x - cam.ox) / cam.k + BOARD.h;
+    expect(x).toBeGreaterThanOrEqual(40);
+    const mid = project({ x, y: BOARD.h, z: -SLAB_DEPTH - PLINTH_DEPTH / 2 }, cam);
+    expect(at.x).toBeCloseTo(mid.sx, 6);
+    expect(at.y + size.h / 2).toBeCloseTo(mid.sy, 6);
+    // The text runs down the face (slope 1/2) and ends on it, inside the stage.
+    const corners = plateCorners({ ...at, ...size, onFace: true, font: 9 });
+    for (const c of corners) expect(inside({ x: c.x, y: c.y, w: 0, h: 0 }, view)).toBe(true);
+    expect((corners[1]!.y - corners[0]!.y) / (corners[1]!.x - corners[0]!.x)).toBeCloseTo(0.5, 6);
+    const endX = (corners[1]!.x - cam.ox) / cam.k + BOARD.h;
+    expect(endX).toBeLessThanOrEqual(BOARD.w);
   });
 
-  test('zoomed in on the north of the board, the front edge is out of view and there is no face position', () => {
-    const view = { w: 1068, h: 580 };
+  test("where the face's start is out of the stage, the plate slides along the face until it fits", () => {
+    const cam = defaultCamera('site', view, false);
+    const panned = { ...cam, ox: cam.ox - 200 };
+    const at = platePosition(panned, view, size)!;
+    expect(at.x).toBeGreaterThanOrEqual(8);
+    expect((at.x - panned.ox) / panned.k + BOARD.h).toBeGreaterThan(40);
+  });
+
+  test('zoomed in on the north of the board, the front edge is out of view and the plate is pinned to the stage', () => {
     const north = clampCamera({ ...fitCamera(BOARD, view, { x: 400, y: 100, w: 50, h: 50 }), k: K_MAX }, BOARD, view);
     expect(platePosition(north, view, size)).toBeNull();
+    const pinned = placePlate(north, view, 30, false);
+    expect(pinned.onFace).toBe(false);
+    expect(inside(pinned, view)).toBe(true);
+  });
+
+  test('the engraving is sized to the plinth face, never under 9 px', () => {
+    expect(plateFont(0.35)).toBe(9);
+    expect(plateFont(2)).toBeCloseTo(0.55 * PLINTH_DEPTH * 1.2247 * 2, 6);
+  });
+
+  test('plaques keep clear of the plate as drawn, not of the box round its slant', () => {
+    const p = { x: 100, y: 300, w: 330, h: 12, onFace: true, font: 9 };
+    const boxes = plateBoxes(p, 0);
+    // Every corner of the slanted strip is covered...
+    for (const c of plateCorners(p)) expect(boxes.some((b) => c.x >= b.x - 1e-6 && c.x <= b.x + b.w + 1e-6 && c.y >= b.y - 1e-6 && c.y <= b.y + b.h + 1e-6)).toBe(true);
+    // ...and the open floor under the strip's start, well clear of it, is not.
+    const under = { x: 110, y: 400, w: 20, h: 20 };
+    expect(boxes.some((b) => overlaps(b, under))).toBe(false);
   });
 });

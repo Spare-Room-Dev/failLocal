@@ -346,17 +346,6 @@ describe('arrangement (screen compass: north is up the screen)', () => {
       if (run > 0.01) expect(Math.atan2(Math.abs(b.z - a.z), run)).toBeLessThanOrEqual((18 * Math.PI) / 180 + 1e-9);
     }
   });
-
-  it('frames the pit, ROM pad and crusher by default', () => {
-    const f = LAYOUT.defaultFocus;
-    const c = footprint(byId('crusher'));
-    expect(f.x).toBeLessThanOrEqual(pit.centre.x - crest.radiusX);
-    expect(f.y).toBeLessThanOrEqual(pit.centre.y - crest.radiusY);
-    expect(f.y + f.h).toBeGreaterThanOrEqual(pit.centre.y + crest.radiusY);
-    expect(f.x + f.w).toBeGreaterThanOrEqual(c.x + c.w);
-    expect(f.y).toBeLessThanOrEqual(c.y);
-    expect(f.y + f.h).toBeGreaterThanOrEqual(c.y + c.h);
-  });
 });
 
 describe('process areas and entry posts', () => {
@@ -384,19 +373,19 @@ describe('process areas and entry posts', () => {
     }
   });
 
-  it('set the entry posts in a row along the default framing\'s north edge, left to right in card order, clear of everything', () => {
+  it('set the entry posts in a row just north of the pit, left to right in card order, clear of everything', () => {
     expect(Object.keys(entryPosts)).toEqual(SERVICE_GROUPS.map((g) => g.id));
     const posts = SERVICE_GROUPS.map((g) => entryPosts[g.id]!);
     const xs = posts.map((p) => screen(p).sx);
     for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(100); // spread, not bunched
-    // One row: the same world y, just north of the framing's north edge.
-    const f = LAYOUT.defaultFocus;
+    // One row: the same world y, just north of the pit's crest, spanning its width.
+    const crestNorth = pit.centre.y - crest.radiusY;
     for (const p of posts) {
       expect(p.y).toBe(posts[0]!.y);
-      expect(p.y).toBeLessThan(f.y);
-      expect(p.y).toBeGreaterThan(f.y - 40);
-      expect(p.x).toBeGreaterThan(f.x);
-      expect(p.x).toBeLessThan(f.x + f.w);
+      expect(p.y).toBeLessThan(crestNorth);
+      expect(p.y).toBeGreaterThan(crestNorth - 80);
+      expect(p.x).toBeGreaterThan(pit.centre.x - crest.radiusX);
+      expect(p.x).toBeLessThan(pit.centre.x + crest.radiusX + 200);
     }
     // A 3 × 3 m post, at least 10 m from every road edge, pad, structure and flag, and outside the pit's setback.
     for (const [i, p] of posts.entries()) {
@@ -430,7 +419,7 @@ describe('process areas and entry posts', () => {
 });
 
 describe('everything inside the board', () => {
-  it('structures, pads, roads, posts, creek, ridge, loop, focus and every path', () => {
+  it('structures, pads, roads, posts, creek, ridge, loop and every path', () => {
     for (const s of structures) for (const p of rectPerimeter(footprint(s))) expect(inBoard(p), s.id).toBe(true);
     for (const a of Object.values(areas)) [a.anchor, ...a.pad].forEach((p) => expect(inBoard(p)).toBe(true));
     for (const r of roads) r.points.forEach((p) => expect(inBoard(p), r.id).toBe(true));
@@ -438,8 +427,6 @@ describe('everything inside the board', () => {
     [...LAYOUT.creek, ...LAYOUT.ridge].forEach((p) => expect(inBoard(p)).toBe(true));
     const { centre, radius } = railLoop;
     [{ x: centre.x - radius, y: centre.y - radius }, { x: centre.x + radius, y: centre.y + radius }].forEach((p) => expect(inBoard(p)).toBe(true));
-    const f = LAYOUT.defaultFocus;
-    [{ x: f.x, y: f.y }, { x: f.x + f.w, y: f.y + f.h }].forEach((p) => expect(inBoard(p)).toBe(true));
     [{ x: pit.centre.x - crest.radiusX, y: pit.centre.y - crest.radiusY }, { x: pit.centre.x + crest.radiusX, y: pit.centre.y + crest.radiusY }].forEach((p) => expect(inBoard(p)).toBe(true));
     for (const path of [HAUL_CYCLE, RAIL_LOOP, LV_LOOP, CONVEYOR]) samples(path, 5).forEach((p) => expect(inBoard(p)).toBe(true));
   });

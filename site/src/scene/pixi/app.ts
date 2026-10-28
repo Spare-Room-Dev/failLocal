@@ -19,7 +19,7 @@ import { buildDynamic } from './dynamic.js';
 import type { Dynamic } from './dynamic.js';
 import { buildOverlay } from './overlay.js';
 import type { FlagLayout, Overlay } from './overlay.js';
-import { placePlate } from '../plate.js';
+import { placePlate, plateBoxes } from '../plate.js';
 import type { PlatePlacement } from '../plate.js';
 import { Snapshot } from './snapshot.js';
 import { buildStatic } from './static.js';
@@ -28,7 +28,7 @@ import type { StaticWorld } from './static.js';
 export interface DioramaHandle {
   /**
    * The engine state to draw, whether to hold still (reduced motion: one still frame of the same state)
-   * and the selected area, whose plaque inverts. The first call builds the world (its plate comes from the state).
+   * and the selected area, whose plaque inverts. The first call builds the world.
    */
   setState(s: SceneState, reducedMotion: boolean, selected?: string | null): void;
   /** Move the camera; it always passes through `clampCamera`. */
@@ -46,7 +46,7 @@ export interface SceneLayout {
   view: Size;
   /** Keyed by process area id. */
   plaques: Record<string, FlagLayout>;
-  /** The honesty plate's box, placed under the same camera the plaques kept clear of. */
+  /** The honesty plate: engraved on the plinth face or pinned, placed under the same camera the plaques kept clear of. */
   plate: PlatePlacement;
 }
 
@@ -123,7 +123,7 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
     // The scene's accessible layer is DOM (DioramaScene), and its controls are the listeners below.
     skipExtensionImports: true,
   });
-  // Fonts first, so the engraved plate is set in Archivo rather than a fallback face.
+  // Fonts first, so the face's lettering (scale bar, rail) is set in Archivo rather than a fallback face.
   await document.fonts?.load('600 12px "Archivo Variable"').catch(() => undefined);
 
   const canvas = app.canvas;
@@ -182,15 +182,18 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
   let clock = 0;
   let laid: Record<string, FlagLayout> = {};
   // The plate is DOM text (DioramaScene) but placed here, from the same camera the plaques keep clear of.
-  // Only its size is read from the page, when it changes.
-  let plateSize: Size = { w: 0, h: 0 };
-  const plateAt = (c: Camera, v: Size) => placePlate(c, v, plateSize, phone?.matches ?? false);
+  // Only its text's width per pixel of font size is read from the page, when it changes.
+  let platePerPx = 0;
+  const plateAt = (c: Camera, v: Size) => placePlate(c, v, platePerPx, phone?.matches ?? false);
   const plateEl = host.querySelector<HTMLElement>('.scene-plinth');
   const plateResize = new ResizeObserver(() => {
     if (!plateEl) return;
-    const next = { w: plateEl.offsetWidth, h: plateEl.offsetHeight };
-    if (next.w === plateSize.w && next.h === plateSize.h) return;
-    plateSize = next;
+    const css = getComputedStyle(plateEl);
+    const font = parseFloat(css.fontSize);
+    const text = plateEl.offsetWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    const next = font > 0 && text > 0 ? text / font : 0;
+    if (Math.abs(next - platePerPx) < 0.01) return;
+    platePerPx = next;
     overlay?.relayout();
     dirty = true;
   });
@@ -348,7 +351,7 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
   return {
     setState(s, reducedMotion, selected = null) {
       if (!built) {
-        built = buildStatic(s.plate.text, (window.devicePixelRatio || 1) * K_MAX);
+        built = buildStatic((window.devicePixelRatio || 1) * K_MAX);
         built.setZoom(cam.k);
         pitWorld.addChild(built.layers.pitActors);
         snapshots = [new Snapshot(built.layers.under, 'under'), new Snapshot(built.layers.over, 'over')];
@@ -359,13 +362,7 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
         overlay = buildOverlay(overlayRoot, {
           labels: options.interactive,
           resolution: window.devicePixelRatio || 1,
-          keepClear: (c, v) => {
-            const p = plateAt(c, v);
-            return [
-              { x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h },
-              ...(p.w ? [{ x: p.x - 4, y: p.y - 4, w: p.w + 8, h: p.h + 8 }] : []),
-            ];
-          },
+          keepClear: (c, v) => [{ x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h }, ...plateBoxes(plateAt(c, v), 4)],
         });
       }
       scene = s;

@@ -4,8 +4,9 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { register } from '../src/model/register.js';
 import { sceneState } from '../src/model/sceneState.js';
 import type { DioramaOptions, SceneLayout } from '../src/scene/pixi/app.js';
-import { BOARD, LAYOUT } from '../src/scene/layout.js';
-import { fitCamera } from '../src/scene/iso.js';
+import { LAYOUT } from '../src/scene/layout.js';
+import { defaultCamera } from '../src/scene/framing.js';
+import { FACE_TRANSFORM } from '../src/scene/plate.js';
 import { DioramaScene } from '../src/ui/scene/DioramaScene.js';
 
 /** How the mocked renderer behaves on this test's mount. */
@@ -81,7 +82,7 @@ function layout(): SceneLayout {
   plaques.haulage = { foot: { x: 400, y: 300 }, flagTop: { x: 400, y: 260 }, rect: { x: 413, y: 255, w: 150, h: 31 }, inFrame: true };
   plaques.crushing = { foot: { x: 700, y: 350 }, flagTop: { x: 700, y: 324 }, rect: null, inFrame: true };
   plaques.rail = { foot: { x: 1300, y: 900 }, flagTop: { x: 1300, y: 874 }, rect: null, inFrame: false };
-  return { cam: fitCamera(BOARD, view, LAYOUT.defaultFocus), view, plaques, plate: { x: 40, y: 500, w: 420, h: 22, onFace: true } };
+  return { cam: defaultCamera('site', view, false), view, plaques, plate: { x: 40, y: 500, w: 330, h: 12, onFace: true, font: 9.5 } };
 }
 
 async function mounted() {
@@ -126,16 +127,23 @@ test('the decorative scene asks for the hero framing; the site for its own', asy
   expect(pixi.options!.interactive).toBe(false);
 });
 
-test('the plate goes where the renderer placed it, under the same camera as the plaques', async () => {
+test('the plate goes where the renderer placed it, under the same camera as the plaques: engraved on the face, or pinned', async () => {
   const { container } = await mounted();
   const plate = container.querySelector<HTMLElement>('.scene-plinth')!;
+  // On the face it is the engraving itself: DOM text set in the face's plane at the renderer's size.
   expect(plate.dataset.placement).toBe('face');
   expect(plate.style.left).toBe('40px');
   expect(plate.style.top).toBe('500px');
-  const pinned = { ...layout(), plate: { x: 570, y: 560, w: 420, h: 22, onFace: false } };
+  expect(plate.style.fontSize).toBe('9.5px');
+  expect(plate.style.transform).toBe(FACE_TRANSFORM);
+  expect(plate.textContent).toBe('FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA');
+  // Off the face it is the pinned plate, upright at its own size.
+  const pinned = { ...layout(), plate: { x: 570, y: 560, w: 420, h: 22, onFace: false, font: 11 } };
   act(() => pixi.onLayout!(pinned));
   expect(plate.dataset.placement).toBe('pinned');
   expect(plate.style.left).toBe('570px');
+  expect(plate.style.transform).toBe('');
+  expect(plate.style.fontSize).toBe('');
 });
 
 test('a focused area button whose area leaves the frame stays where it was, visible, and the camera brings the area back', async () => {

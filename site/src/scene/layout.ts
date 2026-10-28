@@ -55,7 +55,7 @@ export interface Layout {
   areas: Record<string, { anchor: Vec3; pad: Pt[] }>;
   /**
    * Keyed by service group id, in SERVICE_GROUPS order, left to right on screen: a row just north of the
-   * default framing (ruling R-p), so every cable visibly reaches its post at the default views.
+   * pit (ruling R-p), so every cable visibly reaches its post at the default views.
    */
   entryPosts: Record<string, Vec3>;
   railLoop: { centre: Vec3; radius: number };
@@ -64,8 +64,6 @@ export interface Layout {
   dumpPocket: Vec3;
   creek: Pt[];
   ridge: Pt[];
-  /** Default framing: the pit, ROM pad and crusher. */
-  defaultFocus: Rect;
   /** A phone's framing (DESIGN.md Layout, Phone): the working area, pit to crusher to stockyard. */
   workingArea: Rect;
 }
@@ -218,7 +216,6 @@ export const LAYOUT: Layout = {
     { x: 60, y: 650 },
     { x: 50, y: 820 },
   ],
-  defaultFocus: { x: 220, y: 300, w: 830, h: 490 },
   workingArea: { x: 300, y: 300, w: 1000, h: 450 },
 };
 

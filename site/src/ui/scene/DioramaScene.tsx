@@ -6,6 +6,7 @@ import { project } from '../../scene/iso.js';
 import { LAYOUT } from '../../scene/layout.js';
 import type { DioramaHandle, SceneLayout } from '../../scene/pixi/app.js';
 import type { FlagLayout } from '../../scene/pixi/overlay.js';
+import { FACE_TRANSFORM } from '../../scene/plate.js';
 import { flagBox } from '../../scene/plaques.js';
 import type { SceneViewProps } from '../SceneView.js';
 import { SchematicFallback } from './SchematicFallback.js';
@@ -49,8 +50,9 @@ function clip(b: Box | null, view: { w: number; h: number }): Box | null {
  * The scene as the PixiJS diorama. PixiJS loads on mount (a separate chunk), so pages without the
  * scene never fetch it. Over the canvas sits the scene contract's accessible DOM layer, laid out from what
  * the renderer reports after each frame that moved anything: a native button per process area over its
- * plaque and flag, the plate as DOM text hung on the board's front plinth face (pinned to the bottom of
- * the stage when that face is out of view), and a marker for each service cable where it drops into the
+ * plaque and flag, the plate as DOM text engraved in the plane of the board's front-left plinth face (it is
+ * the engraving: the canvas does not draw the plate's words) and pinned to the bottom of the stage when that
+ * face is out of view, and a marker for each service cable where it drops into the
  * scene. An area out of frame keeps its button, visually hidden, so keyboard and screen reader users can
  * still reach it; focusing it brings the area into view. If the renderer fails to start, or later loses
  * its WebGL context for good, the schematic stands in.
@@ -182,7 +184,11 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
         if (!state) throw new Error(`scene has no cable for ${g.id}`);
         return <span key={g.id} className="scene-cable-drop" data-cable-group={g.id} data-cable-state={state} style={{ left: `${ANCHORS[g.id]! * 100}%` }} aria-hidden="true" />;
       })}
-      <p className="scene-plinth" data-placement={plate?.onFace ? 'face' : 'pinned'} style={plate ? { left: plate.x, top: plate.y, right: 'auto', bottom: 'auto' } : undefined}>
+      <p
+        className="scene-plinth"
+        data-placement={plate?.onFace ? 'face' : 'pinned'}
+        style={plate ? { left: plate.x, top: plate.y, right: 'auto', bottom: 'auto', ...(plate.onFace && { fontSize: plate.font, transform: FACE_TRANSFORM }) } : undefined}
+      >
         {scene.plate.text}
       </p>
       {!decorative && (

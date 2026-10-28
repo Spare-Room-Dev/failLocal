@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { fitCamera, K_MAX, K_MIN, unproject } from '../../src/scene/iso.js';
-import { BOARD, LAYOUT } from '../../src/scene/layout.js';
+import { defaultCamera } from '../../src/scene/framing.js';
+import { K_MAX, K_MIN, unproject } from '../../src/scene/iso.js';
+import { BOARD } from '../../src/scene/layout.js';
 import { keyMove, panBy, wheelZoom, zoomAt } from '../../src/scene/cameraMoves.js';
 
 const view = { w: 928, h: 580 };
-const start = fitCamera(BOARD, view, LAYOUT.defaultFocus);
+const start = defaultCamera('site', view, false);
 
 describe('camera moves', () => {
   test('zooming keeps the ground point under the cursor where it was', () => {
@@ -38,7 +39,7 @@ describe('camera moves', () => {
   });
 
   test('+ and - zoom about the view centre, 0 fits, other keys do nothing', () => {
-    const fit = fitCamera(BOARD, view, LAYOUT.defaultFocus);
+    const fit = defaultCamera('site', view, false);
     const plus = keyMove('+', start, BOARD, view, fit)!;
     expect(plus.k).toBeGreaterThan(start.k);
     expect(keyMove('=', start, BOARD, view, fit)!.k).toBe(plus.k);

@@ -10,7 +10,7 @@ import { drawCreek, drawGround, drawLip, drawPlinthShadow, drawRidge, drawSlab, 
 /**
  * The diorama's static world, built once at k = 1 into containers (the world container applies the
  * camera, so nothing is redrawn on zoom or pan). Draw order: the plinth and its shadow; the cut-away
- * slab with its strata and the engraved plate; the faceted ground; the ridge and the creek; the pit
+ * slab with its strata and the scale bar; the faceted ground; the ridge and the creek; the pit
  * (benches, ramp, sump); roads and rail; pads; the cast shadows; then structures, gums and spinifex
  * in one painter's pass by depth. Shadows go under the plant rather than over it, so a shed's own
  * shadow never darkens its walls, and spinifex sorts with the plant so a shed hides the tussock behind it.
@@ -18,7 +18,7 @@ import { drawCreek, drawGround, drawLip, drawPlinthShadow, drawRidge, drawSlab, 
 export interface StaticWorld {
   /**
    * The world in painter's order, as three groups drawn at k = 1 (the caller applies the camera):
-   * `under` (plinth shadow, slab and plate, terrain, the pit's rock) and `over` (roads and pads, the
+   * `under` (plinth shadow, slab and scale bar, terrain, the pit's rock) and `over` (roads and pads, the
    * hatching slot, cast shadows, plant, the fill-bound heaps slot) change only with the camera or the
    * engine state, so the caller may draw them from snapshots; `pitActors` holds the vehicles in the pit,
    * under their crest masks, and is drawn live between them.
@@ -45,8 +45,7 @@ export interface StaticWorld {
 const SHADOW_BLUR = 1.6;
 const PLINTH_BLUR = 16;
 
-export function buildStatic(plateText: string, resolution: number): StaticWorld {
-
+export function buildStatic(resolution: number): StaticWorld {
   const floorShadow = new Graphics();
   drawPlinthShadow(floorShadow);
   const floorBlur = new BlurFilter({ strength: PLINTH_BLUR, quality: 2 });
@@ -86,7 +85,7 @@ export function buildStatic(plateText: string, resolution: number): StaticWorld 
   shadowSlot.filters = [slotBlur, new AlphaFilter({ alpha: 0.34 })];
   const fills = new Container({ label: 'fills' });
   const under = new Container({ label: 'static-under' });
-  under.addChild(floorShadow, slab, engraving(plateText, resolution), terrain, pit.root);
+  under.addChild(floorShadow, slab, engraving(resolution), terrain, pit.root);
   const over = new Container({ label: 'static-over' });
   over.addChild(ground, groundSlot, shadowLayer, shadowSlot, objects, fills);
   return {
@@ -112,13 +111,15 @@ function faceText(text: string, size: number, colour: string, resolution: number
   return t;
 }
 
-/** The engraved plate and the 100 m scale bar on the plinth's front-left face, and the rail's destination on the slab. */
-function engraving(plateText: string, resolution: number): Container {
+/**
+ * The 100 m scale bar on the plinth's front-left face and the rail's destination on the slab. The plate's words
+ * are not drawn here: the plate is DOM text set in the face's plane (DioramaScene, plate.ts), so it stays one
+ * readable, accessible line at every zoom.
+ */
+function engraving(resolution: number): Container {
   const c = new Container({ label: 'engraving' });
   const ink = token('plate-engraving');
   const z = -SLAB_DEPTH - PLINTH_DEPTH / 2;
-  const plate = faceText(plateText, 9.5, ink, resolution, 'x');
-  plate.position.set(...P({ x: 40, y: BOARD.h, z }));
 
   const bar = new Graphics();
   const x0 = BOARD.w - 330;
@@ -138,6 +139,6 @@ function engraving(plateText: string, resolution: number): Container {
   // It reads up the face toward the back, ending under the point where the main line leaves the board.
   rail.position.set(...P({ x: BOARD.w, y: Math.min(BOARD.h - 5, exit.y + 118), z: -SLAB_DEPTH * 0.45 }));
 
-  c.addChild(plate, bar, label, rail);
+  c.addChild(bar, label, rail);
   return c;
 }
