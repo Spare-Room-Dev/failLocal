@@ -184,8 +184,15 @@ export function Timeline() {
       </div>
       <div className="segmented timeline-speeds" role="group" aria-label="Playback speed">
         {SPEEDS.map((hps) => (
-          <button key={hps} type="button" aria-pressed={clock.hoursPerSecond === hps} onClick={() => actions.setSpeed(hps)}>
-            <span data-clock>{hps} h/s</span>
+          <button
+            key={hps}
+            type="button"
+            data-clock
+            aria-label={`${hps} hours per second`}
+            aria-pressed={clock.hoursPerSecond === hps}
+            onClick={() => actions.setSpeed(hps)}
+          >
+            {hps} h per s
           </button>
         ))}
       </div>

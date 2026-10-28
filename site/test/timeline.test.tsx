@@ -110,6 +110,8 @@ describe('Timeline', () => {
     await user.click(within(speeds).getAllByRole('button')[3]!);
     expect(appStore.get().clock.hoursPerSecond).toBe(96);
     expect(within(speeds).getAllByRole('button')[3]!.getAttribute('aria-pressed')).toBe('true');
+    // Spelt out for assistive technology; "h per s" on screen (finish B8).
+    expect(within(speeds).getByRole('button', { name: '12 hours per second' }).textContent).toBe('12 h per s');
   });
 
   test('play at the horizon starts again from hour 0', async () => {

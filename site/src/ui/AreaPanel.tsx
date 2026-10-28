@@ -19,6 +19,9 @@ export interface AreaPanelProps {
 }
 
 const PROCESS_WORD: Record<ProcessState, string> = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' };
+
+/** The heading over what the area depends on now, by its state (finish B8). */
+const WHY_TITLE: Record<ProcessState, string> = { normal: 'Why it is running', degraded: 'Why it is degraded', stopped: 'Why this stops' };
 const SERVICE_WORD = { up: 'Up', down: 'Down', revoked: 'Access revoked' } as const;
 const ON_LOSS_WORD = { stop: 'Stops on loss', degrade: 'Degrades on loss' } as const;
 
@@ -161,7 +164,7 @@ export function AreaPanel({ register: r, timeline, sample, variant, processId, o
       </div>
 
       <h3 className="panel-heading" id={`${ids}-why-stops`}>
-        Why this stops
+        {WHY_TITLE[area.state]}
       </h3>
       {lost.length ? (
         <ul className="panel-list" aria-labelledby={`${ids}-why-stops`}>

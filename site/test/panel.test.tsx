@@ -160,6 +160,24 @@ describe('AreaPanel', () => {
     expect(items.map((i) => i.textContent)).toEqual([`${serviceName('hosted-erp')}: Down`]);
   });
 
+  test('the "why" heading follows the area state (finish B8)', () => {
+    actions.setScenario('s1-projection');
+    const samples = appStore.get().lastGood!.samples;
+    const heading = () => within(area()).getByRole('heading', { level: 3, name: /^Why/ }).textContent;
+    for (const [state, title] of [
+      ['normal', 'Why it is running'],
+      ['degraded', 'Why it is degraded'],
+      ['stopped', 'Why this stops'],
+    ] as const) {
+      const hour = samples.find((s) => s.processes['diesel-ordering'] === state)!.hour;
+      act(() => actions.setClock({ hour }));
+      act(() => actions.select('diesel-ordering'));
+      const { unmount } = render(<DetailPanel />);
+      expect(heading()).toBe(title);
+      unmount();
+    }
+  });
+
   test('why-this-stops says nothing is down at hour 0', () => {
     render(<DetailPanel />);
     expect(screen.getByText("Nothing on this process's dependencies is down at this hour.")).toBeTruthy();
