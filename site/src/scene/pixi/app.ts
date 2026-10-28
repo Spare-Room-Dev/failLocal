@@ -323,7 +323,7 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
     defaultCamera: () => defaultCamera(current),
     groundAtCentre: () => unproject(current.w / 2, current.h / 2, cam),
     frames: () => frames,
-    plaques: () => Object.fromEntries(Object.entries(laid).map(([id, l]) => [id, { rect: l.rect && { ...l.rect }, inFrame: l.inFrame }])),
+    plaques: () => Object.fromEntries(Object.entries(laid).map(([id, l]) => [id, { rect: l.rect && { ...l.rect }, inFrame: l.inFrame, foot: { ...l.foot }, flagTop: { ...l.flagTop }, side: l.side }])),
     entryPost(id) {
       const post = LAYOUT.entryPosts[id];
       if (!post) throw new Error(`layout has no entry post ${id}`);

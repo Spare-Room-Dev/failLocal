@@ -1,3 +1,6 @@
+import { project } from './iso.js';
+import type { Camera, Vec3 } from './iso.js';
+import { ENTRY_POST_H } from './layout.js';
 import { chamfer, lengths } from './polyline.js';
 import type { Pt } from './polyline.js';
 
@@ -104,4 +107,14 @@ export function labelRow(widths: number[], viewW: number): Box[] {
     x += w + gap;
     return b;
   });
+}
+
+/** An entry post is drawn at least this tall on screen, px, so it reads as a post at any zoom (overlay.ts). */
+export const POST_MIN_H = 13;
+
+/** The top of an entry post on screen, where its cable plugs in: the post's own height, or `POST_MIN_H` where that is smaller. */
+export function postTop(post: Vec3, cam: Camera): Pt {
+  const foot = project(post, cam);
+  const top = project({ ...post, z: ENTRY_POST_H }, cam);
+  return { x: top.sx, y: Math.min(top.sy, foot.sy - POST_MIN_H) };
 }

@@ -138,7 +138,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     const l = layout?.plaques[id];
     if (l && layout) return clip(hitBox(l), layout.view);
     const { sx, sy } = project(LAYOUT.areas[id]!.anchor, NOMINAL_CAMERA);
-    return hitBox({ foot: { x: sx, y: sy }, flagTop: { x: sx, y: sy - SHORT_POLE }, rect: null, inFrame: true });
+    return hitBox({ foot: { x: sx, y: sy }, flagTop: { x: sx, y: sy - SHORT_POLE }, rect: null, inFrame: true, side: 1 });
   };
   // A focused button whose area has just left the frame keeps its last place (and its focus ring) until the
   // camera brings the area back (the effect below), so focus never lands on something invisible.

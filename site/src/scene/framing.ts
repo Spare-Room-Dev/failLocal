@@ -14,8 +14,8 @@ const plinthFoot = (x: number): Vec3 => ({ x, y: BOARD.h, z: -SLAB_DEPTH - PLINT
 /**
  * What the site opens on (DESIGN.md Layout; finish review A1): the model as an object on its plinth. The board's
  * front-left corner and the first stretch of its cut-away face (where the plate is engraved) with gallery floor
- * beyond, every area's flag, and every entry post. The margins are stage pixels: room above the posts for the
- * cables' buses, beside the corner for floor, and below the lowest flag.
+ * beyond, every area's flag, and every entry post. The margins are stage pixels: room above the posts (drawn at
+ * least `POST_MIN_H` tall, cables.ts) for the cables' buses, beside the corner for floor, and below the lowest flag.
  */
 export const SITE_FRAME = {
   points: [
@@ -24,7 +24,7 @@ export const SITE_FRAME = {
     ...Object.values(LAYOUT.areas).map((a) => a.anchor),
     ...Object.values(LAYOUT.entryPosts).map((p) => ({ ...p, z: ENTRY_POST_H })),
   ],
-  margin: { top: 76, right: 28, bottom: 22, left: 16 },
+  margin: { top: 90, right: 28, bottom: 22, left: 16 },
 } as const;
 
 /** Points round the pit's crest, so a frame holds the whole pit. */

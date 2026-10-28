@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { register } from '../../src/model/register.js';
 import { cableFraction, SERVICE_GROUPS } from '../../src/model/serviceGroups.js';
-import { cableRoutes } from '../../src/scene/cables.js';
+import { cableRoutes, postTop } from '../../src/scene/cables.js';
 import { defaultCamera } from '../../src/scene/framing.js';
 import { project, type Vec3 } from '../../src/scene/iso.js';
 import {
   BATTER_RUN,
-  ENTRY_POST_H,
   BOARD,
   LAYOUT,
   RAMP_HEAD_APPROACH,
@@ -406,7 +405,7 @@ describe('process areas and entry posts', () => {
     // The diorama's box at 1440 × 900, 1150 × 800, 1024 × 768 and 820 × 1180 (the stage between the card and legend bands).
     for (const view of [{ w: 1068, h: 580 }, { w: 1150, h: 440 }, { w: 1024, h: 408 }, { w: 820, h: 512.5 }]) {
       const cam = defaultCamera('site', view, false);
-      const tops = SERVICE_GROUPS.map((g) => project({ ...entryPosts[g.id]!, z: ENTRY_POST_H }, cam));
+      const tops = SERVICE_GROUPS.map((g) => { const t = postTop(entryPosts[g.id]!, cam); return { sx: t.x, sy: t.y }; });
       for (const t of tops) {
         expect(t.sx, `${view.w}`).toBeGreaterThan(20);
         expect(t.sx, `${view.w}`).toBeLessThan(view.w - 20);

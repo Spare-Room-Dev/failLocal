@@ -2,15 +2,16 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { SceneState } from '../../model/sceneState.js';
 import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
 import type { AnimState } from '../animation.js';
-import { CABLE, cableRoutes, HERO_LABEL, labelRow } from '../cables.js';
+import { CABLE, cableRoutes, HERO_LABEL, labelRow, POST_MIN_H, postTop } from '../cables.js';
 import type { CableRoute } from '../cables.js';
-import { mix, project } from '../iso.js';
+import { boxFaces, mix, project } from '../iso.js';
 import type { Camera, Vec3 } from '../iso.js';
 import { ENTRY_POST_H, LAYOUT } from '../layout.js';
 import { token } from '../palette.js';
-import { placePlaques } from '../plaques.js';
+import { BARE_POLE, flagBox, placePlaques } from '../plaques.js';
 import type { Box, PlaqueRequest } from '../plaques.js';
 import { dashes, pointAt, slice } from '../polyline.js';
+import { POST_CUT } from './dynamic.js';
 import type { Pt } from '../polyline.js';
 
 /**
@@ -41,6 +42,8 @@ export interface FlagLayout {
   rect: Box | null;
   /** Whether the flag's foot is inside the stage. */
   inFrame: boolean;
+  /** The side its cloth flies to: 1 right of the pole, −1 left. */
+  side: 1 | -1;
 }
 
 export interface OverlayOptions {
@@ -69,16 +72,19 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
   const cables = new Graphics({ label: 'cables' });
   const cableLabels = SERVICE_GROUPS.map(() => label(options.resolution));
   const markers = new Graphics({ label: 'parked-markers' });
+  const posts = new Graphics({ label: 'entry-posts' });
   const flags = Object.keys(LAYOUT.areas).map((id) => new Plaque(id, options.resolution));
   // The hero's service labels, one per group, which its cables drop from.
   const serviceLabels = options.cables === 'labels' ? SERVICE_GROUPS.map((g) => serviceLabel(g.name, options.resolution)) : [];
-  screen.addChild(cables, ...cableLabels.map((l) => l.root), ...serviceLabels.map((l) => l.root), markers, ...flags.map((f) => f.root));
+  // Every pole and cloth goes under every plaque, so a pole never draws across another area's plaque.
+  screen.addChild(posts, cables, ...cableLabels.map((l) => l.root), ...serviceLabels.map((l) => l.root), markers, ...flags.map((f) => f.pole), ...flags.map((f) => f.root));
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(PHONE) : null;
 
   // Cable routes depend only on the camera and the stage size.
   let routes: CableRoute[] = [];
   let routeKey = '';
   let placedKey = '';
+  let keepOff: Box[] = [];
 
   return {
     setScene(scene, selected) {
@@ -93,23 +99,23 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
       const showCables = !phone?.matches;
       if (showCables && key !== routeKey) {
         routeKey = key;
-        const posts = SERVICE_GROUPS.map((g) => {
-          const { sx, sy } = project({ ...LAYOUT.entryPosts[g.id]!, z: ENTRY_POST_H }, cam);
-          return { x: sx, y: sy };
-        });
+        const tops = SERVICE_GROUPS.map((g) => postTop(LAYOUT.entryPosts[g.id]!, cam));
         if (options.cables === 'labels') {
           const row = labelRow(serviceLabels.map((l) => l.w), view.w);
           row.forEach((b, i) => serviceLabels[i]!.root.position.set(Math.round(b.x), b.y));
-          routes = cableRoutes(row.map((b) => Math.round(b.x + b.w / 2)), posts, HERO_LABEL.top + HERO_LABEL.h);
-        } else routes = cableRoutes(SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w), posts);
+          routes = cableRoutes(row.map((b) => Math.round(b.x + b.w / 2)), tops, HERO_LABEL.top + HERO_LABEL.h);
+        } else routes = cableRoutes(SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w), tops);
       }
       let laid: Record<string, FlagLayout> | null = null;
       const placeKey = `${key},${showCables}`;
       if (placeKey !== placedKey) {
         placedKey = placeKey;
         laid = layFlags(flags, scene, cam, view, options, showCables ? routes : []);
+        // The parked markers find room round the plaques and flag cloths just placed.
+        keepOff = Object.values(laid).flatMap((l) => [...(l.rect ? [l.rect] : []), flagBox(l.flagTop, 0)]);
       }
-      drawMarkers(markers, a, cam);
+      drawMarkers(markers, layMarkers(a, cam, keepOff));
+      drawPosts(posts, scene, cam, showCables);
       cables.visible = showCables;
       for (const l of serviceLabels) l.root.visible = showCables;
       for (const l of cableLabels) l.root.visible = false;
@@ -121,8 +127,6 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
 
 /** Stopped areas claim plaque space first, then degraded, then normal; ties keep the layout's order. */
 const SEVERITY = { stopped: 0, degraded: 1, normal: 2 } as const;
-/** A flag without a plaque stands on a short pole. */
-const SHORT_POLE = 26;
 /** Cables are 1.5 px; plaques keep this clear of them where they can. */
 const CABLE_CLEAR = 3;
 
@@ -137,9 +141,10 @@ function layFlags(flags: Plaque[], scene: SceneState, cam: Camera, view: { w: nu
   for (const f of flags) {
     const foot = feet.get(f.id)!;
     const p = placed[f.id] ?? null;
-    const len = p ? p.len : SHORT_POLE;
-    f.pose(foot, len, p ? p.side : (POLE_SIDE[f.id] ?? 1), p && { ...p.rect, x: p.rect.x - foot.x, y: p.rect.y - foot.y });
-    out[f.id] = { foot, flagTop: { x: foot.x, y: foot.y - len }, rect: p ? p.rect : null, inFrame: foot.x >= 0 && foot.x <= view.w && foot.y >= 0 && foot.y <= view.h };
+    const len = p ? p.len : BARE_POLE;
+    const side = p ? p.side : (POLE_SIDE[f.id] ?? 1);
+    f.pose(foot, len, side, p && { ...p.rect, x: p.rect.x - foot.x, y: p.rect.y - foot.y });
+    out[f.id] = { foot, flagTop: { x: foot.x, y: foot.y - len }, rect: p ? p.rect : null, inFrame: foot.x >= 0 && foot.x <= view.w && foot.y >= 0 && foot.y <= view.h, side };
   }
   return out;
 }
@@ -155,19 +160,107 @@ function segmentBoxes(points: Pt[], pad: number): Box[] {
   return out;
 }
 
-/** The boxed pause glyph on a short post over each parked truck (DESIGN.md Survey Flags: Parked). */
-function drawMarkers(g: Graphics, a: AnimState, cam: Camera): void {
-  g.clear();
-  // Every other post is taller, so neighbours' glyphs stay apart where the bay is small on screen.
-  let n = 0;
-  for (const t of a.trucks) {
-    if (!t.parked) continue;
+/** Parked markers whose trucks stand closer than this on screen, px, are fanned out as one group. */
+const MARKER_NEAR = 16;
+/** A marker's glyph, px, and the spacing of fanned glyphs, centre to centre. */
+const GLYPH = 11;
+const FAN_STEP = { x: 13, y: 14 };
+/** A lone marker's post, px; a fanned group's lowest glyph sits `FAN_POST` above its highest truck. */
+const MARKER_POST = 13;
+const FAN_POST = 7;
+
+interface Marker {
+  /** The parked truck's top, where the marker's post stands. */
+  foot: Pt;
+  /** The centre of the glyph's bottom edge. */
+  at: Pt;
+}
+
+/** Where a fanned block may shift to find room, in steps of `FAN_STEP`: in place first, then sideways, then up. */
+const FAN_SHIFTS = [0, -1, 1, -2, 2, -3, 3].flatMap((dx) => [0, 1, 2].map((up) => ({ dx, up }))).sort((p, q) => p.up - q.up || Math.abs(p.dx) - Math.abs(q.dx));
+
+/**
+ * Where the parked markers go (DESIGN.md Survey Flags: Parked): a boxed pause glyph on a short post over each
+ * parked truck. Trucks parked close together on screen (the fuel bay's bays at app scale) have their glyphs
+ * fanned out above them in a compact block of two rows, left to right in the trucks' order, each on its own
+ * post from its own truck, so every parked truck keeps a visible marker and none hides another. The block
+ * shifts sideways or up, a step at a time, to the first place clear of the plaques and flag cloths in `keepOff`.
+ */
+function layMarkers(a: AnimState, cam: Camera, keepOff: Box[]): Marker[] {
+  const feet = a.trucks.filter((t) => t.parked).map((t) => {
     const { sx, sy } = project({ ...t.pos, z: t.pos.z + 9 }, cam);
-    const post = n++ % 2 ? 23 : 11;
-    g.moveTo(sx, sy).lineTo(sx, sy - post).stroke({ color: INK, width: 1 });
-    g.roundRect(sx - 5.5, sy - post - 11, 11, 11, 1.5).fill(PAPER).stroke({ color: INK, width: 1 });
-    g.rect(sx - 2.6, sy - post - 8.6, 1.7, 6.2).fill(INK);
-    g.rect(sx + 0.9, sy - post - 8.6, 1.7, 6.2).fill(INK);
+    return { x: sx, y: sy };
+  });
+  return clusters(feet, MARKER_NEAR).flatMap((group) => {
+    if (group.length === 1) return [{ foot: group[0]!, at: { x: group[0]!.x, y: group[0]!.y - MARKER_POST } }];
+    group.sort((p, q) => p.x - q.x || p.y - q.y);
+    const cols = Math.ceil(group.length / 2);
+    const cx = group.reduce((sum, p) => sum + p.x, 0) / group.length;
+    const base = Math.min(...group.map((p) => p.y)) - FAN_POST;
+    const block = ({ dx, up }: { dx: number; up: number }) =>
+      group.map((foot, i) => ({
+        foot,
+        at: { x: cx + (Math.floor(i / 2) - (cols - 1) / 2 + dx) * FAN_STEP.x, y: base - ((i % 2) + up) * FAN_STEP.y },
+      }));
+    const clear = (ms: Marker[]) => !markerBoxes(ms).some((b) => keepOff.some((o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h));
+    for (const shift of FAN_SHIFTS) {
+      const ms = block(shift);
+      if (clear(ms)) return ms;
+    }
+    return block(FAN_SHIFTS[0]!);
+  });
+}
+
+/** The glyph boxes of the parked markers. */
+function markerBoxes(markers: Marker[]): Box[] {
+  return markers.map((m) => ({ x: m.at.x - GLYPH / 2 - 1, y: m.at.y - GLYPH - 1, w: GLYPH + 2, h: GLYPH + 2 }));
+}
+
+function drawMarkers(g: Graphics, markers: Marker[]): void {
+  g.clear();
+  for (const { foot, at } of markers) g.moveTo(foot.x, foot.y).lineTo(at.x, at.y).stroke({ color: INK, width: 1 });
+  for (const { at } of markers) {
+    g.roundRect(at.x - GLYPH / 2, at.y - GLYPH, GLYPH, GLYPH, 1.5).fill(PAPER).stroke({ color: INK, width: 1 });
+    g.rect(at.x - 2.6, at.y - 8.6, 1.7, 6.2).fill(INK);
+    g.rect(at.x + 0.9, at.y - 8.6, 1.7, 6.2).fill(INK);
+  }
+}
+
+/** Points grouped so each is within `near` px of another in its group (single linkage), in input order. */
+function clusters(points: { x: number; y: number }[], near: number): { x: number; y: number }[][] {
+  const groups: { x: number; y: number }[][] = [];
+  for (const p of points) {
+    const joined = groups.filter((grp) => grp.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < near));
+    const merged = [p, ...joined.flat()];
+    for (const j of joined) groups.splice(groups.indexOf(j), 1);
+    groups.push(merged);
+  }
+  return groups;
+}
+
+/** Its width on screen at that size, px. */
+const POST_W = 6;
+
+/**
+ * Where the board is small on screen, each entry post is drawn at `POST_MIN_H` px over its 3 × 3 × 5 m box
+ * (dynamic.ts), faceted by the one sun, galvanised or greyed when its service is cut, with a socket at its top
+ * where the cable plugs in, so no cable appears to end in open ground.
+ */
+function drawPosts(g: Graphics, scene: SceneState, cam: Camera, shown: boolean): void {
+  g.clear();
+  if (!shown || ENTRY_POST_H * cam.k * 1.2247 >= POST_MIN_H) return;
+  for (const grp of SERVICE_GROUPS) {
+    const post = LAYOUT.entryPosts[grp.id]!;
+    const { sx: x, sy: foot } = project(post, cam);
+    const top = postTop(post, cam).y;
+    const face = boxFaces(scene.cables[grp.id] === 'live' ? c('galvanised') : POST_CUT);
+    const h = POST_W / 2;
+    g.ellipse(x + 2, foot + 0.5, 5, 2).fill({ color: INK, alpha: 0.3 });
+    g.poly([x - h, top, x, top + h / 2, x, foot + h / 2, x - h, foot]).fill(face.left);
+    g.poly([x, top + h / 2, x + h, top, x + h, foot, x, foot + h / 2]).fill(face.right);
+    g.poly([x - h, top, x, top - h / 2, x + h, top, x, top + h / 2]).fill(face.top);
+    g.poly([x - h, top, x, top - h / 2, x + h, top, x + h, foot, x, foot + h / 2, x - h, foot]).stroke({ color: INK, width: 0.8, alpha: 0.85, join: 'round' });
+    g.circle(x, top, 1.6).fill(INK);
   }
 }
 
@@ -273,6 +366,8 @@ const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' 
  */
 class Plaque {
   readonly root: Container;
+  /** The pole, its ground mark and the cloth, drawn under every plaque (buildOverlay). */
+  readonly pole = new Graphics();
   private readonly g = new Graphics();
   private readonly name: Text;
   private readonly word: Text;
@@ -321,10 +416,12 @@ class Plaque {
     const sel = this.selected;
     const g = this.g;
     this.root.position.set(foot.x, foot.y);
+    this.pole.position.set(foot.x, foot.y);
     g.clear();
-    g.ellipse(0, 0, 3.4, 1.6).fill({ color: INK, alpha: 0.45 });
-    g.moveTo(0, 0).lineTo(0, -len).stroke({ color: INK, width: sel ? 1.6 : 1.1 });
-    flagCloth(g, this.flag, side * 0.6, -len, side);
+    const pole = this.pole.clear();
+    pole.ellipse(0, 0, 3.4, 1.6).fill({ color: INK, alpha: 0.45 });
+    pole.moveTo(0, 0).lineTo(0, -len).stroke({ color: INK, width: sel ? 1.6 : 1.1 });
+    flagCloth(pole, this.flag, side * 0.6, -len, side);
     this.name.visible = this.word.visible = this.note.visible = r !== null;
     if (!r) return;
     g.roundRect(r.x, r.y, r.w, r.h, 3)

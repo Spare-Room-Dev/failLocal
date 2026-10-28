@@ -78,10 +78,10 @@ test('a renderer that reports a failure later (a lost context that never returns
 function layout(): SceneLayout {
   const view = { w: 1000, h: 600 };
   const plaques: SceneLayout['plaques'] = {};
-  for (const id of Object.keys(LAYOUT.areas)) plaques[id] = { foot: { x: 500, y: 300 }, flagTop: { x: 500, y: 274 }, rect: null, inFrame: true };
-  plaques.haulage = { foot: { x: 400, y: 300 }, flagTop: { x: 400, y: 260 }, rect: { x: 413, y: 255, w: 150, h: 31 }, inFrame: true };
-  plaques.crushing = { foot: { x: 700, y: 350 }, flagTop: { x: 700, y: 324 }, rect: null, inFrame: true };
-  plaques.rail = { foot: { x: 1300, y: 900 }, flagTop: { x: 1300, y: 874 }, rect: null, inFrame: false };
+  for (const id of Object.keys(LAYOUT.areas)) plaques[id] = { foot: { x: 500, y: 300 }, flagTop: { x: 500, y: 274 }, rect: null, inFrame: true, side: 1 };
+  plaques.haulage = { foot: { x: 400, y: 300 }, flagTop: { x: 400, y: 260 }, rect: { x: 413, y: 255, w: 150, h: 31 }, inFrame: true, side: 1 };
+  plaques.crushing = { foot: { x: 700, y: 350 }, flagTop: { x: 700, y: 324 }, rect: null, inFrame: true, side: 1 };
+  plaques.rail = { foot: { x: 1300, y: 900 }, flagTop: { x: 1300, y: 874 }, rect: null, inFrame: false, side: 1 };
   return { cam: defaultCamera('site', view, false), view, plaques, plate: { x: 40, y: 500, w: 330, h: 12, onFace: true, font: 9.5 } };
 }
 
@@ -152,7 +152,7 @@ test('a focused area button whose area leaves the frame stays where it was, visi
   act(() => button('haulage').focus());
   expect(pixi.reveal).not.toHaveBeenCalled();
   const away = layout();
-  away.plaques.haulage = { ...away.plaques.haulage!, rect: null, inFrame: false };
+  away.plaques.haulage = { ...away.plaques.haulage!, rect: null, inFrame: false, side: 1 };
   act(() => pixi.onLayout!(away));
   expect(pixi.reveal).toHaveBeenCalledWith('haulage');
   expect(button('haulage').classList.contains('scene-hit--away')).toBe(false);

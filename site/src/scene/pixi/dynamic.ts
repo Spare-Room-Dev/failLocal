@@ -42,7 +42,8 @@ const c = (name: string) => token(name);
 const INK = c('ink');
 const PAPER = c('paper');
 /** DESIGN.md's cut-post grey `#8a817a`, as galvanised desaturated toward ink-2. */
-const POST_CUT = mix(c('galvanised'), c('ink-2'), 0.61);
+/** A cut service's entry post: its galvanised finish greyed (DESIGN.md: parked and cut things are desaturated). */
+export const POST_CUT = mix(c('galvanised'), c('ink-2'), 0.61);
 
 export function buildDynamic(slots: StaticWorld['slots'], above: Container): Dynamic {
   const hatch = new Graphics({ label: 'hatch' });

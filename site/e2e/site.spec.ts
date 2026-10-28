@@ -354,7 +354,7 @@ test('the site runs under the deployed CSP', async ({ page }) => {
 // --- The diorama's DOM layer at each width (task 7) ---------------------------------------------------
 
 type Rect = { x: number; y: number; w: number; h: number };
-type PlaqueInfo = { rect: Rect | null; inFrame: boolean };
+type PlaqueInfo = { rect: Rect | null; inFrame: boolean; foot: { x: number; y: number }; flagTop: { x: number; y: number }; side: 1 | -1 };
 const GROUPS = ['hosted-erp', 'cloud-identity', 'iroc-link', 'corporate-network', 'vendor-access'];
 
 /** The site with a still diorama (reduced motion: these checks are about layout, not motion). */
@@ -402,7 +402,7 @@ test('cards sit on their cables, and every post and plaque is in frame without c
   await expect(page.locator('.scene-plinth')).toHaveAttribute('data-placement', 'face');
   await expect(page.locator('.scene-plinth')).toBeVisible();
 
-  for (const day of [0, 13]) {
+  for (const day of [0, 3, 13]) {
     await scrubToDay(page, day);
     // The plaques are laid out on the next drawn frame: wait until two reads agree.
     const read = () => page.evaluate(() => JSON.stringify(window.__faillocal!.diorama!.plaques()));
@@ -424,7 +424,15 @@ test('cards sit on their cables, and every post and plaque is in frame without c
     for (const [i, [a, ra]] of rects.entries())
       for (const [b, rb] of rects.slice(i + 1))
         expect(intersects({ x: ra.x, y: ra.y, width: ra.w, height: ra.h }, { x: rb.x, y: rb.y, width: rb.w, height: rb.h }), `${a} and ${b}`).toBe(false);
-
+    // No flag's cloth (12 × 8.5 px on its side of the pole's top, overlay.ts) lies on another area's plaque: every
+    // plaque is drawn over every flag, so a cloth there would be hidden behind it. A pole may pass behind one.
+    // Not on the shortest stage (1024 × 768: 408 px tall), where the north-east cluster (payroll, control room and
+    // remote operations, 50 m apart at the right edge) cannot stack three plaques clear of each other's flags;
+    // there a cloth can pass behind a plaque, never over it.
+    if (scene.height >= 420) for (const [b, pb] of Object.entries(plaques)) {
+      const cloth = { x: pb.side > 0 ? pb.foot.x : pb.foot.x - 13, y: pb.flagTop.y - 1, width: 13, height: 10 };
+      for (const [a, ra] of rects) if (a !== b) expect(intersects(cloth, { x: ra.x, y: ra.y, width: ra.w, height: ra.h }), `${b}'s flag on ${a}'s plaque on day ${day}`).toBe(false);
+    }
     // Each area's button covers its plaque (once React has laid the DOM layer out from the same frame).
     const uncovered = () =>
       page.evaluate((list) => {

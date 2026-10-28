@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { CABLE, HERO_LABEL } from '../../src/scene/cables.js';
+import { CABLE, HERO_LABEL, postTop } from '../../src/scene/cables.js';
 import { defaultCamera } from '../../src/scene/framing.js';
 import { clampCamera, fitCamera, K_MAX, project, unproject } from '../../src/scene/iso.js';
-import { BOARD, ENTRY_POST_H, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../../src/scene/layout.js';
-import { placePlaques, PLAQUE_H, POLE_LENGTHS } from '../../src/scene/plaques.js';
+import { BOARD, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../../src/scene/layout.js';
+import { flagsOnPlaques, placePlaques, PLAQUE_H, POLE_LENGTHS } from '../../src/scene/plaques.js';
 import type { PlaqueRequest } from '../../src/scene/plaques.js';
 import { placePlate, plateBoxes, plateCorners, plateFont, platePosition } from '../../src/scene/plate.js';
 
@@ -76,9 +76,9 @@ describe('default framing', () => {
       // Every entry post is in frame, under the labels with room for the cables' buses.
       const below = HERO_LABEL.top + HERO_LABEL.h + CABLE.busTop + 4 * CABLE.busStep + 14;
       for (const post of Object.values(LAYOUT.entryPosts)) {
-        const t = project({ ...post, z: ENTRY_POST_H }, cam);
-        expect(onStage(t, view, 12), `${view.w} post`).toBe(true);
-        expect(t.sy).toBeGreaterThanOrEqual(below);
+        const t = postTop(post, cam);
+        expect(onStage({ sx: t.x, sy: t.y }, view, 12), `${view.w} post`).toBe(true);
+        expect(t.y).toBeGreaterThanOrEqual(below);
       }
     }
   });
@@ -142,6 +142,19 @@ describe('plaque placement', () => {
     const out = placePlaques([req('off', -40, 50), req('wide', 60, 70, 200)], tiny, []);
     expect(out.off).toBeNull();
     expect(out.wide).toBeNull();
+  });
+
+  test('a flag placed later never stands its pole across a plaque placed earlier, where the layout can avoid it', () => {
+    // Found by search: in one greedy pass f3's long pole ran up through f1's plaque.
+    const reqs: PlaqueRequest[] = [
+      { id: 'f0', foot: { x: 129, y: 297 }, w: 139, side: -1 },
+      { id: 'f1', foot: { x: 242, y: 115 }, w: 135, side: -1 },
+      { id: 'f2', foot: { x: 136, y: 187 }, w: 141, side: 1 },
+      { id: 'f3', foot: { x: 127, y: 155 }, w: 124, side: 1 },
+    ];
+    const out = placePlaques(reqs, { w: 400, h: 320 }, []);
+    expect(Object.values(out).every((p) => p !== null)).toBe(true);
+    expect(flagsOnPlaques(reqs, out)).toEqual({ cloths: [], poles: [] });
   });
 
   test('plaques keep off hard obstacles, and off soft ones when they can', () => {

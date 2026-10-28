@@ -22,9 +22,10 @@ export interface DioramaProbe {
   entryPost(groupId: string): { x: number; y: number };
   /**
    * Each process area's plaque as placed now, in stage pixels: null when it has none (its flag is out of
-   * frame, or no spot fits it). `inFrame`: whether the flag's foot is inside the stage.
+   * frame, or no spot fits it). `inFrame`: whether the flag's foot is inside the stage. `foot` and `flagTop`:
+   * the ends of its pole; `side`: the side its cloth flies to.
    */
-  plaques(): Record<string, { rect: { x: number; y: number; w: number; h: number } | null; inFrame: boolean }>;
+  plaques(): Record<string, { rect: { x: number; y: number; w: number; h: number } | null; inFrame: boolean; foot: { x: number; y: number }; flagTop: { x: number; y: number }; side: 1 | -1 }>;
   /** The rendered colour of every `step`-th CSS pixel (of the whole stage, or of `rect`), as [r, g, b]. */
   sample(step: number, rect?: { x: number; y: number; w: number; h: number }): Promise<[number, number, number][]>;
 }
