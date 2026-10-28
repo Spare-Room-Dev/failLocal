@@ -115,6 +115,9 @@ describe('pages', () => {
     expect(logs).toHaveLength(2);
     for (const log of logs) expect(log.getAttribute('href')).toBe('https://github.com/[owner]/faillocal/blob/main/docs/decisions.md');
     expect(screen.getByText(/placeholder until the repo is public/i)).toBeTruthy();
+    // The deferred network view is stated, as draft copy (D-110, ruling R-x).
+    const network = screen.getByText(/The network view is not built yet\./).closest('li')!;
+    expect(within(network).getByText('Draft copy').classList.contains('draft-marker')).toBe(true);
   });
 
   test('landing on the site in welcome mode enters free play', () => {

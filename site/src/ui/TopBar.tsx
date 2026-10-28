@@ -1,6 +1,7 @@
 import type { Variant } from '@faillocal/engine';
 import { register } from '../model/register.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { ProvenanceTag } from './ProvenanceTag.js';
 import './chrome.css';
 
 const VARIANTS: { id: Variant; label: string }[] = [
@@ -40,7 +41,10 @@ function ProjectionGlyph() {
   );
 }
 
-/** The 60 px top bar (DESIGN.md "Top Bar Controls"): brand, scenario title, badges and the variant switch. */
+/**
+ * The 60 px top bar (DESIGN.md "Top Bar Controls"): brand, scenario title over the public source it is
+ * modelled on (tagged sourced), badges and the variant switch.
+ */
 export function TopBar() {
   // All from the run on screen, so a failed run never leaves the bar describing a different one.
   const kind = useStore(appStore, (s) => s.lastGoodKind);
@@ -48,7 +52,10 @@ export function TopBar() {
   const projection = useStore(appStore, (s) => s.lastGood?.projection ?? false);
   const variant = useStore(appStore, (s) => s.lastGood?.variant);
   const locked = useStore(appStore, (s) => s.mode === 'guided');
-  const title = kind === 'free' ? FREE_PLAY_TITLE : register.scenarios.find((s) => s.id === scenarioId)?.title;
+  const scenario = kind === 'free' ? undefined : register.scenarios.find((s) => s.id === scenarioId);
+  const title = kind === 'free' ? FREE_PLAY_TITLE : scenario?.title;
+  // The scenario's first public source: the register has no shorter "modelled on" line, so its title stands.
+  const basis = register.sources.find((s) => s.id === scenario?.basis[0]);
 
   return (
     <header className="top-bar">
@@ -56,7 +63,17 @@ export function TopBar() {
         <BrandMark />
         <span className="brand-word">FailLocal</span>
       </div>
-      <h1 className="top-bar-title">{title}</h1>
+      <div className="top-bar-title">
+        <h1 className="top-bar-scenario">{title}</h1>
+        {basis && (
+          <p className="top-bar-basis">
+            <span className="top-bar-basis-text">
+              Modelled on <cite>{basis.title}</cite>
+            </span>
+            <ProvenanceTag provenance={{ kind: 'sourced', source: basis.id }} sources={{ [basis.id]: basis.title }} />
+          </p>
+        )}
+      </div>
       <div className="top-bar-badges">
         {register.site.fictional && (
           <span className="badge">

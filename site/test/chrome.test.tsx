@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { register } from '../src/model/register.js';
 import { SERVICE_GROUPS, serviceName } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { Legend } from '../src/ui/Legend.js';
@@ -25,6 +26,26 @@ describe('TopBar', () => {
     act(() => actions.setScenario('s1-as-reported'));
     expect(screen.queryByText('Projection')).toBeNull();
     expect(screen.getByText('Hosted ERP lost (as reported)')).toBeTruthy();
+  });
+
+  test('under the title, the public source the scenario is modelled on, tagged sourced (finish B7)', () => {
+    actions.setScenario('s1-projection');
+    const { container } = render(<TopBar />);
+    const scenario = register.scenarios.find((s) => s.id === 's1-projection')!;
+    const source = register.sources.find((s) => s.id === scenario.basis[0])!;
+    const line = container.querySelector('.top-bar-basis')!;
+    expect(line.querySelector(".top-bar-basis-text")!.textContent).toBe(`Modelled on ${source.title}`);
+    expect(line.querySelector('cite')!.textContent).toBe(source.title);
+    const tag = within(line as HTMLElement).getByRole('button', { name: 'sourced value' });
+    expect(document.getElementById(tag.getAttribute('aria-describedby')!)!.textContent).toBe(source.title);
+    expect(untaggedNumbers(container)).toEqual([]);
+  });
+
+  test('free play has no modelled-on line', () => {
+    actions.enterFreePlay();
+    actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 2 });
+    const { container } = render(<TopBar />);
+    expect(container.querySelector('.top-bar-basis')).toBeNull();
   });
 
   test('each badge carries its line glyph, dashed for the projection', () => {

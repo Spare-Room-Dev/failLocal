@@ -86,6 +86,16 @@ button.qty-tag {
   content: '';
 }
 
+.qty-tip.is-below {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+.qty-tip.is-below::before {
+  top: auto;
+  bottom: 100%;
+}
+
 .qty-tip[hidden] {
   display: none;
 }

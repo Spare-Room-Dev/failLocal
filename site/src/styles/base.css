@@ -388,6 +388,10 @@ body {
   .site-frame .top-bar-title {
     flex-basis: 100%;
     order: 1;
+  }
+
+  .site-frame .top-bar-scenario,
+  .site-frame .top-bar-basis-text {
     white-space: normal;
   }
 

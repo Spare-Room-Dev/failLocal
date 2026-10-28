@@ -40,13 +40,19 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
   const tipRef = useRef<HTMLSpanElement>(null);
   // Nudged sideways so an open popover stays inside the window (a tag near the right edge of the detail column).
   const [nudge, setNudge] = useState(0);
+  // Below the tag when there is no room above it (a tag in the top bar).
+  const [below, setBelow] = useState(false);
   useLayoutEffect(() => {
     const el = tipRef.current;
-    if (!open || !el) return;
+    if (!open || !el) {
+      setBelow(false);
+      return;
+    }
     const box = el.getBoundingClientRect();
     const left = box.left - nudge;
     const room = document.documentElement.clientWidth - 8;
     setNudge(Math.min(0, room - (left + box.width)) + Math.max(0, 8 - left));
+    if (!below && box.top < 8) setBelow(true);
   }, [open]);
 
   const touch = useRef(false);
@@ -113,7 +119,7 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
       >
         {text}
       </button>
-      <span ref={tipRef} role="tooltip" id={tipId} className="qty-tip" hidden={!open} style={nudge ? { marginLeft: nudge } : undefined}>
+      <span ref={tipRef} role="tooltip" id={tipId} className={below ? 'qty-tip is-below' : 'qty-tip'} hidden={!open} style={nudge ? { marginLeft: nudge } : undefined}>
         {tip}
       </span>
     </span>
