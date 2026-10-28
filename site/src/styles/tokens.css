@@ -35,4 +35,10 @@
   --shade-lite: #fff4e0;
   --cast-shadow: #3b160b;
   --hatch-ink: #1c1916;
+
+  /* Chrome values DESIGN.md gives in its prose rather than its colors map ("Elevation", "Service Card", "Legend"). */
+  --white: #fff;
+  --ink-hover: #3a3430;
+  --card-float: 0 1px 0 rgba(29, 26, 23, 0.04), 0 6px 14px -8px rgba(60, 40, 25, 0.25);
+  --legend-wash: rgba(250, 248, 244, 0.86);
 }

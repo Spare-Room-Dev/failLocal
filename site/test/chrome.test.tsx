@@ -27,6 +27,18 @@ describe('TopBar', () => {
     expect(screen.getByText('Hosted ERP lost (as reported)')).toBeTruthy();
   });
 
+  test('each badge carries its line glyph, dashed for the projection', () => {
+    actions.setScenario('s1-projection');
+    render(<TopBar />);
+    const glyph = (name: string) => screen.getByText(name).closest('.badge')!.querySelector('svg.badge-glyph');
+    const fictional = glyph('Fictional model site');
+    const projection = glyph('Projection');
+    expect(fictional?.getAttribute('aria-hidden')).toBe('true');
+    expect(projection?.getAttribute('aria-hidden')).toBe('true');
+    expect(fictional!.querySelector('[stroke-dasharray]')).toBeNull();
+    expect(projection!.querySelector('[stroke-dasharray]')).not.toBeNull();
+  });
+
   test('variant toggle updates the store', () => {
     render(<TopBar />);
     const unprepared = screen.getByRole('button', { name: 'Unprepared' });

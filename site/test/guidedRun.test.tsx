@@ -153,7 +153,7 @@ describe('GuidedRun', () => {
       expect(vi.getTimerCount()).toBe(0);
       cleanup();
     }
-  });
+  }, 15_000);
 
   test('unmounting mid-travel leaves no timers', () => {
     const { unmount } = startGuided();

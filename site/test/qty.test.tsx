@@ -55,35 +55,56 @@ describe('Qty', () => {
     expect(screen.getAllByRole('tooltip', { hidden: true })[1]!.textContent).toBe('Register value: US$97.7/t (sourced, pink-sheet)');
   });
 
-  it('an assumed tag carries the reasoning as its title', () => {
-    render(
-      <Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine.' }} />,
-    );
-    expect(screen.getByLabelText('assumed value').getAttribute('title')).toBe('A mid-size mine.');
-  });
-
-  it('a sourced tag shows the source title on hover and on focus', () => {
-    render(
-      <Qty
-        value={97.7}
-        kind="usdPerT"
-        provenance={{ kind: 'sourced', source: 'pink-sheet' }}
-        sources={{ 'pink-sheet': 'World Bank Pink Sheet' }}
-      />,
-    );
-    const tag = screen.getByLabelText('sourced value');
+  it('an assumed tag is a button whose popover gives the reasoning: click toggles it, Escape closes it', () => {
+    render(<Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine.' }} />);
+    const tag = screen.getByRole('button', { name: 'assumed value' });
     const tip = screen.getByRole('tooltip', { hidden: true });
-    expect(tip.textContent).toBe('World Bank Pink Sheet');
+    expect(tip.textContent).toBe('A mid-size mine.');
+    expect(tag.getAttribute('title')).toBeNull();
     expect(tag.getAttribute('aria-describedby')).toBe(tip.id);
+    expect(tag.getAttribute('aria-expanded')).toBe('false');
     expect(tip.hidden).toBe(true);
-    fireEvent.mouseEnter(tag);
+    // A tap or a click opens it and a second one closes it, so touch reaches the reasoning.
+    fireEvent.click(tag);
     expect(tip.hidden).toBe(false);
-    fireEvent.mouseLeave(tag);
+    expect(tag.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(tag);
     expect(tip.hidden).toBe(true);
+    // Keyboard: focus opens it, Escape dismisses it while focus stays.
     fireEvent.focus(tag);
     expect(tip.hidden).toBe(false);
-    fireEvent.blur(tag);
+    fireEvent.keyDown(tag, { key: 'Escape' });
     expect(tip.hidden).toBe(true);
+    fireEvent.blur(tag);
+    fireEvent.focus(tag);
+    expect(tip.hidden).toBe(false);
+  });
+
+  it('a sourced tag is hoverable: moving from the tag onto its tooltip keeps it open; Escape anywhere closes it', () => {
+    render(<Qty value={97.7} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} sources={{ 'pink-sheet': 'World Bank Pink Sheet' }} />);
+    const tag = screen.getByRole('button', { name: 'sourced value' });
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    fireEvent.mouseEnter(tag);
+    expect(tip.hidden).toBe(false);
+    fireEvent.mouseOut(tag, { relatedTarget: tip });
+    fireEvent.mouseOver(tip, { relatedTarget: tag });
+    expect(tip.hidden).toBe(false);
+    // Dismissable without moving the pointer (WCAG 1.4.13): Escape works wherever focus is.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(tip.hidden).toBe(true);
+    fireEvent.mouseLeave(tip);
+    fireEvent.mouseEnter(tag);
+    expect(tip.hidden).toBe(false);
+  });
+
+  it('computed and measured tags are plain text, not buttons', () => {
+    render(
+      <>
+        <Qty value={1} kind="hours" computed />
+        <Qty value={1} kind="hours" provenance={{ kind: 'measured', runId: 'r1', date: '2026-01-01', evidence: 'e' }} />
+      </>,
+    );
+    expect(screen.queryAllByRole('button')).toEqual([]);
   });
 
   it('each display kind gets its own tag class', () => {
@@ -126,6 +147,21 @@ describe('untaggedNumbers', () => {
     const root = document.createElement('div');
     root.innerHTML = `<p><cite>Waterfall Security, 2025 OT Cyber Threat Report</cite></p><p>Read 3 times</p>`;
     expect(untaggedNumbers(root)).toEqual(['Read 3 times']);
+  });
+
+  it('also scans aria-label and title, and the value of a read-only field', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <button aria-label="Cut for 3 days">Cut</button>
+      <span title="Holds 24 hours">holds</span>
+      <input readonly value="12 t" />
+      <input value="40" />
+      <textarea readonly>7 trucks</textarea>
+      <span data-quantity><span aria-label="5 days assumed" title="2 sources">5 days</span></span>
+      <p data-clock aria-label="Day 3 of 16">Day 3</p>
+      <span data-provenance><button>assumed</button><span role="tooltip">Held for 24 h (D-007)</span></span>
+      <button aria-label="Pause">x</button>`;
+    expect(untaggedNumbers(root)).toEqual(['7 trucks', 'Cut for 3 days', 'Holds 24 hours', '12 t']);
   });
 
   it('exempts message text inside data-message (R7), but not digits beside it', () => {

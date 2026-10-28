@@ -169,7 +169,7 @@
 
 .scene-fit:hover {
   border-color: var(--ink);
-  background: #fff;
+  background: var(--white);
 }
 
 .scene-note {

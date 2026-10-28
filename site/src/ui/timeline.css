@@ -208,6 +208,11 @@
   display: none;
 }
 
+/* With focus on one hairline and the pointer on another, the pointer's wins: still one label. */
+.timeline-events:has(.timeline-event:hover) .timeline-event:focus-visible:not(:hover) .timeline-event-label {
+  display: none;
+}
+
 .timeline-event-name {
   overflow: hidden;
   color: var(--ink-2);

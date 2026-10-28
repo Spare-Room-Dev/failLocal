@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Provenance } from '@faillocal/engine';
 import './qty.css';
 
@@ -19,41 +19,101 @@ interface TipTagProps {
   tip: string;
 }
 
-/** A focusable tag whose tooltip shows on hover or focus. */
+/**
+ * A tag that is a button with a popover: hover or focus shows it, a click or tap pins it open and a
+ * second one closes it, and Escape dismisses it wherever focus is (WCAG 1.4.13). The popover sits
+ * inside the hover area, so the pointer can move onto it and read it.
+ */
 function TipTag({ className, label, text, tip }: TipTagProps) {
   const tipId = useId();
-  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const open = !dismissed && (hovered || focused || pinned);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  // Nudged sideways so an open popover stays inside the window (a tag near the right edge of the detail column).
+  const [nudge, setNudge] = useState(0);
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!open || !el) return;
+    const box = el.getBoundingClientRect();
+    const left = box.left - nudge;
+    const room = document.documentElement.clientWidth - 8;
+    setNudge(Math.min(0, room - (left + box.width)) + Math.max(0, 8 - left));
+  }, [open]);
+
+  const dismiss = () => {
+    setDismissed(true);
+    setPinned(false);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
-    <span className="qty-tag-anchor">
-      <span
+    <span
+      className="qty-tag-anchor"
+      data-provenance
+      onMouseEnter={() => {
+        setHovered(true);
+        setDismissed(false);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        setPinned(false);
+      }}
+    >
+      <button
+        type="button"
         className={className}
         aria-label={label}
         aria-describedby={tipId}
-        tabIndex={0}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        aria-expanded={open}
+        onFocus={() => {
+          setFocused(true);
+          setDismissed(false);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          setPinned(false);
+        }}
+        onClick={() => {
+          if (pinned) dismiss();
+          else {
+            setPinned(true);
+            setDismissed(false);
+          }
+        }}
       >
         {text}
-      </span>
-      <span role="tooltip" id={tipId} className="qty-tip" hidden={!open}>
+      </button>
+      <span ref={tipRef} role="tooltip" id={tipId} className="qty-tip" hidden={!open} style={nudge ? { marginLeft: nudge } : undefined}>
         {tip}
       </span>
     </span>
   );
 }
 
-/** The kind word after a number, taken from its provenance. Sourced tags reveal the source title on hover or focus. */
+/**
+ * The kind word after a number, taken from its provenance. A sourced tag reveals its source title,
+ * and an assumed tag its reasoning, in a popover (see `TipTag`).
+ */
 export function ProvenanceTag(props: ProvenanceTagProps) {
   const display = 'computed' in props ? 'computed' : props.provenance.kind;
   const label = `${display} value`;
   const className = `qty-tag qty-tag--${display}`;
   if ('provenance' in props && props.provenance.kind === 'sourced')
     return <TipTag className={className} label={label} text={display} tip={sourceTitle(props.provenance, props.sources)} />;
-  const reasoning = 'provenance' in props && props.provenance.kind === 'assumed' ? props.provenance.reasoning : undefined;
+  if ('provenance' in props && props.provenance.kind === 'assumed')
+    return <TipTag className={className} label={label} text={display} tip={props.provenance.reasoning} />;
   return (
-    <span className={className} aria-label={label} title={reasoning}>
+    <span className={className} aria-label={label}>
       {display}
     </span>
   );

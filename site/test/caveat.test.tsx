@@ -32,6 +32,13 @@ function guidedCaveat(): HTMLElement {
   return container.querySelector<HTMLElement>('[data-step="comparison"] .assumption-caveat')!;
 }
 
+/** The text a reader sees: without the tags' popovers (an assumed tag carries its reasoning in one). */
+function shownText(el: Element): string {
+  const copy = el.cloneNode(true) as Element;
+  for (const tip of copy.querySelectorAll('[role="tooltip"]')) tip.remove();
+  return copy.textContent ?? '';
+}
+
 function limitsCaveat(): HTMLElement {
   const { container } = render(<LimitsPage />);
   return container.querySelector<HTMLElement>('.assumption-caveat')!;
@@ -55,9 +62,9 @@ describe('AssumptionCaveat', () => {
       'Change either and the figure changes; see the decision log.';
 
     const limits = limitsCaveat();
-    const limitsText = limits.textContent;
+    const limitsText = shownText(limits);
     expect(limitsText).toBe(expected);
-    expect([...limits.querySelectorAll('[data-quantity]')].map((q) => q.textContent)).toEqual([
+    expect([...limits.querySelectorAll('[data-quantity]')].map(shownText)).toEqual([
       `${formatQty(holdsFor.value, 'days')}assumed`,
       `${formatQty(holdFor.value, 'hours')}assumed`,
     ]);
@@ -66,9 +73,19 @@ describe('AssumptionCaveat', () => {
     cleanup();
 
     const guided = guidedCaveat();
-    expect(guided.textContent).toBe(limitsText);
+    expect(shownText(guided)).toBe(limitsText);
     expect(guided.querySelectorAll('.qty-tag--assumed')).toHaveLength(2);
     expect(untaggedNumbers(guided)).toEqual([]);
+  });
+
+  test('the Limitations caveat carries the same "Draft copy" marker as the guided run', () => {
+    const { container } = render(<LimitsPage />);
+    const item = container.querySelector('.assumption-caveat')!.closest('li')!;
+    const marker = item.querySelector('.draft-marker');
+    expect(marker?.textContent).toBe('Draft copy');
+    cleanup();
+    const guided = guidedCaveat().closest('[data-step="comparison"]')!;
+    expect(guided.querySelector('.draft-marker')?.textContent).toBe('Draft copy');
   });
 
   test('prints no threshold figure', () => {
@@ -78,7 +95,7 @@ describe('AssumptionCaveat', () => {
   test("the comparison card's labels sit inside the Draft copy marker", () => {
     guidedCaveat();
     const draft = document.querySelector('[data-step="comparison"] .guided-draft-region')!;
-    expect(draft.querySelector('.guided-draft')?.textContent).toBe('Draft copy');
+    expect(draft.querySelector('.draft-marker')?.textContent).toBe('Draft copy');
     expect(draft.querySelector('.guided-totals')).not.toBeNull();
     expect(draft.querySelector('.assumption-caveat')).not.toBeNull();
   });

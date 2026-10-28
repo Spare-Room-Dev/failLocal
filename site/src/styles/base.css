@@ -38,6 +38,21 @@ body {
   border-radius: 999px;
 }
 
+/* "Draft copy": marks text the owner has yet to approve (the guided captions, the assumption caveat). */
+.draft-marker {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 1px 6px;
+  border: 1px dashed var(--line-2);
+  border-radius: 3px;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /*
  * The site's app frame (DESIGN.md "Layout"). Desktop: a 60 px top bar, the stage and a 92 px
  * timeline strip (186 px day and play / flexible axis / 250 px stocks), with the 372 px detail
@@ -108,15 +123,24 @@ body {
  * Each slot spans the card band, and its card sits at the bottom, on its cable. A card taller than
  * the band (a narrow card in its cut state) starts at the stage top instead and runs down over the
  * cable's head (`safe`), so no card ever crosses the stage top.
+ *
+ * A slot is as wide as the cable pitch allows (a sixth of the scene, less an 8 px gap), centred on its
+ * cable and clamped inside the stage's 4 px edges. With cables at sixths the clamp never binds (the
+ * outer cards have a twelfth of the scene beside them); it guards a narrower stage or wider card.
  */
 .site-card-slot {
+  --slot-w: min(240px, var(--scene-w) / 6 - 8px);
   position: absolute;
   top: 0;
-  left: calc(50cqw - var(--scene-w) / 2 + var(--scene-w) * var(--cable));
+  left: clamp(
+    var(--slot-w) / 2 + 4px,
+    50cqw - var(--scene-w) / 2 + var(--scene-w) * var(--cable),
+    100cqw - var(--slot-w) / 2 - 4px
+  );
   display: flex;
   flex-direction: column;
   justify-content: safe flex-end;
-  width: min(240px, var(--scene-w) / 6 - 8px);
+  width: var(--slot-w);
   height: calc(var(--card-band) - 4px);
   z-index: 1;
   transform: translateX(-50%);
@@ -129,7 +153,7 @@ body {
 }
 
 /*
- * A card narrower than its 240 px goes compact (ruling R11): no icon, one-line names, compact
+ * A card narrower than its 240 px goes compact (ruling R11): no icon, narrower names that wrap, compact
  * buttons. Keyed on the card's own width, since cable spacing (a sixth of the scene) sets it.
  */
 @container (max-width: 239px) {
@@ -142,12 +166,11 @@ body {
     padding: 6px 6px 6px 8px;
   }
 
+  /* Names wrap rather than truncate, so every one reads in full ("Perth operations link"). */
   .service-card-name,
   .service-row-name {
-    overflow: hidden;
     font-variation-settings: 'wdth' 80;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: break-word;
   }
 
   .service-button {

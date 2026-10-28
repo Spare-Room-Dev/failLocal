@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { untaggedNumbers as untaggedIn } from '../test/helpers/untagged.js';
 
 /** Story time runs this many times faster under e2e (controller ruling R9). */
 const TIME_SCALE = 40;
@@ -24,24 +25,8 @@ async function scrubToDay(page: Page, day: number): Promise<void> {
   await expect(slider(page)).toHaveAttribute('aria-valuenow', String(day * DAY));
 }
 
-/**
- * The page-level `untaggedNumbers` (site/test/helpers/untagged.ts), with the same exemptions:
- * digit-bearing text that no `<Qty>`, clock value, date, cited title or message owns.
- */
-function untaggedNumbers(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const EXEMPT = '[data-quantity], [data-clock], [data-message], time, cite, script, style, [aria-hidden="true"][data-decorative]';
-    const found: string[] = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      const text = node.textContent?.trim() ?? '';
-      if (!/\d/.test(text)) continue;
-      if (node.parentElement?.closest(EXEMPT)) continue;
-      found.push(text);
-    }
-    return found;
-  });
-}
+/** The shared `untaggedNumbers` helper (site/test/helpers/untagged.ts), run over the whole page in the browser. */
+const untaggedNumbers = (page: Page): Promise<string[]> => page.locator('body').evaluate(untaggedIn);
 
 type Box = { x: number; y: number; width: number; height: number };
 const intersects = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -196,9 +181,66 @@ test('hairline labels never overlap', async ({ page }) => {
   await page.locator('.timeline-event').nth(4).focus();
   const focused = await visibleLabels(page);
   for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
+  // Focus on one hairline (by keyboard, so it is focus-visible) and the pointer on another: one label, the hovered one's.
+  await page.locator('.timeline-event').nth(3).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('.timeline-event').nth(4)).toBeFocused();
+  // Haulage's hairline stands alone, so the pointer lands on it and nothing else. Its top pixel: on
+  // the tablet strip the axis track covers the rest of it.
+  const haulage = page.getByRole('button', { name: 'Haulage stopped' });
+  await haulage.hover({ position: { x: 5, y: 1 } });
+  expect(await page.evaluate(() => [...document.querySelectorAll('.timeline-event:hover')].map((e) => e.getAttribute('aria-label')))).toEqual(['Haulage stopped']);
+  const shown = await page.locator('.timeline-event-name').evaluateAll((els) => els.filter((e) => e.getClientRects().length > 0).map((e) => e.textContent));
+  expect(shown).toEqual(['Haulage']);
+  await page.mouse.move(0, 0);
   // Every event is still listed, with its hour.
   const list = page.getByRole('region', { name: 'Events' }).filter({ visible: true });
   await expect(list.getByRole('listitem')).toHaveCount(await page.locator('.timeline-event').count());
+});
+
+test('provenance tags: the sourced tooltip is hoverable and Escape closes it; the assumed reasoning opens by keyboard and by tap', async ({ page }) => {
+  await open(page, '#/site');
+  const revenue = page.locator('.revenue-working').filter({ visible: true });
+  const sourced = revenue.getByRole('button', { name: 'sourced value' }).first();
+  await sourced.hover();
+  const sourcedTip = page.locator(`#${await sourced.getAttribute('aria-describedby')}`);
+  await expect(sourcedTip).toBeVisible();
+  // Across the gap and onto the tooltip itself: it stays.
+  const tip = (await sourcedTip.boundingBox())!;
+  const tag = (await sourced.boundingBox())!;
+  await page.mouse.move(tag.x + tag.width / 2, (tag.y + tip.y + tip.height) / 2, { steps: 4 });
+  await page.mouse.move(tip.x + tip.width / 2, tip.y + tip.height / 2, { steps: 4 });
+  await expect(sourcedTip).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sourcedTip).toBeHidden();
+  await page.mouse.move(0, 0);
+
+  const assumed = revenue.getByRole('button', { name: 'assumed value' }).first();
+  const assumedTip = page.locator(`#${await assumed.getAttribute('aria-describedby')}`);
+  await assumed.focus();
+  await expect(assumedTip).toBeVisible();
+  expect((await assumedTip.textContent())!.length).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await expect(assumedTip).toBeHidden();
+  await assumed.blur();
+  await assumed.click();
+  await expect(assumedTip).toBeVisible();
+  await expect(assumed).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await page.mouse.move(0, 0);
+
+  // Every popover in the working opens inside the window, however near the edge its tag sits.
+  const width = page.viewportSize()!.width;
+  for (const t of await revenue.getByRole('button', { name: /^(assumed|sourced) value$/ }).all()) {
+    await t.blur();
+    await t.focus();
+    const popover = page.locator(`#${await t.getAttribute('aria-describedby')}`);
+    await expect(popover).toBeVisible();
+    const box = (await popover.boundingBox())!;
+    expect(box.x, 'popover left').toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, 'popover right').toBeLessThanOrEqual(width);
+    await page.keyboard.press('Escape');
+  }
 });
 
 test('phone layout', async ({ page }, info) => {
@@ -321,6 +363,17 @@ test('cards sit on their cables, and every post and plaque is in frame without c
     expect(Math.abs(card.x + card.width / 2 - anchor), `${id} centring`).toBeLessThanOrEqual(2);
     expect(card.y + card.height - cable.y, `${id} covers its cable`).toBeLessThanOrEqual(8);
   }
+  // Every card stays inside the stage, and every name on it reads in full.
+  const stage = (await page.locator('.site-stage').boundingBox())!;
+  for (const id of GROUPS) {
+    const card = (await page.locator(`.service-card[data-service-group="${id}"]`).boundingBox())!;
+    expect(card.x, `${id} left edge`).toBeGreaterThanOrEqual(stage.x);
+    expect(card.x + card.width, `${id} right edge`).toBeLessThanOrEqual(stage.x + stage.width);
+  }
+  const truncated = await page
+    .locator('.service-card-name, .service-row-name')
+    .evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1).map((e) => e.textContent));
+  expect(truncated).toEqual([]);
 
   // Every entry post is drawn inside the stage, so every cable visibly reaches it.
   for (const id of GROUPS) {

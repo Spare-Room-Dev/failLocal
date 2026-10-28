@@ -17,7 +17,7 @@ export function LimitsPage() {
         <li>This is a fictional site with synthetic data.</li>
         <li>Lab timings are not comparable with timings on a real site.</li>
         <li>
-          <span className="limits-scenario">{title}.</span>{' '}
+          <span className="limits-scenario">{title}.</span> <span className="draft-marker">Draft copy</span>{' '}
           <AssumptionCaveat assumptionsUsed={caveatInputs(register)} sources={sources} />
         </li>
         <li>Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.</li>

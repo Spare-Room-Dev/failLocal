@@ -27,8 +27,14 @@ describe('RevenueSection', () => {
     expect(qtyTags(working(), formatQty(annualTonnes.value, 'mtpa'))).toEqual(['assumed']);
     expect(qtyTags(working(), formatQty(degradedOutput.value, 'fraction'))).toEqual(['assumed']);
     expect(screen.getByText('Revenue at risk, not written off: shipments can recover once the stockpile refills.')).toBeTruthy();
-    const priceTip = within(working()).getByRole('tooltip', { hidden: true });
+    const priceTag = within(working()).getByRole('button', { name: 'sourced value' });
+    const priceTip = document.getElementById(priceTag.getAttribute('aria-describedby')!)!;
     expect(priceTip.textContent).toBe(register.sources.find((s) => s.id === 'worldbank-pink-sheet-oct-2026')!.title);
+    // Each assumed input's reasoning is in its own popover.
+    const assumedTips = within(working())
+      .getAllByRole('button', { name: 'assumed value' })
+      .map((t) => document.getElementById(t.getAttribute('aria-describedby')!)!.textContent);
+    expect(assumedTips).toEqual([annualTonnes.provenance, degradedOutput.provenance].map((p) => (p.kind === 'assumed' ? p.reasoning : null)));
   });
 
   test('an overridden price shows changed-by-you', () => {

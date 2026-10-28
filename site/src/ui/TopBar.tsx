@@ -21,6 +21,25 @@ function BrandMark() {
   );
 }
 
+/** The fictional-site badge's glyph: a model block on its plinth, in the scene's 2:1 projection. */
+function ModelGlyph() {
+  return (
+    <svg className="badge-glyph" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M2 6.5 L7 4 L12 6.5 L7 9 Z M2 6.5 V8.5 L7 11 L12 8.5 V6.5 M7 9 V11" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** The projection badge's glyph: a run that goes solid, then dashed (DESIGN.md: dashes mean "not solid"). */
+function ProjectionGlyph() {
+  return (
+    <svg className="badge-glyph" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M1 10 H5" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M5 10 L13 4" stroke="currentColor" strokeWidth={1.6} strokeDasharray="2.4 1.8" />
+    </svg>
+  );
+}
+
 /** The 60 px top bar (DESIGN.md "Top Bar Controls"): brand, scenario title, badges and the variant switch. */
 export function TopBar() {
   // All from the run on screen, so a failed run never leaves the bar describing a different one.
@@ -39,8 +58,18 @@ export function TopBar() {
       </div>
       <h1 className="top-bar-title">{title}</h1>
       <div className="top-bar-badges">
-        {register.site.fictional && <span className="badge">Fictional model site</span>}
-        {projection && <span className="badge badge--dashed">Projection</span>}
+        {register.site.fictional && (
+          <span className="badge">
+            <ModelGlyph />
+            Fictional model site
+          </span>
+        )}
+        {projection && (
+          <span className="badge badge--dashed">
+            <ProjectionGlyph />
+            Projection
+          </span>
+        )}
       </div>
       <div className="segmented" role="group" aria-label="Site readiness">
         {VARIANTS.map((v) => (

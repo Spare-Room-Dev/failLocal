@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
@@ -20,5 +21,25 @@ describe('tokens.css', () => {
     for (const [name, hex] of colours) {
       expect(tokens).toMatch(new RegExp(`^\\s*--${name}:\\s*${hex};`, 'm'));
     }
+  });
+});
+
+/** Every stylesheet under src, as paths relative to src. */
+function stylesheets(dir = join(dirname(fileURLToPath(import.meta.url)), '../src'), prefix = ''): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? stylesheets(join(dir, e.name), `${prefix}${e.name}/`) : e.name.endsWith('.css') ? [`${prefix}${e.name}`] : [],
+  );
+}
+
+describe('stylesheets', () => {
+  it('no stylesheet but tokens.css writes a raw colour: every colour is a token', () => {
+    const sheets = stylesheets().filter((f) => f !== 'styles/tokens.css');
+    expect(sheets).toContain('ui/chrome.css');
+    const raw = sheets.flatMap((f) =>
+      read(`../src/${f}`)
+        .split('\n')
+        .flatMap((line, i) => (/#[0-9a-f]{3,8}\b|\b(rgba?|hsla?)\(/i.test(line) ? [`${f}:${i + 1}: ${line.trim()}`] : [])),
+    );
+    expect(raw).toEqual([]);
   });
 });
