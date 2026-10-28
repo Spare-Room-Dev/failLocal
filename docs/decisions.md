@@ -629,7 +629,7 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Path:** scenarios.s1-projection.events[0].restoreAfter
 - **Decision:** 288 hours (12 days), the same sourced restore as S1 as reported. The only counterfactual is that the manual workarounds run out (D-041 to D-044).
 - **Reasoning:** Revenue at risk (about $6.0M) rests on two assumed numbers. Change either and the figure changes (checked against the engine, unprepared, one number changed at a time):
-  - How long phone-and-email ordering keeps going without the ERP (`manualWorkaround.holdsFor`, D-041): 3 days. At 0 days, about $25.65M is at risk; from about 3.6 days (87 hours) up, $0.
+  - How long phone-and-email ordering keeps going without the ERP (`manualWorkaround.holdsFor`, D-041): 3 days. At 0 days, about $25.65M is at risk; from about 86 hours up, $0.
   - How long new purchase orders are held after the ERP is back (`afterRestore.holdFor`, D-094): 24 hours. Up to 9 hours, $0; any longer hold puts revenue at risk (about $0.14M at 10 hours); at 48 hours, about $8.92M.
   - Outage: the workarounds end at hour 72 and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276, 12 hours before the restore; the crusher stops at hour 288 as the ROM pad runs out.
   - Recovery: the ERP is back at hour 288, but new orders are held for 24 hours (D-094, D-095), so ordering restarts at hour 312. The first diesel arrives 36 hours later: the fleet restarts at hour 349, still rationed, and is not back to normal when the run ends; the crusher restarts at hour 350. The fleet is parked for 73 hours and the crusher for 62.
@@ -757,7 +757,7 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Owner change:**
 
 ## D-104 The JavaScript budget is 450 KB gzipped, for PixiJS
-- **Decision:** The build guard's gzipped JavaScript budget rises from 300 KB to 450 KB (decimal, 1 KB = 1,000 bytes, as Vite reports sizes) to make room for PixiJS 8, which draws the diorama. At this change the site ships 305.6 KB gzipped in all: about 130 KB in the first-load chunk (123 KB before) and about 176 KB of PixiJS and the diorama in chunks that load only when a scene mounts. PixiJS is pinned at ^8.22 and loads through `pixi.js/unsafe-eval`, so the Content-Security-Policy stays as it was (no `unsafe-eval`).
+- **Decision:** The build guard's gzipped JavaScript budget rises from 300 KB to 450 KB (decimal, 1 KB = 1,000 bytes, as Vite reports sizes) to make room for PixiJS 8, which draws the diorama. At this change the site ships 305.6 KB gzipped in all: about 130 KB in the first-load chunk (123 KB before) and about 176 KB of PixiJS and the diorama in chunks that load only when a scene mounts. PixiJS is constrained to ^8.22 (the lockfile pins the exact version) and loads through `pixi.js/unsafe-eval`, so the Content-Security-Policy stays as it was (no `unsafe-eval`).
 - **Reasoning:** A WebGL renderer is the only way to draw the lit, faceted board at 30 frames a second without thousands of SVG nodes. The budget leaves room for the living-state layer still to come, and the guard still fails a build that grows past it.
 - **Source / provenance:** measured (`npm run build -w site`, check-build.mjs)
 - **Owner change:**
