@@ -121,33 +121,37 @@ const fitK = (rect: Size, view: Size) => (FIT_MARGIN * Math.min(view.w, 2 * view
 
 /**
  * Fit the whole board, or with `focus`, zoom to that rectangle and centre it.
- * k is always clamped to [K_MIN, K_MAX].
+ * k is clamped to [K_MIN, K_MAX]. A focused camera is not passed through `clampCamera`; callers clamp.
  */
 export function fitCamera(board: Size, view: Size, focus?: Rect): Camera {
   const r = focus ?? { x: 0, y: 0, w: board.w, h: board.h };
   const k = clampK(fitK(r, view));
-  const centre = project({ x: r.x + r.w / 2, y: r.y + r.h / 2, z: 0 }, { k, ox: 0, oy: 0 });
-  return { k, ox: view.w / 2 - centre.sx, oy: view.h / 2 - centre.sy };
+  return centreOn({ x: r.x + r.w / 2, y: r.y + r.h / 2 }, k, view);
+}
+
+/** The ground point (z = 0) under screen pixel (sx, sy). */
+export function unproject(sx: number, sy: number, cam: Camera): Point {
+  const diff = (sx - cam.ox) / cam.k; // x − y
+  const sum = (2 * (sy - cam.oy)) / cam.k; // x + y
+  return { x: (sum + diff) / 2, y: (sum - diff) / 2 };
 }
 
 /**
- * Keep k in [K_MIN, K_MAX] and keep the board in view. On each screen axis the board's projected
- * box must overlap the view by at least min(half the box, the whole view). That keeps ≥ 25% of the
- * box's area in view whenever the box is at most twice the view per axis; when it is bigger than
- * that (25% of it cannot fit), the board fills the view on that axis.
+ * Keep k in [K_MIN, K_MAX] and keep the board under the centre of the view: the ground point at
+ * the view centre is clamped into the board [0, w] × [0, h] and the camera re-centred on it.
+ * A camera already in bounds is returned unchanged.
  */
 export function clampCamera(cam: Camera, board: Size, view: Size): Camera {
   const k = clampK(cam.k);
-  const ex = (board.w + board.h) * k;
-  const ey = ex / 2;
-  // Box x range is [ox − h·k, ox + w·k]; y range is [oy, oy + ey].
-  const x0 = clampAxis(cam.ox - board.h * k, ex, view.w);
-  const y0 = clampAxis(cam.oy, ey, view.h);
-  return { k, ox: x0 + board.h * k, oy: y0 };
+  const g = unproject(view.w / 2, view.h / 2, cam);
+  const x = Math.min(board.w, Math.max(0, g.x));
+  const y = Math.min(board.h, Math.max(0, g.y));
+  if (k === cam.k && x === g.x && y === g.y) return cam;
+  return centreOn({ x, y }, k, view);
 }
 
-/** Clamp a box's near edge `start` (extent `extent`) so it overlaps [0, view] by min(extent/2, view). */
-function clampAxis(start: number, extent: number, view: number): number {
-  const need = Math.min(extent / 2, view);
-  return Math.min(view - need, Math.max(need - extent, start));
+/** The camera at scale k that puts ground point `g` at the centre of the view. */
+function centreOn(g: Point, k: number, view: Size): Camera {
+  const p = project({ ...g, z: 0 }, { k, ox: 0, oy: 0 });
+  return { k, ox: view.w / 2 - p.sx, oy: view.h / 2 - p.sy };
 }

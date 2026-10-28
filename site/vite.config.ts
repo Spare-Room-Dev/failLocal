@@ -9,6 +9,6 @@ const deployedHeaders = parseHeaders(readFileSync(new URL('public/_headers', imp
 export default defineConfig({
   plugins: [react()],
   preview: { headers: deployedHeaders },
-  // Playwright owns e2e/.
+  // Playwright owns e2e/. tokens.css is processed in tests so the scene's `tokens.css?raw` import is not blanked.
   test: { environment: 'jsdom', exclude: ['e2e/**', 'node_modules/**'], css: { include: [/tokens\.css/] } },
 });

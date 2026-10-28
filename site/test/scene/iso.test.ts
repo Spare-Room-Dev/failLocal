@@ -11,6 +11,7 @@ import {
   project,
   shadowHull,
   tone,
+  unproject,
   type Camera,
 } from '../../src/scene/iso.js';
 import { token } from '../../src/scene/palette.js';
@@ -27,6 +28,11 @@ describe('palette', () => {
       expect(css).toContain(`--${name}: ${token(name)};`);
     }
     expect(() => token('no-such-token')).toThrow();
+  });
+  it('matches the token name literally and whole', () => {
+    expect(() => token('hi.is')).toThrow(); // a regex wildcard must not match --hivis
+    expect(() => token('parked')).toThrow(); // --hivis-parked exists; --parked does not
+    expect(() => token('-parked')).toThrow(); // nor a dash-led tail of it
   });
 });
 
@@ -98,21 +104,28 @@ describe('depthKey', () => {
   });
 });
 
-/** Projected bounding box of the board at z = 0. */
-function boardBox(cam: Camera) {
-  return {
-    x0: cam.ox - BOARD.h * cam.k,
-    x1: cam.ox + BOARD.w * cam.k,
-    y0: cam.oy,
-    y1: cam.oy + ((BOARD.w + BOARD.h) * cam.k) / 2,
-  };
-}
-const overlap = (a0: number, a1: number, v: number) => Math.max(0, Math.min(a1, v) - Math.max(a0, 0));
+describe('unproject', () => {
+  it('inverts project on the ground plane', () => {
+    const cam: Camera = { k: 1.7, ox: -320, oy: 45 };
+    for (const p of [
+      { x: 0, y: 0 },
+      { x: 1600, y: 0 },
+      { x: 123.4, y: 987.6 },
+      { x: -50, y: 2000 },
+    ]) {
+      const { sx, sy } = project({ ...p, z: 0 }, cam);
+      const g = unproject(sx, sy, cam);
+      expect(g.x).toBeCloseTo(p.x, 9);
+      expect(g.y).toBeCloseTo(p.y, 9);
+    }
+  });
+});
 
 describe('camera', () => {
-  it('clamps: k stays in range and at least 25% of the board box stays in view', () => {
+  it('clamps: k stays in range and the board is always under the centre of the view', () => {
     const ks = [0.01, K_MIN, 0.5, 1, K_MAX, 9];
     const origins = [-1e5, -3000, -500, 0, 300, 1280, 4000, 1e5];
+    const eps = 1e-6;
     for (const view of [VIEW, { w: 390, h: 844 }]) {
       for (const k of ks)
         for (const ox of origins)
@@ -120,18 +133,27 @@ describe('camera', () => {
             const cam = clampCamera({ k, ox, oy }, BOARD, view);
             expect(cam.k).toBeGreaterThanOrEqual(K_MIN);
             expect(cam.k).toBeLessThanOrEqual(K_MAX);
-            const b = boardBox(cam);
-            const ex = b.x1 - b.x0;
-            const ey = b.y1 - b.y0;
-            const vx = overlap(b.x0, b.x1, view.w);
-            const vy = overlap(b.y0, b.y1, view.h);
-            // Per axis: half the box, or the whole view when the box is more than twice the view.
-            expect(vx).toBeGreaterThanOrEqual(Math.min(ex / 2, view.w) - 1e-6);
-            expect(vy).toBeGreaterThanOrEqual(Math.min(ey / 2, view.h) - 1e-6);
-            // Hence ≥ 25% of the box area is in view whenever that is possible at this k.
-            if (ex <= 2 * view.w && ey <= 2 * view.h) expect(vx * vy).toBeGreaterThanOrEqual(0.25 * ex * ey - 1e-6);
+            const g = unproject(view.w / 2, view.h / 2, cam);
+            expect(g.x).toBeGreaterThanOrEqual(-eps);
+            expect(g.x).toBeLessThanOrEqual(BOARD.w + eps);
+            expect(g.y).toBeGreaterThanOrEqual(-eps);
+            expect(g.y).toBeLessThanOrEqual(BOARD.h + eps);
           }
     }
+  });
+
+  it('clamps k into range', () => {
+    expect(clampCamera({ k: 0.01, ox: 640, oy: -200 }, BOARD, VIEW).k).toBe(K_MIN);
+    expect(clampCamera({ k: 9, ox: 640, oy: -200 }, BOARD, VIEW).k).toBe(K_MAX);
+  });
+
+  it('pulls a camera looking off the board back to the board edge', () => {
+    // Phone at K_MAX with the view far off the north-west: the reviewer's lost-board case.
+    const phone = { w: 390, h: 844 };
+    const cam = clampCamera({ k: K_MAX, ox: -1e5, oy: -1e5 }, BOARD, phone);
+    const g = unproject(phone.w / 2, phone.h / 2, cam);
+    expect(g.x).toBeCloseTo(BOARD.w, 6);
+    expect(g.y).toBeCloseTo(BOARD.h, 6);
   });
 
   it('leaves an in-bounds camera alone', () => {
