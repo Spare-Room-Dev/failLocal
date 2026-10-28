@@ -88,6 +88,20 @@ body {
   height: var(--scene-h);
 }
 
+/* The diorama is exactly the letterboxed scene box, so its anchors are fractions of the width the cards use. */
+.site-stage > .scene--diorama {
+  left: calc(50% - var(--scene-w) / 2);
+  width: var(--scene-w);
+}
+
+/* The D-106 note, under the cards at the scene's top left. */
+.site-stage > .scene-note {
+  position: absolute;
+  top: calc(var(--card-band) + 30px);
+  left: 20px;
+  z-index: 1;
+}
+
 /*
  * Each slot spans the card band, and its card sits at the bottom, on its cable. A card taller than
  * the band (a narrow card in its cut state) starts at the stage top instead and runs down over the
@@ -366,6 +380,19 @@ body {
 
   .site-stage > .scene {
     height: auto;
+  }
+
+  /* In the flow on a phone, but still the containing block of its DOM layer. */
+  .site-stage > .scene--diorama {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+  }
+
+  .site-stage > .scene-note {
+    position: static;
+    margin: 0 16px;
   }
 
   /* A horizontally scrolling strip of 210 px cards above the scene. */

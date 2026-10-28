@@ -55,17 +55,26 @@ function rgb(hex: string): [number, number, number] {
 }
 
 /** Linear mix in sRGB, each channel rounded to the nearest integer. */
-function mix(from: string, to: string, t: number): string {
+export function mix(from: string, to: string, t: number): string {
   const a = rgb(from);
   const b = rgb(to);
   return `#${a.map((c, i) => Math.round(c + (b[i]! - c) * t).toString(16).padStart(2, '0')).join('')}`;
 }
 
+/** The light term b for a face with outward normal `normal`: dot(n̂, L)·0.8 − 0.12 (DESIGN.md Light). */
+export function brightness(normal: Vec3): number {
+  const n = normalize(normal);
+  return (n.x * SUN.x + n.y * SUN.y + n.z * SUN.z) * 0.8 - 0.12;
+}
+
+/** `baseHex` mixed toward shade-dark by 0.6·|b| when b < 0, toward shade-lite by 0.5·b when b > 0. */
+export function shade(baseHex: string, b: number): string {
+  return b < 0 ? mix(baseHex, SHADE_DARK, Math.min(1, 0.6 * -b)) : mix(baseHex, SHADE_LITE, Math.min(1, 0.5 * b));
+}
+
 /** The facet tone of `baseHex` for a face with outward normal `normal` (DESIGN.md Light). */
 export function tone(baseHex: string, normal: Vec3): string {
-  const n = normalize(normal);
-  const b = (n.x * SUN.x + n.y * SUN.y + n.z * SUN.z) * 0.8 - 0.12;
-  return b < 0 ? mix(baseHex, SHADE_DARK, 0.6 * -b) : mix(baseHex, SHADE_LITE, 0.5 * b);
+  return shade(baseHex, brightness(normal));
 }
 
 /** The three visible faces of an axis-aligned box: top (+z), left (+y), right (+x). */

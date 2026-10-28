@@ -5,6 +5,19 @@ export interface E2eHook {
   /** Story time's multiplier: playback hours per second and guided travel are multiplied by it, guided dwells divided. */
   timeScale: number;
   setSpeed(hoursPerSecond: number): void;
+  /** Set while a diorama is mounted: what the end-to-end suite reads off the canvas. */
+  diorama?: DioramaProbe;
+}
+
+/** The mounted diorama, as the end-to-end suite sees it. */
+export interface DioramaProbe {
+  camera(): { k: number; ox: number; oy: number };
+  /** The camera `0` and the Fit button return to. */
+  defaultCamera(): { k: number; ox: number; oy: number };
+  /** The ground point (metres) under the centre of the view. */
+  groundAtCentre(): { x: number; y: number };
+  /** The rendered colour of every `step`-th CSS pixel, as [r, g, b]. */
+  sample(step: number): Promise<[number, number, number][]>;
 }
 
 declare global {
@@ -13,16 +26,17 @@ declare global {
   }
 }
 
-const hook: E2eHook = { timeScale: 1, setSpeed: (hps) => actions.setSpeed(hps) };
+/** The hook object itself: present in every build, exposed on `window` only under `installE2eHook`. */
+export const e2eHook: E2eHook = { timeScale: 1, setSpeed: (hps) => actions.setSpeed(hps) };
 
 /** The current multiplier: 1 unless an end-to-end run changed it through the hook. */
 export function timeScale(): number {
-  return hook.timeScale;
+  return e2eHook.timeScale;
 }
 
 /** Exposes the hook as `window.__faillocal` in a dev build, or when the query string has an `e2e` parameter. Returns whether it did. */
 export function installE2eHook(win: Window, dev: boolean): boolean {
   if (!dev && !new URLSearchParams(win.location.search).has('e2e')) return false;
-  win.__faillocal = hook;
+  win.__faillocal = e2eHook;
   return true;
 }

@@ -756,8 +756,26 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Source / provenance:** modelling rule (site, `guided.ts`)
 - **Owner change:**
 
+## D-104 The JavaScript budget is 450 KB gzipped, for PixiJS
+- **Decision:** The build guard's gzipped JavaScript budget rises from 300 KB to 450 KB (decimal, 1 KB = 1,000 bytes, as Vite reports sizes) to make room for PixiJS 8, which draws the diorama. At this change the site ships 305.6 KB gzipped in all: about 130 KB in the first-load chunk (123 KB before) and about 176 KB of PixiJS and the diorama in chunks that load only when a scene mounts. PixiJS is pinned at ^8.22 and loads through `pixi.js/unsafe-eval`, so the Content-Security-Policy stays as it was (no `unsafe-eval`).
+- **Reasoning:** A WebGL renderer is the only way to draw the lit, faceted board at 30 frames a second without thousands of SVG nodes. The budget leaves room for the living-state layer still to come, and the guard still fails a build that grows past it.
+- **Source / provenance:** measured (`npm run build -w site`, check-build.mjs)
+- **Owner change:**
+
 ## D-105 The world layout is display geometry at real setbacks
 - **Decision:** The 1,600 × 1,000 m board (D-100) is laid out in metres in `site/src/scene/layout.ts`, with the moving paths in `paths.ts`. The pit sits west of centre, with a 540 × 420 m crest, five 12 m benches (5 m batter, 11 m berm) and a 25 m ramp that spirals down at a constant 11 % (z falls in proportion to ground run, so no stretch is steeper than any other). Its inset from the crest grows with its depth, so it follows the overall wall slope and never dips below the benches. East of it are the ROM pad and crusher, then the overland conveyor on a gallery over the creek to the stockyard. The balloon loop (radius 210 m) is to the south-east, the workshop and fuel farm to the north-east, and the camp to the east. The explosives magazine is in the far corner, more than 800 m from the workshop, fuel farm and camp. Haul roads are 26 m wide, and trucks keep ±4.6 m either side of the centreline (lanes 9.2 m apart). A haul spur runs from the ROM road's junction near the ramp head, round the pit's east side, to the waste dump. Every road edge stays at least 20 m back from the crest, except on the last 100 m into the ramp head. The light-vehicle road (10 m) runs from the camp past the admin block to the workshop hardstand, where it meets the haul network at one crossing, and continues as the magazine track (7 m), so every road is connected. Deliveries, explosives included, enter on the site road from the north edge, which joins at the workshop end where the magazine track starts, so the explosives route never passes the camp. Tests pin each invariant. These values only drive the drawing; nothing in the layout feeds the engine.
 - **Reasoning:** DESIGN.md Mining Accuracy says the art must hold up to a recruiter who knows mining, and D-100 grew the board so real setbacks fit. The values are assumed, chosen to be credible rather than to match a particular mine. The mock's compressed placements are not inherited. The ramp's sweep is solved from the grade rather than drawn by eye, and every ramp segment is tested at 11 ± 2 %, so the 11 % holds along the whole ramp, not just on average.
 - **Source / provenance:** assumed
+- **Owner change:**
+
+## D-106 Without WebGL the schematic stands in, with a note
+- **Decision:** The site draws the diorama only where the browser can create a WebGL context (checked once with a throwaway context, then released). Elsewhere, and if the renderer fails to start, it shows the schematic, which meets the same scene contract, with the note "Simplified view: this browser can't draw the 3D model." The welcome page's decorative scene shows no note.
+- **Reasoning:** The scene must never break or go blank. The schematic already carries every state the diorama does (flags, hatched ground, cables, the plate), so a visitor without WebGL loses the model's look, not its content, and the note says why the page looks different.
+- **Source / provenance:** modelling rule (site, `SceneView.tsx`, `scene/webgl.ts`)
+- **Owner change:**
+
+## D-107 The engine's YAML loader is a separate entry point
+- **Decision:** `loadRegisterYaml` moved from `@faillocal/engine` to `@faillocal/engine/yaml`, behind the engine package's `exports` map. The site imports the register as JSON compiled at build time, so its bundle carries no YAML parser; the build guard fails any bundle that does. (Made in Plan 2b Task 2, commit 93787ca.)
+- **Reasoning:** The YAML parser was about a fifth of the site's JavaScript and parsed one file that never changes at runtime. Moving it behind its own entry point keeps the CLI and tests reading YAML while the browser never downloads the parser.
+- **Source / provenance:** measured (site build: 153.5 KB to 123.2 KB gzipped)
 - **Owner change:**

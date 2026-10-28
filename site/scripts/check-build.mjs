@@ -9,8 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { parse } from 'yaml';
 
-/** Gzipped JS budget in bytes (300 KB, decimal, as Vite reports sizes). Plan 2b raises it for PixiJS. */
-export const JS_BUDGET_BYTES = 300_000;
+/** Gzipped JS budget in bytes (450 KB, decimal, as Vite reports sizes): raised from 300 KB for PixiJS (D-104). */
+export const JS_BUDGET_BYTES = 450_000;
 
 /**
  * URLs allowed besides the register's sources. None is ever requested; each is a string
@@ -34,6 +34,8 @@ export const EXTRA_ALLOWED_URLS = [
   'http://json-schema.org/draft-07/schema#',
   // zod 4 JSON Schema dialect identifier, never fetched.
   'http://json-schema.org/draft-04/schema#',
+  // PixiJS's console banner (`sayHello`), which the diorama turns off (`hello: false`); never fetched.
+  'http://www.pixijs.com/',
 ];
 
 /**

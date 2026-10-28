@@ -8,7 +8,8 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
   reporter: 'list',
-  use: { baseURL: `http://localhost:${PORT}` },
+  // Headless Chromium draws WebGL in software through SwiftShader, so the diorama renders under test.
+  use: { baseURL: `http://localhost:${PORT}`, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'laptop-small', use: { ...devices['Desktop Chrome'], viewport: { width: 1150, height: 800 } } },

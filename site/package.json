@@ -20,6 +20,7 @@
   "dependencies": {
     "@faillocal/engine": "*",
     "@fontsource-variable/archivo": "^5.3.0",
+    "pixi.js": "^8.22.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

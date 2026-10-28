@@ -6,8 +6,15 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { register } from '../src/model/register.js';
 import { sceneState } from '../src/model/sceneState.js';
 import { SERVICE_GROUPS } from '../src/model/serviceGroups.js';
+import { DioramaScene } from '../src/ui/scene/DioramaScene.js';
 import { SchematicScene } from '../src/ui/scene/SchematicScene.js';
 import type { SceneViewProps } from '../src/ui/SceneView.js';
+
+// The diorama's PixiJS side is mocked at the module boundary: jsdom has no WebGL, and the contract
+// is the accessible DOM layer, not the canvas.
+vi.mock('../src/scene/pixi/app.js', () => ({
+  createDiorama: vi.fn(async () => ({ setState() {}, setCamera() {}, fit() {}, destroy() {} })),
+}));
 
 afterEach(cleanup);
 
@@ -18,11 +25,19 @@ const at = (timeline: typeof s1, hour: number) => sceneState(register, timeline.
 const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' } as const;
 
 /** Every scene implementation renders this accessible DOM layer (scene contract v2). */
-describe.each<[string, ComponentType<SceneViewProps>]>([['SchematicScene', SchematicScene]])('%s meets the scene contract', (_, Scene) => {
+/** `nativeButtons`: the area buttons are native `<button>`s (HTML layers); an SVG layer uses `role="button"` (ruling R-k). */
+describe.each<[string, ComponentType<SceneViewProps>, { nativeButtons: boolean }]>([
+  ['SchematicScene', SchematicScene, { nativeButtons: false }],
+  ['DioramaScene', DioramaScene, { nativeButtons: true }],
+])('%s meets the scene contract', (_, Scene, { nativeButtons }) => {
+  /** The area buttons: everything named "<label>: <State word>…" (a scene may add its own controls, such as Fit). */
+  const areaButtons = () => screen.getAllByRole('button', { name: /: (Normal|Degraded|Stopped)/ });
+
   test('one button per process area, labelled with its state word and pressed when selected', () => {
     const scene = at(s1, 300);
     render(<Scene scene={scene} selected="haulage" onSelect={() => {}} reducedMotion={false} />);
-    expect(screen.getAllByRole('button')).toHaveLength(register.processes.length);
+    expect(areaButtons()).toHaveLength(register.processes.length);
+    for (const b of areaButtons()) expect(b.tagName === 'BUTTON').toBe(nativeButtons);
     for (const p of register.processes) {
       const area = scene.processes[p.id]!;
       const button = screen.getByRole('button', { name: new RegExp(`^${p.name}: ${STATE_WORD[area.state]}`) });

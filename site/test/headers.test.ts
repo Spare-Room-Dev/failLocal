@@ -120,7 +120,7 @@ describe('check-build', () => {
     const size = gzippedJsBytes(dist);
     expect(checkJsBudget(dist, size)).toEqual([]);
     expect(checkJsBudget(dist, size - 1)).toEqual([`gzipped JS is ${size} bytes, over the ${size - 1} byte budget`]);
-    expect(JS_BUDGET_BYTES).toBe(300_000);
+    expect(JS_BUDGET_BYTES).toBe(450_000); // D-104
   });
 
   // The signature is the string literal 'YAMLParseError', which the yaml package passes to its error

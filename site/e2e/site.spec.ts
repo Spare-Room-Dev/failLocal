@@ -164,6 +164,8 @@ test('desktop frame', async ({ page }, info) => {
   expect(legend.y + legend.height).toBeLessThanOrEqual(stage.y + stage.height);
   expect(intersects(legend, await box('.scene-plinth'))).toBe(false);
   await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
+  await expect(page.locator('.scene-plinth')).toBeVisible();
+  await expect(page.locator('.scene-plinth')).toHaveText('FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA');
 
   // A cut card is taller; it still never crosses the stage top.
   const cuts = page.locator('.service-card').getByRole('button', { name: /^Cut / });
