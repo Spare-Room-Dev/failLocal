@@ -42,7 +42,7 @@ function statusLine(timeline: Timeline | null, service: string, state: ServiceSt
   if (start.from) return `Down via ${groupName(start.from)}`;
   return (
     <>
-      Cut since day <span data-clock>{Math.floor(start.hour / 24)}</span>
+      Cut since <span className="service-row-day">day <span data-clock>{Math.floor(start.hour / 24)}</span></span>
     </>
   );
 }

@@ -3,6 +3,7 @@ dist/
 .superpowers/
 .DS_Store
 .impeccable/mocks/decision/
+.impeccable/review/
 .impeccable/questions/
 out/
 site/test-results/

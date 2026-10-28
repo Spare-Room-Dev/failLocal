@@ -49,7 +49,7 @@ export function StockMeters() {
               aria-valuemax={capacity}
               aria-valuenow={level}
             >
-              <div className="stock-fill" style={{ width: `${fill * 100}%` }} />
+              <div className="stock-fill" style={{ transform: `scaleX(${fill})` }} />
             </div>
             <span className="stock-value">
               <Qty value={level} kind="days" computed />

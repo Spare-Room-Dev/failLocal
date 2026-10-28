@@ -129,7 +129,7 @@ describe('ServiceCard', () => {
     const restore = within(cloud).getByRole('button', { name: /Restore/ });
     expect(restore.getAttribute('aria-pressed')).toBe('true');
     expect(cloud.getAttribute('data-cut')).toBe('true');
-    expect(within(cloud).getByText(/Cut since day/).textContent).toBe('Cut since day 2');
+    expect(within(cloud).getByText(/Cut since/).textContent).toBe('Cut since day 2');
     expect(within(cloud).getByText('2').closest('[data-clock]')).toBeTruthy();
 
     fireEvent.click(restore);
@@ -146,7 +146,7 @@ describe('ServiceCard', () => {
     for (const b of buttons) expect((b as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(card('iroc-link')).getByRole('button'));
     expect(appStore.get().spec).toEqual({ kind: 'register', scenarioId: 's1-projection' });
-    expect(within(card('hosted-erp')).getByText(/Cut since day/).textContent).toBe('Cut since day 0');
+    expect(within(card('hosted-erp')).getByText(/Cut since/).textContent).toBe('Cut since day 0');
   });
 
   test("a guided card reads the scenario's own cut as pressed, still disabled", () => {
@@ -169,7 +169,7 @@ describe('ServiceCard', () => {
   test('an inherited outage names its cause, and each vendor row keeps its own status', () => {
     actions.setScenario('s4-precautionary-isolation');
     const { container } = render(<>{cards()}</>);
-    expect(within(card('corporate-network')).getByText(/Cut since day/).textContent).toBe('Cut since day 0');
+    expect(within(card('corporate-network')).getByText(/Cut since/).textContent).toBe('Cut since day 0');
     for (const id of ['hosted-erp', 'cloud-identity', 'iroc-link'])
       expect(within(card(id)).getByText('Down via Corporate network')).toBeTruthy();
     expect(untaggedNumbers(container)).toEqual([]);

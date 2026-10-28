@@ -182,6 +182,11 @@
   height: 12px;
 }
 
+/* "day N" never breaks between the word and its number. */
+.service-row-day {
+  white-space: nowrap;
+}
+
 .service-row-status > .service-glyph {
   margin-right: 4px;
   vertical-align: -2px;
