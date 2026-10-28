@@ -57,64 +57,80 @@ describe('RevenueSection', () => {
   });
 });
 
-describe('the stockpile outlook (B1)', () => {
+describe('the stockpile outlook (B1, C1, C2: ruling R-z)', () => {
   const stock = shippingStock(register);
   const shipping = register.production.shippingProcess;
-  /** The first hour of the run on screen for which `when` holds. */
-  const firstHour = (when: (s: { stocks: Record<string, number>; processes: Record<string, string> }) => boolean) => {
-    const sample = appStore.get().lastGood!.samples.find(when);
-    if (!sample) throw new Error('no such hour');
-    return sample.hour;
-  };
+  const run = () => appStore.get().lastGood!;
+  const level = (hour: number) => run().samples[hour]!.stocks[stock.id]!;
   const stateLine = () => document.querySelector('[data-outlook="stockpile"]');
   const rateLine = () => document.querySelector('[data-outlook="rate"]');
+  const at = (hour: number) => {
+    act(() => actions.setClock({ hour }));
+    return render(<DetailPanel />);
+  };
+  const { annualTonnes, price, degradedOutput } = register.production;
+  const daily = (annualTonnes.value * 1e6 * price.value) / 365;
 
   test('the stockpile is the stock rail draws on', () => {
     expect(stock.id).toBe('ore-stockpile');
   });
 
-  test('while the stockpile is drawn on and rail is normal: days left and the rate, both computed', () => {
+  test('s1 projection, day 13: days before loadings are cut back, and both daily rates, all computed', () => {
     actions.setScenario('s1-projection');
-    const hour = firstHour((s) => s.stocks[stock.id]! < stock.capacity.value && s.stocks[stock.id]! > 0 && s.processes[shipping] === 'normal');
-    act(() => actions.setClock({ hour }));
-    render(<DetailPanel />);
-    const days = appStore.get().lastGood!.samples[hour]!.stocks[stock.id]!;
-    expect(stateLine()!.textContent).toBe(`Stockpile still feeding rail: ${formatQty(days, 'days')}computed left`);
-    const perDay = (register.production.annualTonnes.value * 1e6 * register.production.price.value) / 365;
-    expect(revenueAtRiskPerDay(appStore.get().lastGood!)).toBeCloseTo(perDay);
-    expect(rateLine()!.textContent).toMatch(new RegExp(`^Revenue at risk once the stockpile runs dry: ≈ ${formatQty(perDay, 'usd').replace(/[$.]/g, '\\$&')}computed per day`));
-    expect(qtyTags(rateLine() as HTMLElement, formatQty(perDay, 'usd'))).toEqual(['computed']);
-    expect(qtyTags(rateLine() as HTMLElement, formatQty(register.production.annualTonnes.value, 'mtpa'))).toEqual(['assumed']);
-    expect(qtyTags(rateLine() as HTMLElement, formatQty(register.production.price.value, 'usdPerT'))).toEqual(['sourced']);
-    expect(untaggedNumbers(screen.getByRole('region', { name: 'Production and revenue' }))).toEqual([]);
+    const hour = 13 * 24;
+    expect(level(hour + 1)).toBeLessThan(level(hour));
+    expect(run().samples[hour]!.processes[shipping]).toBe('normal');
+    at(hour);
+    const left = level(hour) - stock.lowThreshold.value;
+    expect(stateLine()!.textContent).toBe(`Stockpile feeding rail: ${formatQty(left, 'days')}computed before loadings are cut back`);
+    const half = daily * (1 - degradedOutput.value);
+    expect(rateLine()!.textContent).toBe(
+      `Revenue at risk once loadings are cut back ≈ ${formatQty(half, 'usd')}computed per day, ${formatQty(daily, 'usd')}computed once the stockpile is empty`,
+    );
+    expect(revenueAtRiskPerDay(run()).cutBack).toBeCloseTo(half);
+    expect(revenueAtRiskPerDay(run()).empty).toBeCloseTo(daily);
+    // One input chain (D1): tonnes and price appear once, in the working, which also tags the low mark.
+    const panel = screen.getByRole('region', { name: 'Production and revenue' });
+    expect([...panel.querySelectorAll('[data-quantity]')].filter((q) => q.textContent!.startsWith(formatQty(annualTonnes.value, 'mtpa')))).toHaveLength(1);
+    expect(qtyTags(working(), formatQty(stock.lowThreshold.value, 'days'))).toEqual(['assumed']);
+    expect(untaggedNumbers(panel)).toEqual([]);
   });
 
-  test('hidden while the stockpile is full (nothing draws on it yet)', () => {
-    actions.setScenario('s1-projection');
-    render(<DetailPanel />);
-    expect(appStore.get().lastGood!.samples[0]!.stocks[stock.id]).toBe(stock.capacity.value);
+  test('hidden while the stockpile refills (s2, s3): it is not covering for anything', () => {
+    for (const scenario of ['s2-iroc-lost', 's3-vendor-setpoint']) {
+      cleanup();
+      actions.setScenario(scenario);
+      const samples = run().samples;
+      const refill = samples.findIndex((s, h) => h + 1 < samples.length && level(h + 1) > level(h) && s.processes[shipping] === 'normal');
+      expect(refill, scenario).toBeGreaterThanOrEqual(0);
+      at(refill);
+      expect(stateLine(), scenario).toBeNull();
+      expect(rateLine(), scenario).toBeNull();
+    }
+  });
+
+  test('hidden while the stockpile is full and steady', () => {
+    actions.setScenario('s1-as-reported');
+    at(0);
+    expect(level(0)).toBe(stock.capacity.value);
     expect(stateLine()).toBeNull();
     expect(rateLine()).toBeNull();
   });
 
   test('hidden once rail is degraded or stopped', () => {
     actions.setScenario('s1-projection');
-    const hour = firstHour((s) => s.processes[shipping] !== 'normal');
-    act(() => actions.setClock({ hour }));
-    render(<DetailPanel />);
+    at(run().samples.find((s) => s.processes[shipping] !== 'normal')!.hour);
     expect(stateLine()).toBeNull();
     expect(rateLine()).toBeNull();
   });
 
-  test('the rate follows an overridden price, still computed', () => {
+  test('the rates follow an overridden price, still computed', () => {
     actions.setScenario('s1-projection');
     act(() => actions.setOverride('production.price', 120));
-    const hour = firstHour((s) => s.stocks[stock.id]! < stock.capacity.value && s.stocks[stock.id]! > 0 && s.processes[shipping] === 'normal');
-    act(() => actions.setClock({ hour }));
-    render(<DetailPanel />);
-    const perDay = (register.production.annualTonnes.value * 1e6 * 120) / 365;
-    expect(qtyTags(rateLine() as HTMLElement, formatQty(perDay, 'usd'))).toEqual(['computed']);
-    expect(qtyTags(rateLine() as HTMLElement, formatQty(120, 'usdPerT'))).toEqual(['changed by you']);
+    at(13 * 24);
+    const full = (annualTonnes.value * 1e6 * 120) / 365;
+    expect(qtyTags(rateLine() as HTMLElement, formatQty(full, 'usd'))).toEqual(['computed']);
+    expect(qtyTags(working(), formatQty(120, 'usdPerT'))).toEqual(['changed by you']);
   });
 });
 

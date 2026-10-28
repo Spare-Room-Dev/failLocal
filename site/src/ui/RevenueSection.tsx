@@ -1,6 +1,6 @@
 import type { Register, Sample, Timeline, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
-import { revenueAtRiskPerDay, stockpileDaysLeft } from '../model/revenueOutlook.js';
+import { revenueAtRiskPerDay, shippingStock, stockpileDaysLeft } from '../model/revenueOutlook.js';
 import { usedTag } from '../model/tags.js';
 import { Qty } from './Qty.js';
 
@@ -28,6 +28,8 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
   if (!shipping) throw new Error(`register has no shipping process ${register.production.shippingProcess}`);
   const shippingName = shipping.name.toLowerCase();
   const daysLeft = stockpileDaysLeft(register, timeline, sample);
+  const rates = daysLeft === null ? null : revenueAtRiskPerDay(timeline);
+  const stock = shippingStock(register);
 
   return (
     <section className="revenue" aria-label="Production and revenue">
@@ -37,7 +39,7 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
       </div>
       {daysLeft !== null && (
         <p className="revenue-state" data-outlook="stockpile">
-          Stockpile still feeding rail: <Qty value={daysLeft} kind="days" computed /> left
+          Stockpile feeding rail: <Qty value={daysLeft} kind="days" computed /> before loadings are cut back
         </p>
       )}
       <hr className="panel-rule" />
@@ -45,13 +47,10 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
       <p className="figure">
         <Qty value={sample.revenueAtRisk} kind="usd" computed />
       </p>
-      {daysLeft !== null && (
+      {rates && (
         <p className="revenue-rate" data-outlook="rate">
-          Revenue at risk once the stockpile runs dry: ≈ <Qty value={revenueAtRiskPerDay(timeline)} kind="usd" computed /> per day
-          <span className="revenue-rate-working">
-            <Input timeline={timeline} path="production.annualTonnes" kind="mtpa" sources={sources} /> ×{' '}
-            <Input timeline={timeline} path="production.price" kind="usdPerT" sources={sources} />, spread over the days of a year.
-          </span>
+          Revenue at risk once loadings are cut back ≈ <Qty value={rates.cutBack} kind="usd" computed /> per day,{' '}
+          <Qty value={rates.empty} kind="usd" computed /> once the stockpile is empty
         </p>
       )}
       <div className="revenue-working" role="group" aria-label="How revenue at risk is worked out">
@@ -64,6 +63,12 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
           Shipping falls to <Input timeline={timeline} path="production.degradedOutput" kind="fraction" sources={sources} /> when{' '}
           {shippingName} is degraded, and stops when it is stopped.
         </p>
+        {rates && (
+          <p data-outlook="working">
+            A day&rsquo;s shipping is a day&rsquo;s share of that year. Loadings are cut back below{' '}
+            <Input timeline={timeline} path={`stocks.${stock.id}.lowThreshold`} kind="days" sources={sources} /> of stockpile.
+          </p>
+        )}
         <p className="revenue-note">Revenue at risk, not written off: shipments can recover once the stockpile refills.</p>
       </div>
     </section>

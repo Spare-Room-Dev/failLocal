@@ -83,14 +83,6 @@
   font-weight: 650;
 }
 
-.revenue-rate-working {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--ink-2);
-}
-
 .figure {
   margin: 0;
   font-size: 24px;
