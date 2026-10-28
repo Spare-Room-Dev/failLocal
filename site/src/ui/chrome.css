@@ -191,7 +191,7 @@
 
 .service-card-status {
   display: flex;
-  flex: 1 1 56px;
+  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
 }

@@ -77,7 +77,7 @@ export function dayHour(hour: number): string {
 export type Lane = 'above' | 'below' | null;
 
 /** The minimum clear space between two labels in one lane, in px. */
-const LABEL_GAP = 10;
+const LABEL_GAP = 8;
 
 /**
  * Lanes for the timeline's labels, so none overlaps another (finish B2). `items` are in axis order: each

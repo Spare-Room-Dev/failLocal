@@ -179,7 +179,8 @@ test('hairline labels never overlap', async ({ page }, info) => {
     }
     // Wider, every event that fits is labelled, in a lane above or below the axis, with its tag word (finish B2).
     const laned = await page.locator('.timeline-event[data-lane]').count();
-    expect(laned, `day ${day}: labelled events`).toBeGreaterThanOrEqual(Math.min(4, await page.locator('.timeline-event').count()));
+    // Three events share day 3's hairline, so at most two of those can have a lane; the axis fits at least three labels.
+    expect(laned, `day ${day}: labelled events`).toBeGreaterThanOrEqual(Math.min(3, await page.locator('.timeline-event').count()));
     expect(labels.length, `day ${day}`).toBeGreaterThanOrEqual(laned);
     for (const [i, a] of labels.entries()) {
       expect(a.x, `day ${day}: label inside the axis`).toBeGreaterThanOrEqual(axis.x - 1);
@@ -200,12 +201,17 @@ test('hairline labels never overlap', async ({ page }, info) => {
     for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
   } else {
     // A label with no lane still shows on hover, on paper.
+    // (Events at one hour share a spot; use the first lane-less hairline the pointer actually lands on.)
     const loose = page.locator('.timeline-event:not([data-lane])');
-    if (await loose.count()) {
-      await loose.first().hover({ force: true });
-      await expect(loose.first().locator('.timeline-event-label')).toHaveCSS('visibility', 'visible');
-      await page.mouse.move(0, 0);
+    let checked = false;
+    for (let i = 0; i < (await loose.count()) && !checked; i++) {
+      await loose.nth(i).hover({ force: true, position: { x: 5, y: 1 } });
+      if (!(await loose.nth(i).evaluate((e) => e.matches(':hover') && document.querySelectorAll('.timeline-event:hover').length === 1))) continue;
+      await expect(loose.nth(i).locator('.timeline-event-label')).toHaveCSS('visibility', 'visible');
+      checked = true;
     }
+    if (await loose.count()) expect(checked, 'a lane-less label shows on hover').toBe(true);
+    await page.mouse.move(0, 0);
   }
   // Every event is still listed, with its hour.
   const list = page.getByRole('region', { name: 'Events' }).filter({ visible: true });
