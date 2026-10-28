@@ -129,9 +129,9 @@
 }
 
 /*
- * The honesty plate as DOM text, set like the engraved plate on the plinth. DioramaScene hangs it from the
- * board's front plinth face (inline left and top); while that face is out of view it is pinned here, to the
- * bottom of the stage, so it is always visible.
+ * The honesty plate as DOM text, set like the engraved plate on the plinth. The renderer places it (inline
+ * left and top): hung from the board's front plinth face, or, while that face is out of view, pinned to the
+ * bottom of the stage at these insets (plate.ts PLATE_PINNED), where it also sits before the first frame.
  */
 .scene.scene--diorama .scene-plinth {
   position: absolute;
@@ -149,11 +149,6 @@
   letter-spacing: 0.12em;
   line-height: 1.3;
   pointer-events: none;
-}
-
-.scene.scene--diorama .scene-plinth[data-placement='face'] {
-  right: auto;
-  bottom: auto;
 }
 
 .scene-fit {

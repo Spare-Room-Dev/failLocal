@@ -50,8 +50,13 @@ export function plaqueOver(foot: Pt, w: number, len: number, side: 1 | -1): Box 
   return { x: side > 0 ? foot.x - POLE_GAP : foot.x + POLE_GAP - w, y, w, h: PLAQUE_H };
 }
 
-/** A flag's pole and cloth (the cloth flies up to 12 px either side of the pole's top). */
-const flagBox = (foot: Pt, len: number): Box => ({ x: foot.x - 14, y: foot.y - len - 1, w: 28, h: len + 3 });
+/** How far down from the top of its pole a flag's cloth reaches, px (overlay.ts draws it 8.5 px deep). */
+export const CLOTH_DEPTH = 11;
+
+/** A flag's pole and cloth: the cloth flies up to 12 px either side of the pole's top. `len` 0 gives the cloth alone. */
+export function flagBox(foot: Pt, len: number): Box {
+  return { x: foot.x - 14, y: foot.y - len - 1, w: 28, h: Math.max(len, CLOTH_DEPTH) + 3 };
+}
 
 const hits = (a: Box, b: Box, gap = 0) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
 

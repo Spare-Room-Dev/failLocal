@@ -367,8 +367,62 @@ test('cards sit on their cables, and every post and plaque is in frame without c
         });
       }, rects as unknown as [string, Rect][]);
     await expect.poll(uncovered).toEqual([]);
+    // No plaque covers the honesty plate or the Fit button.
+    await expect.poll(() => plaquesOver(page, ['.scene-plinth', '.scene-fit'])).toEqual([]);
   }
   await page.screenshot({ path: info.outputPath(`plaques-${page.viewportSize()!.width}.png`) });
+});
+
+/** Plaques (from the probe) that overlap any of the scene's DOM elements matching `selectors`, as "plaque/selector". */
+function plaquesOver(page: Page, selectors: string[]): Promise<string[]> {
+  return page.evaluate((sels) => {
+    const host = document.querySelector('.scene--diorama')!.getBoundingClientRect();
+    const plaques = window.__faillocal!.diorama!.plaques();
+    return sels.flatMap((sel) => {
+      const e = document.querySelector(sel)!.getBoundingClientRect();
+      const box = { x: e.left - host.left, y: e.top - host.top, w: e.width, h: e.height };
+      return Object.entries(plaques).flatMap(([id, p]) => {
+        const r = p.rect;
+        if (!r) return [];
+        const hit = r.x < box.x + box.w && box.x < r.x + r.w && r.y < box.y + box.h && box.y < r.y + r.h;
+        return hit ? [`${id}/${sel}`] : [];
+      });
+    });
+  }, selectors);
+}
+
+test('zoomed out, the plate hangs on the plinth face and no plaque covers it', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'one viewport is enough for the zoomed-out plate');
+  await openStill(page);
+  await page.locator('.scene--diorama').focus();
+  for (let i = 0; i < 8; i++) await page.keyboard.press('-');
+  const plate = page.locator('.scene-plinth');
+  await expect(plate).toHaveAttribute('data-placement', 'face');
+  await expect(plate).toContainText('SYNTHETIC DATA');
+  const scene = (await page.locator('.scene--diorama').boundingBox())!;
+  const b = (await plate.boundingBox())!;
+  expect(b.x).toBeGreaterThanOrEqual(scene.x);
+  expect(b.y + b.height).toBeLessThanOrEqual(scene.y + scene.height);
+  await expect.poll(() => plaquesOver(page, ['.scene-plinth', '.scene-fit'])).toEqual([]);
+});
+
+test('a focused area button never goes out of sight when the camera moves', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'wheel zoom on the laptop frame');
+  test.setTimeout(45_000);
+  await openStill(page);
+  const remote = page.getByRole('button', { name: /^Remote operations from Perth: / });
+  await remote.focus();
+  // Zoom in about the far left of the scene, which carries the area (at the right) out of frame.
+  const scene = (await page.locator('.scene--diorama').boundingBox())!;
+  await page.mouse.move(scene.x + 40, scene.y + scene.height / 2);
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -300);
+  await expect(remote).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.__faillocal!.diorama!.plaques()['remote-operations']!.inFrame)).toBe(true);
+  await expect(remote).not.toHaveClass(/scene-hit--away/);
+  await expect.poll(async () => {
+    const b = (await remote.boundingBox())!;
+    return b.width > 20 && b.x >= scene.x && b.x + b.width <= scene.x + scene.width + 0.5;
+  }).toBe(true);
 });
 
 test('the honesty plate stays visible at maximum zoom', async ({ page }, info) => {

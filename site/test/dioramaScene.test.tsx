@@ -81,7 +81,7 @@ function layout(): SceneLayout {
   plaques.haulage = { foot: { x: 400, y: 300 }, flagTop: { x: 400, y: 260 }, rect: { x: 413, y: 255, w: 150, h: 31 }, inFrame: true };
   plaques.crushing = { foot: { x: 700, y: 350 }, flagTop: { x: 700, y: 324 }, rect: null, inFrame: true };
   plaques.rail = { foot: { x: 1300, y: 900 }, flagTop: { x: 1300, y: 874 }, rect: null, inFrame: false };
-  return { cam: fitCamera(BOARD, view, LAYOUT.defaultFocus), view, plaques };
+  return { cam: fitCamera(BOARD, view, LAYOUT.defaultFocus), view, plaques, plate: { x: 40, y: 500, w: 420, h: 22, onFace: true } };
 }
 
 async function mounted() {
@@ -124,4 +124,34 @@ test('the decorative scene asks for the hero framing; the site for its own', asy
   await waitFor(() => expect(pixi.options).not.toBeNull());
   expect(pixi.options!.framing).toBe('hero');
   expect(pixi.options!.interactive).toBe(false);
+});
+
+test('the plate goes where the renderer placed it, under the same camera as the plaques', async () => {
+  const { container } = await mounted();
+  const plate = container.querySelector<HTMLElement>('.scene-plinth')!;
+  expect(plate.dataset.placement).toBe('face');
+  expect(plate.style.left).toBe('40px');
+  expect(plate.style.top).toBe('500px');
+  const pinned = { ...layout(), plate: { x: 570, y: 560, w: 420, h: 22, onFace: false } };
+  act(() => pixi.onLayout!(pinned));
+  expect(plate.dataset.placement).toBe('pinned');
+  expect(plate.style.left).toBe('570px');
+});
+
+test('a focused area button whose area leaves the frame stays where it was, visible, and the camera brings the area back', async () => {
+  const { button } = await mounted();
+  const before = { left: button('haulage').style.left, width: button('haulage').style.width };
+  act(() => button('haulage').focus());
+  expect(pixi.reveal).not.toHaveBeenCalled();
+  const away = layout();
+  away.plaques.haulage = { ...away.plaques.haulage!, rect: null, inFrame: false };
+  act(() => pixi.onLayout!(away));
+  expect(pixi.reveal).toHaveBeenCalledWith('haulage');
+  expect(button('haulage').classList.contains('scene-hit--away')).toBe(false);
+  expect(button('haulage').style.left).toBe(before.left);
+  expect(button('haulage').style.width).toBe(before.width);
+  // Without focus, an area out of frame is hidden.
+  act(() => button('haulage').blur());
+  act(() => pixi.onLayout!({ ...away }));
+  expect(button('haulage').classList.contains('scene-hit--away')).toBe(true);
 });

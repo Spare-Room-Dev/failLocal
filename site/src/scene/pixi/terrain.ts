@@ -2,8 +2,6 @@ import type { Graphics } from 'pixi.js';
 import { brightness, mix, shade } from '../iso.js';
 import type { Vec3 } from '../iso.js';
 import { BOARD, crestValue, distToPolyline, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../layout.js';
-
-export { PLINTH_DEPTH, SLAB_DEPTH };
 import { token } from '../palette.js';
 import { B_TOP, ball, chaikin, DepthQueue, fill, line, offsetLine, rng, vnoise } from './draw.js';
 import type { Pt } from './draw.js';

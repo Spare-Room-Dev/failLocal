@@ -1,11 +1,11 @@
 import { AlphaFilter, BlurFilter, Container, Graphics, Text } from 'pixi.js';
 import { mix } from '../iso.js';
-import { BOARD } from '../layout.js';
+import { BOARD, PLINTH_DEPTH, SLAB_DEPTH } from '../layout.js';
 import { token } from '../palette.js';
 import { DepthQueue, fill, P } from './draw.js';
 import { buildPit } from './pit.js';
 import { drawPads, drawRoads, MAIN_LINE, queueFixtures, queueSpinifex, queueStructures, Shadows } from './plant.js';
-import { drawCreek, drawGround, drawLip, drawPlinthShadow, drawRidge, drawSlab, plantGums, PLINTH_DEPTH, SLAB_DEPTH } from './terrain.js';
+import { drawCreek, drawGround, drawLip, drawPlinthShadow, drawRidge, drawSlab, plantGums } from './terrain.js';
 
 /**
  * The diorama's static world, built once at k = 1 into containers (the world container applies the

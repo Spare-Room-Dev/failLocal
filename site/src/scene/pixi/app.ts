@@ -19,6 +19,8 @@ import { buildDynamic } from './dynamic.js';
 import type { Dynamic } from './dynamic.js';
 import { buildOverlay } from './overlay.js';
 import type { FlagLayout, Overlay } from './overlay.js';
+import { placePlate } from '../plate.js';
+import type { PlatePlacement } from '../plate.js';
 import { Snapshot } from './snapshot.js';
 import { buildStatic } from './static.js';
 import type { StaticWorld } from './static.js';
@@ -44,6 +46,8 @@ export interface SceneLayout {
   view: Size;
   /** Keyed by process area id. */
   plaques: Record<string, FlagLayout>;
+  /** The honesty plate's box, placed under the same camera the plaques kept clear of. */
+  plate: PlatePlacement;
 }
 
 export interface DioramaOptions {
@@ -73,18 +77,10 @@ type Size = { w: number; h: number };
 /** The DOM events the diorama listens for, including the canvas's WebGL context events. */
 type Events = HTMLElementEventMap & { webglcontextlost: WebGLContextEvent; webglcontextrestored: WebGLContextEvent };
 
-/** Where the host's DOM children matching `selector` sit (the honesty plate), in stage pixels, padded by 4 px. */
-function domBoxes(host: HTMLElement, selector: string): { x: number; y: number; w: number; h: number }[] {
-  const origin = host.getBoundingClientRect();
-  return [...host.querySelectorAll(selector)].flatMap((el) => {
-    const r = el.getBoundingClientRect();
-    return r.width ? [{ x: r.left - origin.left - 4, y: r.top - origin.top - 4, w: r.width + 8, h: r.height + 8 }] : [];
-  });
-}
-
 /**
  * Mounts the diorama in `host`. `onLayout` hears where the camera, flags and plaques are after each frame that
- * moved them (at most once per drawn frame, so a drag does not re-render the DOM layer per pointer event).: one PixiJS application on WebGL only (no WebGPU or Canvas2D fallback;
+ * moved them (at most once per drawn frame, so a drag does not re-render the DOM layer per pointer event).
+ * It runs one PixiJS application on WebGL only (no WebGPU or Canvas2D fallback;
  * where WebGL fails, the caller shows the schematic), the static world, one ticker throttled to 30 ms,
  * and the camera controls. The canvas is the host's first child; `host` takes the wheel and keyboard
  * (+, −, 0), the canvas takes drags and pinches. If anything fails after the renderer has started, the
@@ -185,6 +181,21 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
   // in steps of at most MAX_DT. Nothing renders while the WebGL context is lost.
   let clock = 0;
   let laid: Record<string, FlagLayout> = {};
+  // The plate is DOM text (DioramaScene) but placed here, from the same camera the plaques keep clear of.
+  // Only its size is read from the page, when it changes.
+  let plateSize: Size = { w: 0, h: 0 };
+  const plateAt = (c: Camera, v: Size) => placePlate(c, v, plateSize, phone?.matches ?? false);
+  const plateEl = host.querySelector<HTMLElement>('.scene-plinth');
+  const plateResize = new ResizeObserver(() => {
+    if (!plateEl) return;
+    const next = { w: plateEl.offsetWidth, h: plateEl.offsetHeight };
+    if (next.w === plateSize.w && next.h === plateSize.h) return;
+    plateSize = next;
+    overlay?.relayout();
+    dirty = true;
+  });
+  if (plateEl) plateResize.observe(plateEl);
+  cleanups.push(() => plateResize.disconnect());
   let frames = 0;
   app.ticker.remove(app.render, app);
   app.ticker.maxFPS = 1000 / FRAME_MS;
@@ -198,7 +209,7 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
       const plaques = overlay.frame(anim, scene, cam, current, clock, reduced);
       if (plaques) {
         laid = plaques;
-        onLayout({ cam: { ...cam }, view: { ...current }, plaques });
+        onLayout({ cam: { ...cam }, view: { ...current }, plaques, plate: plateAt(cam, current) });
       }
     }
     app.render();
@@ -348,7 +359,13 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
         overlay = buildOverlay(overlayRoot, {
           labels: options.interactive,
           resolution: window.devicePixelRatio || 1,
-          keepClear: (v) => [{ x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h }, ...domBoxes(host, '.scene-plinth')],
+          keepClear: (c, v) => {
+            const p = plateAt(c, v);
+            return [
+              { x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h },
+              ...(p.w ? [{ x: p.x - 4, y: p.y - 4, w: p.w + 8, h: p.h + 8 }] : []),
+            ];
+          },
         });
       }
       scene = s;

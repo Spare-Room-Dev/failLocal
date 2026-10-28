@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
 import { defaultCamera } from '../../scene/framing.js';
@@ -6,7 +6,7 @@ import { project } from '../../scene/iso.js';
 import { LAYOUT } from '../../scene/layout.js';
 import type { DioramaHandle, SceneLayout } from '../../scene/pixi/app.js';
 import type { FlagLayout } from '../../scene/pixi/overlay.js';
-import { platePosition } from '../../scene/plate.js';
+import { flagBox } from '../../scene/plaques.js';
 import type { SceneViewProps } from '../SceneView.js';
 import { SchematicFallback } from './SchematicFallback.js';
 import '../scene.css';
@@ -22,20 +22,27 @@ const ANCHORS: Record<string, number> = Object.fromEntries(SERVICE_GROUPS.map((g
 /** Used until the renderer reports its first layout (and in jsdom, which measures nothing): the desktop stage's scene box. */
 const NOMINAL = { w: 1068, h: 580 };
 const NOMINAL_CAMERA = defaultCamera('site', NOMINAL, false);
-/** Half the side of an area button over a flag with no plaque, in px. */
-const HIT = 14;
+/** A flag without a plaque stands on a short pole (overlay.ts). */
+const SHORT_POLE = 26;
 
 type Box = { left: number; top: number; width: number; height: number };
 
-/** The button over an area: its plaque and flag, or the flag alone; null when the flag is out of frame. */
+/** The button over an area: its plaque and the flag's cloth, or the whole flag when it has no plaque; null when the flag is out of frame. */
 function hitBox(l: FlagLayout): Box | null {
   if (!l.inFrame) return null;
-  // The flag's cloth flies up to 12 px either side of the top of its pole.
-  const flag = { left: l.flagTop.x - HIT, top: l.flagTop.y - 4, width: 2 * HIT, height: 2 * HIT };
-  if (!l.rect) return flag;
-  const left = Math.min(flag.left, l.rect.x);
-  const top = Math.min(flag.top, l.rect.y);
-  return { left, top, width: Math.max(flag.left + flag.width, l.rect.x + l.rect.w) - left, height: Math.max(flag.top + 12, l.rect.y + l.rect.h) - top };
+  const f = l.rect ? flagBox(l.flagTop, 0) : flagBox(l.foot, l.foot.y - l.flagTop.y);
+  const r = l.rect ?? f;
+  const left = Math.min(f.x, r.x);
+  const top = Math.min(f.y, r.y);
+  return { left, top, width: Math.max(f.x + f.w, r.x + r.w) - left, height: Math.max(f.y + f.h, r.y + r.h) - top };
+}
+
+/** `b` cut to the stage, so a flag at the stage's edge does not push its button (and focus ring) past it. */
+function clip(b: Box | null, view: { w: number; h: number }): Box | null {
+  if (!b) return null;
+  const left = Math.max(0, b.left);
+  const top = Math.max(0, b.top);
+  return { left, top, width: Math.min(view.w, b.left + b.width) - left, height: Math.min(view.h, b.top + b.height) - top };
 }
 
 /**
@@ -50,11 +57,21 @@ function hitBox(l: FlagLayout): Box | null {
  */
 export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorative = false, onAnchors }: SceneViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const plateRef = useRef<HTMLParagraphElement>(null);
   const handle = useRef<DioramaHandle | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [layout, setLayout] = useState<SceneLayout | null>(null);
+  const shown = useRef<Record<string, Box>>({});
+  const focusedArea = () => {
+    const el = document.activeElement;
+    return el instanceof HTMLElement && hostRef.current?.contains(el) ? (el.dataset.area ?? null) : null;
+  };
+
+  // The camera moved (a wheel, drag or pinch) while an area button had focus, and took its area out of frame: bring it back.
+  useLayoutEffect(() => {
+    const id = focusedArea();
+    if (id && layout?.plaques[id]?.inFrame === false) handle.current?.reveal(id);
+  }, [layout]);
   const latest = useRef({ scene, reducedMotion, selected });
   latest.current = { scene, reducedMotion, selected };
 
@@ -114,14 +131,22 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     e.preventDefault();
     onSelect(id);
   };
-  // Before the first layout: each button at its area's projected anchor under the nominal camera.
-  const boxFor = (id: string): Box | null => {
+  // Before the first layout: each button over its flag under the nominal camera.
+  const placeBox = (id: string): Box | null => {
     const l = layout?.plaques[id];
-    if (l) return hitBox(l);
+    if (l && layout) return clip(hitBox(l), layout.view);
     const { sx, sy } = project(LAYOUT.areas[id]!.anchor, NOMINAL_CAMERA);
-    return { left: sx - HIT, top: sy - HIT, width: 2 * HIT, height: 2 * HIT };
+    return hitBox({ foot: { x: sx, y: sy }, flagTop: { x: sx, y: sy - SHORT_POLE }, rect: null, inFrame: true });
   };
-  const plate = layout && plateRef.current?.offsetWidth ? platePosition(layout.cam, layout.view, { w: plateRef.current.offsetWidth, h: plateRef.current.offsetHeight }) : null;
+  // A focused button whose area has just left the frame keeps its last place (and its focus ring) until the
+  // camera brings the area back (the effect below), so focus never lands on something invisible.
+  const boxFor = (id: string): Box | null => {
+    const box = placeBox(id);
+    if (box) shown.current[id] = box;
+    else if (focusedArea() === id) return shown.current[id] ?? null;
+    return box;
+  };
+  const plate = layout?.plate.w ? layout.plate : null;
 
   return (
     <div
@@ -157,7 +182,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
         if (!state) throw new Error(`scene has no cable for ${g.id}`);
         return <span key={g.id} className="scene-cable-drop" data-cable-group={g.id} data-cable-state={state} style={{ left: `${ANCHORS[g.id]! * 100}%` }} aria-hidden="true" />;
       })}
-      <p ref={plateRef} className="scene-plinth" data-placement={plate ? 'face' : 'pinned'} style={plate ? { left: plate.x, top: plate.y } : undefined}>
+      <p className="scene-plinth" data-placement={plate?.onFace ? 'face' : 'pinned'} style={plate ? { left: plate.x, top: plate.y, right: 'auto', bottom: 'auto' } : undefined}>
         {scene.plate.text}
       </p>
       {!decorative && (

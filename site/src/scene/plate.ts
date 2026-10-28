@@ -30,3 +30,24 @@ export function platePosition(cam: Camera, view: Size, size: Size): Pt | null {
   if (corner.sx > view.w - MARGIN || corner.sy < MARGIN || corner.sy + size.h > view.h - MARGIN) return null;
   return { x: corner.sx - size.w, y: corner.sy };
 }
+
+/** Where the plate is pinned while the face is out of view: its bottom-right corner this far in from the stage's (scene.css). */
+export const PLATE_PINNED = { desktop: { right: 12, bottom: 10 }, phone: { right: 8, bottom: 8 } } as const;
+
+export interface PlatePlacement {
+  /** The plate's box, in stage pixels. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Hung from the plinth face (true), or pinned to the bottom of the stage. */
+  onFace: boolean;
+}
+
+/** The plate's box under camera `cam`: on the plinth face where it fits (`platePosition`), otherwise pinned bottom-right. */
+export function placePlate(cam: Camera, view: Size, size: Size, phone: boolean): PlatePlacement {
+  const at = platePosition(cam, view, size);
+  if (at) return { ...at, ...size, onFace: true };
+  const pin = phone ? PLATE_PINNED.phone : PLATE_PINNED.desktop;
+  return { x: view.w - pin.right - size.w, y: view.h - pin.bottom - size.h, ...size, onFace: false };
+}

@@ -22,6 +22,8 @@ import type { Pt } from '../polyline.js';
 export interface Overlay {
   /** The engine state (and the selected area) changed. */
   setScene(scene: SceneState, selected: string | null): void;
+  /** Something the plaques keep clear of changed (the plate's size): lay them out again on the next frame. */
+  relayout(): void;
   /**
    * Draws one frame under camera `cam` in a `view`-sized stage. `clock` (s) drives the cut-link pulse.
    * Returns the flags' layout when it was laid out again (the camera, the stage or the state changed), else null.
@@ -44,8 +46,8 @@ export interface FlagLayout {
 export interface OverlayOptions {
   /** Cables and plaques: off for the decorative welcome scene, which has no cards to cable to. */
   labels: boolean;
-  /** Stage-pixel boxes, for a stage `w` wide, that plaques must keep clear of (the Fit button). */
-  keepClear?(view: { w: number; h: number }): Box[];
+  /** Stage-pixel boxes that plaques must keep clear of under camera `cam` (the Fit button and the honesty plate). */
+  keepClear?(cam: Camera, view: { w: number; h: number }): Box[];
   /** Pixel density for overlay text. */
   resolution: number;
 }
@@ -74,6 +76,9 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
   return {
     setScene(scene, selected) {
       for (const f of flags) f.set(scene, selected, options.labels);
+      placedKey = '';
+    },
+    relayout() {
       placedKey = '';
     },
     frame(a, scene, cam, view, clock, reduced) {
@@ -117,7 +122,7 @@ function layFlags(flags: Plaque[], scene: SceneState, cam: Camera, view: { w: nu
   const order = flags.map((f, i) => ({ f, i, rank: SEVERITY[scene.processes[f.id]!.state] })).sort((a, b) => a.rank - b.rank || a.i - b.i);
   const requests: PlaqueRequest[] = options.labels ? order.map(({ f }) => ({ id: f.id, foot: feet.get(f.id)!, w: f.width, side: POLE_SIDE[f.id] ?? 1 })) : [];
   const soft = routes.flatMap((r) => segmentBoxes(r.points, CABLE_CLEAR));
-  const placed = placePlaques(requests, view, options.keepClear?.(view) ?? [], soft);
+  const placed = placePlaques(requests, view, options.keepClear?.(cam, view) ?? [], soft);
   const out: Record<string, FlagLayout> = {};
   for (const f of flags) {
     const foot = feet.get(f.id)!;
