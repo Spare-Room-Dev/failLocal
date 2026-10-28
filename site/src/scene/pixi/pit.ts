@@ -66,13 +66,16 @@ function benchColours(): string[] {
 }
 
 export interface Pit {
+  /** The pit's rock, ramp and floor: it never changes. */
   root: Container;
   /**
-   * Where vehicles in the pit draw, one per level: level L sits just after the ramp stretch through it,
-   * inside the level above (so the crest above masks it). A vehicle at height z belongs to level
-   * floor(−z / 12), clamped to the bottom level.
+   * Where vehicles in the pit draw, one container per level, drawn after the pit's rock (`actorRoot`).
+   * Level L is masked by every crest from the rim down to crest L − 1, nested as the rock's levels are,
+   * so the near rim hides a vehicle exactly as it hides the benches; deeper levels draw first. A vehicle
+   * at height z belongs to level floor(−z / 12), clamped to the bottom level.
    */
   actors: Container[];
+  actorRoot: Container;
   /** Ground marks on the first berm (the drill pad's hatching), under everything deeper. */
   firstBerm: Container;
 }
@@ -131,11 +134,25 @@ export function buildPit(): Pit {
   for (let i = BENCHES - 2; i >= 0; i--) {
     levels[i]!.addChild(levels[i + 1]!);
     levels[i]!.addChild(ramps[i + 1]!);
-    levels[i]!.addChild(actors[i + 1]!);
   }
   const root = new Container({ label: 'pit' });
-  root.addChild(rimBund(), levels[0]!, ramps[0]!, actors[0]!);
-  return { root, actors, firstBerm };
+  root.addChild(rimBund(), levels[0]!, ramps[0]!);
+
+  // The vehicles' own copy of the crest masks: masked[i] is clipped to crest i (and, nested, every crest above).
+  const masked = Array.from({ length: BENCHES - 1 }, (_, i) => {
+    const level = new Container({ label: `pit-actors-mask-${i}` });
+    const mask = new Graphics().poly(flat(ring(i * STEP, -i * BENCH_H))).fill(0xffffff);
+    level.addChild(mask);
+    level.mask = mask;
+    return level;
+  });
+  for (let i = BENCHES - 2; i >= 0; i--) {
+    if (i + 1 < BENCHES - 1) masked[i]!.addChild(masked[i + 1]!);
+    masked[i]!.addChild(actors[i + 1]!);
+  }
+  const actorRoot = new Container({ label: 'pit-actors' });
+  actorRoot.addChild(masked[0]!, actors[0]!);
+  return { root, actors, actorRoot, firstBerm };
 }
 
 /** The safety bund just outside the crest, open where the haul road meets the ramp. */

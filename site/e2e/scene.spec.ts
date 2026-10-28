@@ -146,6 +146,9 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
   // Every destroyed diorama loses its context on purpose, so after the cycles exactly as many contexts may
   // be alive as after the first mount: the live diorama's, and PixiJS's one page-wide test context (shader precision).
   await countContexts(page);
+  // A still scene: this test is about the renderer's lifecycle, and twenty animated mounts composited in
+  // software (SwiftShader) would spend its time budget on frames rather than on mounting and unmounting.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
 
   const alive = () => liveContexts(page);
   await openSite(page);
@@ -176,9 +179,9 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
 
 test('camera zoom and fit', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'wheel zoom on the laptop frame');
-  // A still scene: this test is about the camera, and continuous redraws under software WebGL (SwiftShader)
-  // slow each of its thirty wheel events enough to crowd the timeout when the suite runs in parallel.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // Each zoom step redraws the static world, which SwiftShader rasterises on the CPU: about 24 s here in a
+  // parallel run (as before the scene animated), close to the 30 s default, so allow some headroom.
+  test.setTimeout(45_000);
   await openSite(page);
   const start = await camera(page);
   const fit = await defaultCamera(page);
@@ -219,7 +222,14 @@ test('camera zoom and fit', async ({ page }, info) => {
 
 test('a lost context that comes back draws the board again', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'one viewport is enough for context loss');
+  // A still scene renders only when something changes, so a frame counted after the restore is the redraw.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await openSite(page);
+  await expect.poll(async () => {
+    const before = await page.evaluate(() => window.__faillocal!.diorama!.frames());
+    await page.waitForTimeout(300);
+    return (await page.evaluate(() => window.__faillocal!.diorama!.frames())) - before;
+  }).toBe(0);
   const frames = await loseContext(page, true);
   // The ticker redraws on its own after the restore, without anything else changing.
   await expect.poll(() => page.evaluate(() => window.__faillocal!.diorama!.frames())).toBeGreaterThan(frames);

@@ -7,6 +7,9 @@ const PORT = Number(process.env.E2E_PORT ?? 4173);
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
+  // Every animated diorama redraws about 33 times a second, and headless Chromium composites each frame in
+  // software (SwiftShader) on the CPU. Five parallel pages overran test timeouts; three keep the suite stable.
+  workers: 3,
   reporter: 'list',
   // Headless Chromium draws WebGL in software through SwiftShader, so the diorama renders under test.
   use: { baseURL: `http://localhost:${PORT}`, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } },

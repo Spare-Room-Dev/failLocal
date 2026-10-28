@@ -16,17 +16,24 @@ import { drawCreek, drawGround, drawLip, drawPlinthShadow, drawRidge, drawSlab, 
  * shadow never darkens its walls, and spinifex sorts with the plant so a shed hides the tussock behind it.
  */
 export interface StaticWorld {
-  root: Container;
+  /**
+   * The world in painter's order, as three groups drawn at k = 1 (the caller applies the camera):
+   * `under` (plinth shadow, slab and plate, terrain, the pit's rock) and `over` (roads and pads, the
+   * hatching slot, cast shadows, plant, the fill-bound heaps slot) change only with the camera or the
+   * engine state, so the caller may draw them from snapshots; `pitActors` holds the vehicles in the pit,
+   * under their crest masks, and is drawn live between them.
+   */
+  layers: { under: Container; pitActors: Container; over: Container };
   /** Screen-space effects that must follow the zoom: the blur radii. */
   setZoom(k: number): void;
   /** Where the dynamic layers draw, each at its place in the painter's order (dynamic.ts). */
   slots: {
     /** Ground marks over the pads, under shadows and plant: the stopped areas' hatching. */
     ground: Container;
-    /** Extra cast shadows, blurred and set to 34 % like the static ones: the fill-dependent heaps'. */
+    /** Extra cast shadows, blurred and set to 34 % like the static ones: the fill-bound heaps'. */
     shadows: Container;
-    /** Over the static plant: the fill-dependent heaps, entry posts and everything that moves on the surface. */
-    above: Container;
+    /** Over the static plant: the fill-bound heaps, the yard machines and the entry posts. */
+    fills: Container;
     /** Vehicles in the pit, by level (see `Pit.actors`). */
     pit: Container[];
     /** Ground marks on the pit's first berm. */
@@ -39,7 +46,6 @@ const SHADOW_BLUR = 1.6;
 const PLINTH_BLUR = 16;
 
 export function buildStatic(plateText: string, resolution: number): StaticWorld {
-  const root = new Container({ label: 'static' });
 
   const floorShadow = new Graphics();
   drawPlinthShadow(floorShadow);
@@ -78,16 +84,19 @@ export function buildStatic(plateText: string, resolution: number): StaticWorld 
   const shadowSlot = new Container({ label: 'dynamic-shadows' });
   const slotBlur = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
   shadowSlot.filters = [slotBlur, new AlphaFilter({ alpha: 0.34 })];
-  const above = new Container({ label: 'dynamic' });
-  root.addChild(floorShadow, slab, engraving(plateText, resolution), terrain, pit.root, ground, groundSlot, shadowLayer, shadowSlot, objects, above);
+  const fills = new Container({ label: 'fills' });
+  const under = new Container({ label: 'static-under' });
+  under.addChild(floorShadow, slab, engraving(plateText, resolution), terrain, pit.root);
+  const over = new Container({ label: 'static-over' });
+  over.addChild(ground, groundSlot, shadowLayer, shadowSlot, objects, fills);
   return {
-    root,
+    layers: { under, pitActors: pit.actorRoot, over },
     setZoom(k) {
       floorBlur.strength = PLINTH_BLUR * k;
       castBlur.strength = SHADOW_BLUR * k;
       slotBlur.strength = SHADOW_BLUR * k;
     },
-    slots: { ground: groundSlot, shadows: shadowSlot, above, pit: pit.actors, firstBerm: pit.firstBerm },
+    slots: { ground: groundSlot, shadows: shadowSlot, fills, pit: pit.actors, firstBerm: pit.firstBerm },
   };
 }
 

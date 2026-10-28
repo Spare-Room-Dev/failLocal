@@ -3,7 +3,7 @@ import 'pixi.js/unsafe-eval';
 // Only the filter system is registered beyond the core (see `skipExtensionImports` below).
 import 'pixi.js/filters';
 import { Application, Container, Rectangle } from 'pixi.js';
-import type { Ticker } from 'pixi.js';
+import type { Ticker, WebGLRenderer } from 'pixi.js';
 import type { SceneState } from '../../model/sceneState.js';
 import { e2eHook, timeScale } from '../../model/timeScale.js';
 import type { DioramaProbe } from '../../model/timeScale.js';
@@ -15,6 +15,9 @@ import type { Camera } from '../iso.js';
 import { BOARD, LAYOUT } from '../layout.js';
 import { buildDynamic } from './dynamic.js';
 import type { Dynamic } from './dynamic.js';
+import { buildOverlay } from './overlay.js';
+import type { Overlay } from './overlay.js';
+import { Snapshot } from './snapshot.js';
 import { buildStatic } from './static.js';
 import type { StaticWorld } from './static.js';
 
@@ -112,12 +115,19 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     cleanups.push(() => el.removeEventListener(type, handler, opts));
   };
 
-  const world = new Container({ label: 'world' });
-  // Stage-pixel marks over the board: cables, flags and plaques, parked markers (dynamic.ts).
-  const overlay = new Container({ label: 'overlay' });
-  app.stage.addChild(world, overlay);
+  // Painter's order on the stage: the static world up to the pit's rock (a snapshot), the vehicles in the pit
+  // (live), the static world over the pit (a snapshot), the moving surface (live), then stage-pixel marks.
+  // The snapshots are redrawn only when the camera, the stage size or the engine state changes.
+  const underSlot = new Container({ label: 'under' });
+  const pitWorld = new Container({ label: 'pit-world' });
+  const overSlot = new Container({ label: 'over' });
+  const aboveWorld = new Container({ label: 'above-world' });
+  const overlayRoot = new Container({ label: 'overlay' });
+  app.stage.addChild(underSlot, pitWorld, overSlot, aboveWorld, overlayRoot);
   let built: StaticWorld | null = null;
+  let snapshots: Snapshot[] = [];
   let dynamic: Dynamic | null = null;
+  let overlay: Overlay | null = null;
   let scene: SceneState | null = null;
   let anim: AnimState | null = null;
   let reduced = false;
@@ -129,9 +139,12 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
 
   const apply = (next: Camera) => {
     cam = clampCamera(next, BOARD, current);
-    world.position.set(cam.ox, cam.oy);
-    world.scale.set(cam.k);
+    for (const w of [pitWorld, aboveWorld]) {
+      w.position.set(cam.ox, cam.oy);
+      w.scale.set(cam.k);
+    }
     built?.setZoom(cam.k);
+    for (const snap of snapshots) snap.invalidate();
     dirty = true;
     onCamera(cam);
   };
@@ -148,7 +161,17 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   let frames = 0;
   app.ticker.remove(app.render, app);
   app.ticker.maxFPS = 1000 / FRAME_MS;
-  const contextLost = () => (app.renderer as unknown as { context?: { isLost?: boolean } }).context?.isLost === true;
+  const contextLost = () => (app.renderer as WebGLRenderer).gl.isContextLost();
+  const draw = () => {
+    if (dynamic && overlay && scene && anim) {
+      // The hatching sits in both snapshots (the drill pad's is on the pit's first berm).
+      if (dynamic.prepare(cam.k)) for (const snap of snapshots) snap.invalidate();
+      for (const snap of snapshots) snap.update(app.renderer, cam);
+      dynamic.frame(anim);
+      overlay.frame(anim, scene, cam, current, clock, reduced);
+    }
+    app.render();
+  };
   const tick = (t: Ticker) => {
     const dt = Math.min(t.deltaMS / 1000, MAX_DT) * timeScale();
     clock += dt;
@@ -162,8 +185,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     }
     if (!dirty || contextLost()) return;
     dirty = false;
-    if (dynamic && scene && anim) dynamic.frame(anim, scene, cam, current, clock, reduced);
-    app.render();
+    draw();
     frames++;
   };
   app.ticker.add(tick);
@@ -174,6 +196,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     if (next.w === current.w && next.h === current.h) return;
     current = next;
     app.renderer.resize(next.w, next.h);
+    for (const snap of snapshots) snap.resize(next.w, next.h, app.renderer.resolution);
     apply(moved ? cam : defaultCamera(next));
   });
   resize.observe(host);
@@ -187,6 +210,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   });
   listen(canvas, 'webglcontextrestored', () => {
     clearTimeout(lostTimer);
+    for (const snap of snapshots) snap.invalidate();
     dirty = true;
   });
   cleanups.push(() => clearTimeout(lostTimer));
@@ -258,8 +282,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
       return { x: sx, y: sy };
     },
     async sample(step, rect) {
-      if (dynamic && scene && anim) dynamic.frame(anim, scene, cam, current, clock, reduced);
-      app.render();
+      draw();
       const r = rect ?? { x: 0, y: 0, w: current.w, h: current.h };
       const x0 = Math.max(0, Math.floor(r.x));
       const y0 = Math.max(0, Math.floor(r.y));
@@ -280,15 +303,21 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     setState(s, reducedMotion, selected = null) {
       if (!built) {
         built = buildStatic(s.plate.text, (window.devicePixelRatio || 1) * K_MAX);
-        world.addChild(built.root);
         built.setZoom(cam.k);
-        dynamic = buildDynamic(built.slots, overlay, { labels: options.interactive, resolution: window.devicePixelRatio || 1 });
+        pitWorld.addChild(built.layers.pitActors);
+        snapshots = [new Snapshot(built.layers.under, 'under'), new Snapshot(built.layers.over, 'over')];
+        underSlot.addChild(snapshots[0]!.sprite);
+        overSlot.addChild(snapshots[1]!.sprite);
+        for (const snap of snapshots) snap.resize(current.w, current.h, app.renderer.resolution);
+        dynamic = buildDynamic(built.slots, aboveWorld);
+        overlay = buildOverlay(overlayRoot, { labels: options.interactive, resolution: window.devicePixelRatio || 1 });
       }
       scene = s;
       reduced = reducedMotion;
       // Reduced motion: one still frame of this state. Otherwise motion carries on from where it was.
       if (!anim || reduced) anim = stillFrame(s);
-      dynamic!.setScene(s, selected);
+      if (dynamic!.setScene(s)) for (const snap of snapshots) snap.invalidate();
+      overlay!.setScene(s, selected);
       dirty = true;
     },
     setCamera(c) {
@@ -304,6 +333,9 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
       app.ticker.remove(tick);
       if (e2eHook.diorama === probe) delete e2eHook.diorama;
       canvas.remove();
+      // The snapshots' groups are not on the stage, so they are released here with their textures.
+      for (const snap of snapshots) snap.destroy();
+      snapshots = [];
       app.destroy({ removeView: true }, { children: true, texture: true, textureSource: true });
     },
   };

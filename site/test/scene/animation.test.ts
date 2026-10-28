@@ -33,15 +33,25 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.
 const fuelBay = LAYOUT.structures.find((s) => s.id === 'fuel-bay')!;
 const bayCentre = { x: fuelBay.at.x + fuelBay.size.x / 2, y: fuelBay.at.y + fuelBay.size.y / 2 };
 
-/** What a frame says about the engine state: the parts that must not differ between a still and a moving frame. */
-function stateOf(a: AnimState, s: SceneState) {
+/**
+ * What a frame says about the engine state, from the frame's own fields. The train-moving flag, the
+ * fills and the cable states are not frame fields: dynamic.ts and overlay.ts draw them straight from
+ * `SceneState`, so a still frame and a moving one cannot disagree on them by construction.
+ */
+function stateOf(a: AnimState, s: SceneState, still: AnimState) {
   return {
     moving: a.trucks.filter((t) => !t.parked).length,
     parked: a.trucks.filter((t) => t.parked).length,
-    trainMoving: s.train.speed > 0,
-    fills: s.fills,
-    cables: s.cables,
-    loadedOnlyWhileMoving: a.trucks.every((t) => !t.loaded || !t.parked),
+    parkedSlots: a.trucks.filter((t) => t.parked).map((t) => t.pos),
+    // No ore reaches a wagon unless the conveyor runs.
+    wagonsLoadedWithoutConveyor: !s.motion.conveyor && a.train.wagonsFilled > 0,
+    // A train at speed 0 stands where the still frame has it.
+    trainStandsWhenStopped: s.train.speed > 0 || a.train.head === still.train.head,
+    // Dust only behind moving trucks.
+    dustWithoutHaulage: s.fleet.moving === 0 && a.dust.length > 0,
+    // A cut cable's dot does not travel; light vehicles stand while haulage is stopped.
+    deadDots: SERVICE_GROUPS.filter((g) => s.cables[g.id] !== 'live').map((g) => a.cableDots[g.id]),
+    lvsStand: s.processes.haulage!.state !== 'stopped' || JSON.stringify(a.lvs) === JSON.stringify(still.lvs),
   };
 }
 
@@ -125,9 +135,17 @@ describe('animation', () => {
       scene({ haulage: 'stopped', rail: 'stopped', crushing: 'stopped' }),
       ...[0, 150, 300].map((h) => sceneState(register, at(h))),
     ];
+    const cutAll = sceneState(register, { ...base, services: Object.fromEntries(Object.keys(base.services).map((k) => [k, 'down'])) as Sample['services'] });
+    scenes.push(cutAll, scene({ crushing: 'stopped', rail: 'degraded' }));
     for (const s of scenes) {
+      const still = stillFrame(s);
       const moving = run(s, 37, 0.13);
-      expect(stateOf(stillFrame(s), s)).toEqual(stateOf(moving, s));
+      expect(stateOf(still, s, still)).toEqual(stateOf(moving, s, still));
+      const facts = stateOf(moving, s, still);
+      expect(facts.wagonsLoadedWithoutConveyor).toBe(false);
+      expect(facts.trainStandsWhenStopped).toBe(true);
+      expect(facts.dustWithoutHaulage).toBe(false);
+      expect(facts.lvsStand).toBe(true);
       // The still frame shows no ambient motion: no dust in the air.
       expect(stillFrame(s).dust).toEqual([]);
       // Wagons only take ore while the conveyor runs.
@@ -189,6 +207,23 @@ describe('animation', () => {
     const stopped = scene({ crushing: 'stopped' });
     expect(run(stopped, 400, 0.25).train.wagonsFilled).toBe(0);
     expect(a.train.wagonsFilled).toBeGreaterThan(0);
+  });
+
+  it('light vehicles circulate only while haulage runs', () => {
+    for (const state of ['normal', 'degraded'] as const) {
+      const s = scene({ haulage: state });
+      expect(run(s, 20).lvs).not.toEqual(initAnim(s).lvs);
+    }
+    const stopped = scene({ haulage: 'stopped' });
+    expect(run(stopped, 60).lvs).toEqual(stillFrame(stopped).lvs);
+    // Stood down mid-run, they stop where they are.
+    const moved = run(scene(), 30);
+    expect(run(stopped, 30, 0.1, moved).lvs).toEqual(moved.lvs);
+  });
+
+  it('refuses a fleet that is not the illustrative eight', () => {
+    const s = scene();
+    expect(() => initAnim({ ...s, fleet: { moving: 5, parked: 4 } })).toThrow();
   });
 
   it('deterministic', () => {

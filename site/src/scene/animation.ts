@@ -9,9 +9,10 @@ import type { Path } from './paths.js';
  * The scene's moving parts as a pure function of engine state and time (DESIGN.md Motion). Which
  * things move, and how many, comes from `SceneState` alone (D-099): `fleet.moving` trucks run the
  * haul cycle and the rest park at the fuel bay, the train runs at `train.speed`, the belt and the
- * loadout run while `motion.conveyor` is true, and a cable's dot travels only while the cable is
- * live. Light vehicles and dust are ambient: light vehicles have no engine binding and always
- * circulate, dust follows moving trucks. The speeds below are display values (assumed).
+ * loadout run while `motion.conveyor` is true, a cable's dot travels only while the cable is live,
+ * and light vehicles circulate only while haulage is not stopped (ruling R-r: haulage keeps trucks,
+ * crewed vehicles and people apart, so when it stops the crewed vehicles are stood down where they
+ * are). Dust follows moving trucks. The speeds below are display values (assumed).
  */
 export interface Truck {
   pos: Vec3;
@@ -36,7 +37,7 @@ export interface AnimState {
   lvs: { pos: Vec3; heading: number }[];
   /** Metres the moving haul fleet has run (truck i is i/moving of a cycle ahead of truck 0). */
   haul: number;
-  /** Metres the light vehicles have run. */
+  /** Metres the light vehicles have run (they stand while haulage is stopped). */
   lv: number;
 }
 
@@ -143,7 +144,8 @@ const passed = (d: number) => WAGONS.filter((w) => w.offset <= d).length;
 // --- Frames ------------------------------------------------------------------------------
 
 function trucks(scene: SceneState, haul: number): Truck[] {
-  const moving = scene.fleet.moving;
+  const { moving, parked } = scene.fleet;
+  if (moving + parked !== 8) throw new Error(`the illustrative fleet is eight trucks, not ${moving} moving and ${parked} parked`);
   return Array.from({ length: 8 }, (_, i): Truck => {
     if (i >= moving) return { pos: { ...PARK_SLOTS[i - moving]! }, heading: PARK_HEADING, loaded: false, parked: true, hidden: false };
     const s = mod(haul + (i * HAUL_LENGTH) / moving, HAUL_LENGTH);
@@ -213,7 +215,7 @@ export function stepAnim(a: AnimState, scene: SceneState, dtSeconds: number): An
     cableDots[g.id] = scene.cables[g.id] === 'live' ? mod(phase + dt / CABLE_RUN[i]!, 1) : phase;
   });
 
-  const lv = a.lv + LV_SPEED * dt;
+  const lv = scene.processes.haulage?.state === 'stopped' ? a.lv : a.lv + LV_SPEED * dt;
   return {
     trucks: next,
     dust,
