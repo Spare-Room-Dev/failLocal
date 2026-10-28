@@ -33,6 +33,12 @@ export interface Clock {
   hoursPerSecond: number;
 }
 
+/** An override the store refused: the value the visitor gave, and the run's issues with it. */
+export interface FieldIssue {
+  value: number;
+  issues: string[];
+}
+
 export interface AppState {
   mode: 'welcome' | 'guided' | 'free';
   spec: RunSpec;
@@ -45,8 +51,10 @@ export interface AppState {
   lastGoodKind: RunSpec['kind'];
   /** Issues from a run that failed for a reason other than an editor field. */
   issues: string[];
-  /** Issues from an override the store refused, by its path; the override never reached `overrides`. */
-  fieldIssues: Record<string, string[]>;
+  /** Overrides the store refused, by path; they never reached `overrides`. Each is tried again after the next change. */
+  fieldIssues: Record<string, FieldIssue>;
+  /** Counts resets, so the editor can remount its rows and drop any draft text a reset leaves behind. */
+  resets: number;
 }
 
 const DEFAULT_SPEC: RunSpec = { kind: 'register', scenarioId: 's1-projection' };
@@ -66,6 +74,7 @@ export function initialAppState(): AppState {
     lastGoodKind: DEFAULT_SPEC.kind,
     issues: result.ok ? [] : result.issues,
     fieldIssues: {},
+    resets: 0,
   };
 }
 
@@ -93,6 +102,19 @@ function setFree(change: (spec: Extract<RunSpec, { kind: 'free' }>) => Partial<E
     return { spec: { ...spec, ...change(spec) } };
   });
   actions.recompute();
+}
+
+/** Tries each refused override once, in order, against the overrides so far: an accepted one joins them; a refused one keeps its latest issues. */
+function retryRefused(s: AppState): Partial<AppState> {
+  if (Object.keys(s.fieldIssues).length === 0) return {};
+  let overrides = s.overrides;
+  const fieldIssues: Record<string, FieldIssue> = {};
+  for (const [path, { value }] of Object.entries(s.fieldIssues)) {
+    const trial = deriveRun(register, { spec: s.spec, variant: s.variant, overrides: { ...overrides, [path]: value } });
+    if (trial.ok) overrides = { ...overrides, [path]: value };
+    else fieldIssues[path] = { value, issues: trial.issues };
+  }
+  return { overrides, fieldIssues };
 }
 
 export const actions = {
@@ -130,27 +152,28 @@ export const actions = {
   },
   /**
    * Sets or (with null) clears the override at `path`. A new value is tried first: if the run fails
-   * with it, `overrides` stays as it was and the issues are kept against `path` in `fieldIssues`, so
-   * the site never shows a run the visitor did not get. Clearing always applies.
+   * with it, `overrides` stays as it was and the value and its issues are kept against `path` in
+   * `fieldIssues`, so the site never shows a run the visitor did not get. Clearing always applies,
+   * and drops any refused value at `path` too.
    */
   setOverride(path: string, value: number | null): void {
     const s = appStore.get();
     if (value === null) {
-      appStore.set({ overrides: without(s.overrides, path), fieldIssues: without(s.fieldIssues, path) });
+      appStore.set({ overrides: without(s.overrides, path), fieldIssues: without(s.fieldIssues, path), resets: s.resets + 1 });
       actions.recompute();
       return;
     }
     const overrides = { ...s.overrides, [path]: value };
     const trial = deriveRun(register, { spec: s.spec, variant: s.variant, overrides });
     if (!trial.ok) {
-      appStore.set({ fieldIssues: { ...s.fieldIssues, [path]: trial.issues } });
+      appStore.set({ fieldIssues: { ...s.fieldIssues, [path]: { value, issues: trial.issues } } });
       return;
     }
     appStore.set({ overrides, fieldIssues: without(s.fieldIssues, path) });
     actions.recompute();
   },
   clearOverrides(): void {
-    appStore.set({ overrides: {}, fieldIssues: {} });
+    appStore.set((s) => ({ overrides: {}, fieldIssues: {}, resets: s.resets + 1 }));
     actions.recompute();
   },
   select(id: string | null): void {
@@ -162,7 +185,7 @@ export const actions = {
   },
   /** Enters the guided run, which always shows register values (R5). */
   startGuided(): void {
-    appStore.set({ mode: 'guided', overrides: {}, fieldIssues: {} });
+    appStore.set((s) => ({ mode: 'guided', overrides: {}, fieldIssues: {}, resets: s.resets + 1 }));
     actions.recompute();
   },
   setClock(p: Partial<Clock>): void {
@@ -171,8 +194,13 @@ export const actions = {
   setSpeed(hps: number): void {
     appStore.set((s) => ({ clock: { ...s.clock, hoursPerSecond: hps } }));
   },
-  /** Derives the current run. A good run replaces `lastGood` and its kind; a bad one sets `issues` and keeps both. */
+  /**
+   * Derives the current run, after trying each refused override once more: a change elsewhere (another
+   * override, the scenario, the variant) may have made it valid. A good run replaces `lastGood` and its
+   * kind; a bad one sets `issues` and keeps both.
+   */
   recompute(): void {
+    appStore.set(retryRefused);
     appStore.set((s) => {
       const result = deriveRun(register, { spec: s.spec, variant: s.variant, overrides: s.overrides });
       return result.ok ? { lastGood: result.timeline, lastGoodKind: s.spec.kind, issues: [] } : { issues: result.issues };

@@ -8,7 +8,8 @@ export function parseDraft(text: string): number {
 /**
  * The text of a number field. It keeps what the visitor types, even when that is blank or not yet a
  * number, and follows `value` when it changes from outside (a reset) to something the text does not
- * already say. The field is never remounted, so it keeps focus while the visitor types.
+ * already say. The field is not remounted while the visitor types, so it keeps focus; the editor
+ * remounts it only on a reset, which drops any draft text, even one that never parsed.
  */
 export function useDraft(value: number): [string, (text: string) => void] {
   const [draft, setDraft] = useState(String(value));

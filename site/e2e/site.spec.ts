@@ -261,6 +261,14 @@ test('tablet layout', async ({ page }, info) => {
   await page.screenshot({ path: info.outputPath(`tablet-${viewport.width}x${viewport.height}.png`) });
 });
 
+test('1150 px keeps a usable timeline', async ({ page }, info) => {
+  test.skip(info.project.name !== 'laptop-small', 'the small laptop');
+  await open(page, '#/site');
+  expect((await page.locator('.timeline-axis').first().boundingBox())!.width).toBeGreaterThan(200);
+  for (const name of ['Unprepared', 'Prepared']) await expect(page.getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: info.outputPath('laptop-1150x800.png') });
+});
+
 test('the site runs under the deployed CSP', async ({ page }) => {
   // Listen before any page script runs, so violations during module evaluation and first paint count too.
   await page.addInitScript(() => {

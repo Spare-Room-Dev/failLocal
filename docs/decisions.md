@@ -628,17 +628,19 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 ## D-079 S1 projection: the same 12 days; only the workarounds change
 - **Path:** scenarios.s1-projection.events[0].restoreAfter
 - **Decision:** 288 hours (12 days), the same sourced restore as S1 as reported. The only counterfactual is that the manual workarounds run out (D-041 to D-044).
-- **Reasoning:** Revenue at risk ($6.0M) comes entirely from the assumed 24-hour hold (D-094); it is $0 below a 10-hour hold.
+- **Reasoning:** Revenue at risk (about $6.0M) rests on two assumed numbers. Change either and the figure changes (checked against the engine, unprepared, one number changed at a time):
+  - How long phone-and-email ordering keeps going without the ERP (`manualWorkaround.holdsFor`, D-041): 3 days. At 0 days, about $25.65M is at risk; from about 3.6 days (87 hours) up, $0.
+  - How long new purchase orders are held after the ERP is back (`afterRestore.holdFor`, D-094): 24 hours. Up to 9 hours, $0; any longer hold puts revenue at risk (about $0.14M at 10 hours); at 48 hours, about $8.92M.
   - Outage: the workarounds end at hour 72 and ordering stops, but fuel already on the road keeps arriving for another 36 hours (D-008, D-091). The fuel farm empties and the fleet parks at hour 276, 12 hours before the restore; the crusher stops at hour 288 as the ROM pad runs out.
   - Recovery: the ERP is back at hour 288, but new orders are held for 24 hours (D-094, D-095), so ordering restarts at hour 312. The first diesel arrives 36 hours later: the fleet restarts at hour 349, still rationed, and is not back to normal when the run ends; the crusher restarts at hour 350. The fleet is parked for 73 hours and the crusher for 62.
   - Shipping: the product stockpile falls below its one-day mark at hour 336, so trains are cut back for 43 hours, to a low of about 0.4 days; rail never stops. About $6.0M is at risk unprepared and $0 prepared: the independent restore and offline ordering keep fuel coming; duplicate rejection also lifts the hold.
   - Explosives: the magazine stays full until hour 144 and runs out at hour 312; the first explosives ordered after the hold arrive in hour 384, the run's last, so blasting is stopped at the end.
   - Before the hold: the fleet was parked for 49 hours, the crusher for 38, the stockpile held at about 1.4 days, and revenue at risk was $0.
-  - Sensitivity of the hold (run after the result, no value changed): $0 up to 9 hours; revenue at risk from 10 hours; at 48 hours, rail also stops for 15 hours.
+  - Sensitivity of the hold (run after the result, no value changed): $0 up to 9 hours; revenue at risk above 9 hours; at 48 hours, rail also stops for 15 hours.
   - Lead-time margin: the fleet parks before the restore only while the diesel lead time is under 48 hours; at 48 hours, the top of D-091's range, it parks in the restore hour.
   - An earlier draft lengthened this restore to three weeks so that shipments would be hit; that was tuning to a test and was reverted. Neither the restore nor the run length was changed for the hold.
 - **Source / provenance:** sourced: scope-incident-updates
-- **Owner change:**
+- **Owner change:** 28 Oct 2026: controller correction. Before this, the entry said the revenue at risk came entirely from the 24-hour hold and was $0 below a 10-hour hold. The phone-and-email workaround's 3 days (D-041) moves it as well, and the site's caveat names both, so the entry now says it rests on two assumed numbers. The hold's $0 boundary is 9 hours: a 9.5-hour hold already puts about $0.14M at risk.
 
 ## D-080 S1 projection starts at hour 0 and runs 16 days
 - **Path:** scenarios.s1-projection.events[0].at

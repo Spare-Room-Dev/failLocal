@@ -118,15 +118,17 @@ function issueText(issue: string, path: string, label: string): string {
 interface RowProps {
   row: Row;
   override: number | undefined;
+  /** The value the store refused at this path, if any. */
+  refused: number | undefined;
   issues: string[];
   sources: Record<string, string>;
 }
 
-function EditorRow({ row, override, issues, sources }: RowProps) {
+function EditorRow({ row, override, refused, issues, sources }: RowProps) {
   const { path, label, used } = row;
   const unit = UNITS[used.unit];
   if (!unit) throw new Error(`the editor has no format for ${used.unit} (${path})`);
-  const [draft, setDraft] = useDraft(override ?? used.value);
+  const [draft, setDraft] = useDraft(refused ?? override ?? used.value);
   const issueId = useId();
 
   return (
@@ -151,7 +153,7 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
       <span className="editor-current">
         <Qty value={used.value} kind={unit.kind} {...usedTag(path, used)} sources={sources} />
       </span>
-      {override !== undefined && (
+      {(override !== undefined || refused !== undefined) && (
         <button type="button" className="editor-reset" aria-label={`Reset ${label}`} onClick={() => actions.setOverride(path, null)}>
           Reset
         </button>
@@ -169,7 +171,8 @@ function EditorRow({ row, override, issues, sources }: RowProps) {
  * The inputs the current run used, editable (desktop only). Each row shows the value the last good
  * run used, with its tag, beside an input; a value goes to the store once it parses. A value the run
  * refuses stays in the field with its issues beside it (the store's `fieldIssues`), and the site stays
- * on the last good run. Issues on a path with no row, and those of a failed run, show above the rows.
+ * on the last good run, until a later change makes it valid. A reset remounts the rows, so no draft
+ * outlives it. Issues on a path with no row, and those of a failed run, show above the rows.
  * Renders only in free play.
  */
 export function AssumptionsEditor() {
@@ -178,6 +181,7 @@ export function AssumptionsEditor() {
   const overrides = useStore(appStore, (s) => s.overrides);
   const issues = useStore(appStore, (s) => s.issues);
   const fieldIssues = useStore(appStore, (s) => s.fieldIssues);
+  const resets = useStore(appStore, (s) => s.resets);
   const desktop = useMediaQuery(DESKTOP);
   if (mode !== 'free' || !timeline) return null;
   if (!desktop) return <p className="editor-phone-note">{PHONE_NOTE}</p>;
@@ -185,9 +189,9 @@ export function AssumptionsEditor() {
   const touched = touchedServices(timeline);
   const rows = Object.entries(timeline.assumptionsUsed).flatMap(([path, used]) => rowFor(path, used, touched, timeline.variant === 'prepared') ?? []);
   const sources = Object.fromEntries(register.sources.map((s) => [s.id, s.title]));
-  const rowIssues = (path: string) => [...(fieldIssues[path] ?? []), ...issues.filter((issue) => names(issue, path))];
+  const rowIssues = (path: string) => [...(fieldIssues[path]?.issues ?? []), ...issues.filter((issue) => names(issue, path))];
   const unplaced = [
-    ...Object.entries(fieldIssues).flatMap(([path, list]) => (rows.some((r) => r.path === path) ? [] : list)),
+    ...Object.entries(fieldIssues).flatMap(([path, f]) => (rows.some((r) => r.path === path) ? [] : f.issues)),
     ...issues.filter((issue) => !rows.some((r) => names(issue, r.path))),
   ];
 
@@ -214,9 +218,10 @@ export function AssumptionsEditor() {
             <h3 className="editor-group-heading">{group}</h3>
             {inGroup.map((row) => (
               <EditorRow
-                key={row.path}
+                key={`${row.path}:${resets}`}
                 row={row}
                 override={overrides[row.path]}
+                refused={fieldIssues[row.path]?.value}
                 issues={rowIssues(row.path)}
                 sources={sources}
               />

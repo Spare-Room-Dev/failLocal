@@ -58,7 +58,8 @@ describe('app store', () => {
     expect(s.lastGood).toBe(good);
     expect(s.issues).toEqual([]);
     expect(Object.keys(s.fieldIssues)).toEqual(['production.degradedOutput']);
-    expect(s.fieldIssues['production.degradedOutput']!.join('\n')).toMatch(/production\.degradedOutput/);
+    expect(s.fieldIssues['production.degradedOutput']!.value).toBe(1.5);
+    expect(s.fieldIssues['production.degradedOutput']!.issues.join('\n')).toMatch(/production\.degradedOutput/);
     actions.setOverride('production.degradedOutput', 0.5);
     s = appStore.get();
     expect(s.overrides).toEqual({ 'production.price': 120, 'production.degradedOutput': 0.5 });

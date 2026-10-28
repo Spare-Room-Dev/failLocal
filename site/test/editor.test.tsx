@@ -174,6 +174,37 @@ describe('AssumptionsEditor', () => {
     expect(input('production.annualTonnes').value).toBe(String(register.production.annualTonnes.value));
   });
 
+  test('reset all clears refused drafts', () => {
+    render(<AssumptionsEditor />);
+    const register_ = String(register.production.price.value);
+    fireEvent.change(input('production.price'), { target: { value: '-1' } });
+    expect(within(row('production.price')).getByRole('alert')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset all' }));
+    expect(input('production.price').value).toBe(register_);
+    expect(within(row('production.price')).queryByRole('alert')).toBeNull();
+    expect(appStore.get().fieldIssues).toEqual({});
+    // The row's own Reset does the same for a refused draft, which has no override.
+    fireEvent.change(input('production.price'), { target: { value: '-1' } });
+    fireEvent.click(within(row('production.price')).getByRole('button', { name: /Reset/ }));
+    expect(input('production.price').value).toBe(register_);
+    expect(within(row('production.price')).queryByRole('alert')).toBeNull();
+    expect(appStore.get().fieldIssues).toEqual({});
+  });
+
+  test('field issues are re-tried after a change', () => {
+    render(<AssumptionsEditor />);
+    const capacity = register.stocks.find((s) => s.id === 'diesel')!.capacity.value;
+    fireEvent.change(input('stocks.diesel.initial'), { target: { value: String(capacity + 1) } });
+    expect(within(row('stocks.diesel.initial')).getByRole('alert')).toBeTruthy();
+    expect(appStore.get().overrides).toEqual({});
+    fireEvent.change(input('stocks.diesel.capacity'), { target: { value: String(capacity + 2) } });
+    // The refused draft is tried again against the new capacity, accepted, and its issue clears.
+    expect(appStore.get().overrides).toEqual({ 'stocks.diesel.capacity': capacity + 2, 'stocks.diesel.initial': capacity + 1 });
+    expect(appStore.get().fieldIssues).toEqual({});
+    expect(within(row('stocks.diesel.initial')).queryByRole('alert')).toBeNull();
+    expect(input('stocks.diesel.initial').value).toBe(String(capacity + 1));
+  });
+
   test('a phone gets the laptop note instead of the editor', () => {
     stubMedia(false);
     render(<AssumptionsEditor />);
