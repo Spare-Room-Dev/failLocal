@@ -5,10 +5,16 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
+    "register": "node scripts/build-register.mjs",
+    "predev": "npm run register",
     "dev": "vite",
+    "prebuild": "npm run register",
     "build": "vite build && node scripts/check-build.mjs",
     "preview": "vite preview",
+    "pretest": "npm run register",
     "test": "vitest run",
+    "pretypecheck": "npm run register",
+    "typecheck": "tsc --noEmit -p .",
     "e2e": "playwright test"
   },
   "dependencies": {

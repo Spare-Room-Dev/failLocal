@@ -1,7 +1,7 @@
 /**
  * Build guard, run after `vite build`. Fails the build when the output would break the site's
  * Content-Security-Policy (inline script or style in index.html), names a URL outside the
- * allow-list, or ships more gzipped JS than the budget.
+ * allow-list, ships more gzipped JS than the budget, or bundles the YAML parser.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join, relative, sep } from 'node:path';
@@ -136,6 +136,25 @@ export function checkJsBudget(distDir, budget = JS_BUDGET_BYTES) {
   return js > budget ? [`gzipped JS is ${js} bytes, over the ${budget} byte budget`] : [];
 }
 
+/**
+ * The yaml package's signature: the string literal its parse-error class passes to its base class as
+ * the error's name (`super('YAMLParseError', …)`). A string literal survives minification, where a
+ * class or function name would not, and it has been the error's public name since yaml 2.0.
+ */
+export const YAML_PARSER_SIGNATURE = 'YAMLParseError';
+
+/**
+ * A problem for each .js file under `distDir` that carries the yaml parser. The register ships as
+ * JSON compiled at build time, so the site never parses YAML.
+ * @param {string} distDir
+ * @returns {string[]}
+ */
+export function checkNoYamlParser(distDir) {
+  return listFiles(distDir)
+    .filter((f) => f.endsWith('.js') && readFileSync(join(distDir, f), 'utf8').includes(YAML_PARSER_SIGNATURE))
+    .map((f) => `dist/${f} bundles the yaml parser (contains "${YAML_PARSER_SIGNATURE}")`);
+}
+
 function main() {
   const distDir = fileURLToPath(new URL('../dist/', import.meta.url));
   const registerPath = fileURLToPath(new URL('../../register/pilbara-model-site.yaml', import.meta.url));
@@ -144,6 +163,7 @@ function main() {
   const problems = checkIndexHtml(readFileSync(join(distDir, 'index.html'), 'utf8'));
   for (const { file, url } of findDisallowedUrls(distDir, allowed)) problems.push(`dist/${file} names a URL off the allow-list: ${url}`);
   problems.push(...checkJsBudget(distDir));
+  problems.push(...checkNoYamlParser(distDir));
 
   const kb = (/** @type {number} */ n) => `${(n / 1000).toFixed(1)} KB`;
   if (problems.length) {
@@ -151,7 +171,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `check-build: ok — index.html has no inline script or style; every URL is on the allow-list (${allowed.size} entries); gzipped JS ${kb(gzippedJsBytes(distDir))} of ${kb(JS_BUDGET_BYTES)} (decimal KB, 1 KB = 1,000 bytes)`,
+    `check-build: ok — index.html has no inline script or style; every URL is on the allow-list (${allowed.size} entries); no yaml parser; gzipped JS ${kb(gzippedJsBytes(distDir))} of ${kb(JS_BUDGET_BYTES)} (decimal KB, 1 KB = 1,000 bytes)`,
   );
 }
 

@@ -7,7 +7,7 @@ import type { ControlEffect, ScenarioEvent } from '../src/schema.js';
 import { simulate, simulateWith } from '../src/simulate.js';
 import { deriveAssetTiers } from '../src/tiers.js';
 import type { Timeline } from '../src/simulate.js';
-import { loadRegisterYaml } from '../src/validate.js';
+import { loadRegisterYaml } from '../src/yaml.js';
 
 const root = new URL('../../', import.meta.url);
 const reg = loadRegisterYaml(readFileSync(new URL('register/pilbara-model-site.yaml', root), 'utf8'));

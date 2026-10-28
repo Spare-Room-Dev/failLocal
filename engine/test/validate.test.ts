@@ -2,7 +2,8 @@ import { stringify } from 'yaml';
 import { describe, expect, test } from 'vitest';
 import { applyOverrides, judgementPaths, quantityPaths } from '../src/paths.js';
 import type { Control, Register, Scenario } from '../src/schema.js';
-import { checkScenario, loadRegisterYaml, parseRegister, processOrder, RegisterError } from '../src/validate.js';
+import { checkScenario, parseRegister, processOrder, RegisterError } from '../src/validate.js';
+import { loadRegisterYaml } from '../src/yaml.js';
 import { minimalRegister, q } from './fixtures.js';
 
 const measured = { kind: 'measured', runId: 'r', date: '2026-12-14', evidence: 'x' } as const;

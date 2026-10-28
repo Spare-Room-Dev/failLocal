@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import { parse, stringify } from 'yaml';
-import { loadRegisterYaml, parseRegister, renderContinuityPack } from '../src/index.js';
+import { parseRegister, renderContinuityPack } from '../src/index.js';
+import { loadRegisterYaml } from '../src/yaml.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const registerPath = 'register/pilbara-model-site.yaml';

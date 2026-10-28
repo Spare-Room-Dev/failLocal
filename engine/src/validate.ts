@@ -1,4 +1,3 @@
-import { parse } from 'yaml';
 import type { z } from 'zod';
 import { ID_PATTERN, registerSchema, scenarioSchema } from './schema.js';
 import type { Register, Scenario } from './schema.js';
@@ -229,10 +228,6 @@ export function parseRegister(input: unknown): Register {
   const issues = semanticIssues(parsed.data);
   if (issues.length) throw new RegisterError(issues);
   return parsed.data;
-}
-
-export function loadRegisterYaml(text: string): Register {
-  return parseRegister(parse(text));
 }
 
 /** Process ids with dependencies first. Stock-mediated loops are fine: they read the previous step's levels. */

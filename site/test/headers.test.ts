@@ -4,7 +4,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { gzipSync } from 'node:zlib';
-import { JS_BUDGET_BYTES, allowedUrls, checkIndexHtml, checkJsBudget, findDisallowedUrls, gzippedJsBytes, isAllowedUrl } from '../scripts/check-build.mjs';
+import {
+  JS_BUDGET_BYTES,
+  YAML_PARSER_SIGNATURE,
+  allowedUrls,
+  checkIndexHtml,
+  checkJsBudget,
+  checkNoYamlParser,
+  findDisallowedUrls,
+  gzippedJsBytes,
+  isAllowedUrl,
+} from '../scripts/check-build.mjs';
 import { parseHeaders } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
@@ -111,5 +121,18 @@ describe('check-build', () => {
     expect(checkJsBudget(dist, size)).toEqual([]);
     expect(checkJsBudget(dist, size - 1)).toEqual([`gzipped JS is ${size} bytes, over the ${size - 1} byte budget`]);
     expect(JS_BUDGET_BYTES).toBe(300_000);
+  });
+
+  // The signature is the string literal 'YAMLParseError', which the yaml package passes to its error
+  // base class as the error's name, so no minifier can rename it.
+  test('site bundle has no yaml parser', () => {
+    expect(YAML_PARSER_SIGNATURE).toBe('YAMLParseError');
+    const clean = fixtureDist({ 'assets/index.js': 'const r = JSON.parse("{}");', 'index.html': '<p>YAMLParseError</p>' });
+    expect(checkNoYamlParser(clean)).toEqual([]);
+    const leaky = fixtureDist({
+      'assets/index.js': 'class n extends t{constructor(e,r,i){super("YAMLParseError",e,r,i)}}',
+      'assets/vendor.js': 'const ok = 1;',
+    });
+    expect(checkNoYamlParser(leaky)).toEqual(['dist/assets/index.js bundles the yaml parser (contains "YAMLParseError")']);
   });
 });

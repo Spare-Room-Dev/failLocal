@@ -7,3 +7,4 @@ dist/
 out/
 site/test-results/
 site/playwright-report/
+site/src/generated/

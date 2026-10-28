@@ -7,7 +7,7 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "test": "npm test -w engine && npm test -w site",
-    "typecheck": "tsc --noEmit -p engine && tsc --noEmit -p site",
+    "typecheck": "tsc --noEmit -p engine && npm run typecheck -w site",
     "cli": "tsx engine/src/cli.ts"
   }
 }

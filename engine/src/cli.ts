@@ -5,7 +5,8 @@ import { parseArgs } from 'node:util';
 import { renderContinuityPack } from './pack.js';
 import { simulate } from './simulate.js';
 import type { Timeline, Variant } from './simulate.js';
-import { loadRegisterYaml, RegisterError } from './validate.js';
+import { RegisterError } from './validate.js';
+import { loadRegisterYaml } from './yaml.js';
 import type { Register } from './schema.js';
 
 const USAGE = `Usage:
