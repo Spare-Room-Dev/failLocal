@@ -40,6 +40,51 @@ async function sampleColours(page: Page): Promise<Rgb[]> {
   });
 }
 
+type Counts = { created: number; lost: number };
+
+/**
+ * Counts every WebGL context the page creates and every one that is lost, listening on each context's own
+ * canvas: a leaked context's canvas has left the document, so a listener on window would never hear it.
+ */
+async function countContexts(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const counts = { created: 0, lost: 0 };
+    (window as unknown as { __contexts: typeof counts }).__contexts = counts;
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      const known = (this as unknown as { __gl?: unknown }).__gl;
+      const ctx = (original as (...a: unknown[]) => unknown).call(this, type, ...rest);
+      if (ctx && /webgl/i.test(type) && known !== ctx) {
+        (this as unknown as { __gl?: unknown }).__gl = ctx;
+        counts.created++;
+        this.addEventListener('webglcontextlost', () => counts.lost++);
+      }
+      return ctx;
+    } as typeof original;
+  });
+}
+
+const liveContexts = (page: Page) =>
+  page.evaluate(() => {
+    const c = (window as unknown as { __contexts: Counts }).__contexts;
+    return c.created - c.lost;
+  });
+
+/** Loses (and with `restore`, then restores) the diorama's WebGL context, as a GPU reset or driver crash would. */
+function loseContext(page: Page, restore: boolean): Promise<void> {
+  return page.evaluate(async (restore) => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.scene--diorama canvas')!;
+    const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as WebGLRenderingContext;
+    const ext = gl.getExtension('WEBGL_lose_context')!;
+    ext.loseContext();
+    if (!restore) return;
+    await new Promise((r) => setTimeout(r, 300));
+    ext.restoreContext();
+  }, restore);
+}
+
+const NOTE = "Simplified view: this browser can't draw the 3D model.";
+
 const camera = (page: Page) => page.evaluate(() => window.__faillocal!.diorama!.camera()) as Promise<Camera>;
 const defaultCamera = (page: Page) => page.evaluate(() => window.__faillocal!.diorama!.defaultCamera()) as Promise<Camera>;
 
@@ -76,7 +121,7 @@ test('no webgl falls back to the schematic', async ({ page }) => {
     } as typeof original;
   });
   await page.goto('/?e2e#/site');
-  await expect(page.getByText("Simplified view: this browser can't draw the 3D model.")).toBeVisible();
+  await expect(page.getByText(NOTE)).toBeVisible();
   await expect(page.getByRole('group', { name: 'Model site schematic' })).toBeVisible();
   await expect(page.locator('[data-cable-group]')).toHaveCount(5);
   await expect(page.locator('.scene-plinth')).toHaveText('FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA');
@@ -91,28 +136,11 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
     if (m.type() === 'error') errors.push(m.text());
   });
   page.on('pageerror', (e) => errors.push(e.message));
-  // Count every WebGL context the page creates and every one that is lost, on its own canvas: a leaked
-  // context's canvas has left the document, so a listener on window would never hear it. Every destroyed
-  // diorama loses its context on purpose, so after the cycles exactly as many contexts may be alive as after
-  // the first mount: the live diorama's, and PixiJS's one page-wide test context (shader precision).
-  await page.addInitScript(() => {
-    const counts = { created: 0, lost: 0 };
-    (window as unknown as { __contexts: typeof counts }).__contexts = counts;
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
-      const known = (this as unknown as { __gl?: unknown }).__gl;
-      const ctx = (original as (...a: unknown[]) => unknown).call(this, type, ...rest);
-      if (ctx && /webgl/i.test(type) && known !== ctx) {
-        (this as unknown as { __gl?: unknown }).__gl = ctx;
-        counts.created++;
-        this.addEventListener('webglcontextlost', () => counts.lost++);
-      }
-      return ctx;
-    } as typeof original;
-  });
+  // Every destroyed diorama loses its context on purpose, so after the cycles exactly as many contexts may
+  // be alive as after the first mount: the live diorama's, and PixiJS's one page-wide test context (shader precision).
+  await countContexts(page);
 
-  type Counts = { created: number; lost: number };
-  const alive = () => page.evaluate(() => { const c = (window as unknown as { __contexts: Counts }).__contexts; return c.created - c.lost; });
+  const alive = () => liveContexts(page);
   await openSite(page);
   const baseline = await alive();
   expect(baseline).toBeLessThanOrEqual(2);
@@ -177,4 +205,44 @@ test('camera zoom and fit', async ({ page }, info) => {
   expect(centre.x).toBeLessThanOrEqual(1600);
   expect(centre.y).toBeGreaterThanOrEqual(0);
   expect(centre.y).toBeLessThanOrEqual(1000);
+});
+
+test('a lost context that comes back draws the board again', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'one viewport is enough for context loss');
+  await openSite(page);
+  await loseContext(page, true);
+  const frames = await page.evaluate(() => window.__faillocal!.diorama!.frames());
+  // The ticker redraws on its own after the restore, without anything else changing.
+  await expect.poll(() => page.evaluate(() => window.__faillocal!.diorama!.frames())).toBeGreaterThan(frames);
+  await expect(page.locator('.scene--diorama[data-ready="true"]')).toBeVisible();
+  await expect(page.getByText(NOTE)).toHaveCount(0);
+  const colours = await sampleColours(page);
+  expect(colours.some((c) => distToBlend(c, OXIDE_LOW, OXIDE_HIGH) < TOLERANCE)).toBe(true);
+});
+
+test('a lost context that never comes back falls back to the schematic', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'one viewport is enough for context loss');
+  await openSite(page);
+  await loseContext(page, false);
+  await expect(page.getByText(NOTE)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('group', { name: 'Model site schematic' })).toBeVisible();
+  await expect(page.locator('.scene--diorama')).toHaveCount(0);
+  await expect(page.locator('canvas')).toHaveCount(0);
+});
+
+test('a failure after the renderer starts releases it and falls back', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'one viewport is enough for the start-up path');
+  await countContexts(page);
+  // Fail the first step after Application.init: the font load before the plate is set.
+  await page.addInitScript(() => {
+    document.fonts.load = () => {
+      throw new Error('font loading failed');
+    };
+  });
+  await page.goto('/?e2e#/site');
+  await expect(page.getByText(NOTE)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('group', { name: 'Model site schematic' })).toBeVisible();
+  await expect(page.locator('canvas')).toHaveCount(0);
+  // The started renderer's context was released; at most PixiJS's page-wide test context remains.
+  await expect.poll(() => liveContexts(page)).toBeLessThanOrEqual(1);
 });

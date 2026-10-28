@@ -28,7 +28,7 @@ type Frame = { cam: Camera; w: number; h: number };
  * The scene as the PixiJS diorama. PixiJS loads on mount (a separate chunk), so pages without the
  * scene never fetch it. Over the canvas sits the scene contract's accessible DOM layer: a native
  * button per process area at its projected anchor, the plate as DOM text, and a marker for each
- * service cable where it drops into the scene. If the renderer fails to start, the schematic stands in.
+ * service cable where it drops into the scene. If the renderer fails to start, or later loses its WebGL context for good, the schematic stands in.
  */
 export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorative = false, onAnchors }: SceneViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -46,8 +46,15 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     if (!host) return;
     let cancelled = false;
     const onCamera = (cam: Camera) => setFrame({ cam, w: host.clientWidth || NOMINAL.w, h: host.clientHeight || NOMINAL.h });
+    // The renderer lost its context for good: release it and let the schematic stand in.
+    const onFail = () => {
+      if (cancelled) return;
+      handle.current?.destroy();
+      handle.current = null;
+      setFailed(true);
+    };
     import('../../scene/pixi/app.js')
-      .then(({ createDiorama }) => createDiorama(host, onCamera, { interactive: !decorative }))
+      .then(({ createDiorama }) => createDiorama(host, onCamera, { interactive: !decorative, onFail }))
       .then(
         (h) => {
           // Unmounted while the renderer was starting: release its context at once.

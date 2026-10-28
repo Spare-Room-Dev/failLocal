@@ -16,6 +16,8 @@ export interface DioramaProbe {
   defaultCamera(): { k: number; ox: number; oy: number };
   /** The ground point (metres) under the centre of the view. */
   groundAtCentre(): { x: number; y: number };
+  /** How many frames the ticker has rendered since mount. */
+  frames(): number;
   /** The rendered colour of every `step`-th CSS pixel, as [r, g, b]. */
   sample(step: number): Promise<[number, number, number][]>;
 }

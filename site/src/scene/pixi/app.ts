@@ -27,6 +27,11 @@ export interface DioramaHandle {
 export interface DioramaOptions {
   /** Wheel, drag, pinch and keyboard camera controls. Off for the decorative welcome scene. */
   interactive: boolean;
+  /**
+   * Called once if the diorama can no longer draw after it started: its WebGL context was lost and not
+   * restored within `LOST_CONTEXT_MS`. The caller destroys the handle and shows the schematic (D-106).
+   */
+  onFail?(): void;
 }
 
 /** Frame updates are throttled to about 30 ms (DESIGN.md Motion). */
@@ -35,20 +40,44 @@ const FRAME_MS = 30;
 const MAX_DT = 0.25;
 /** Wheel zoom: the factor per pixel of wheel travel. */
 const WHEEL_ZOOM = 0.0015;
+/** How long a lost WebGL context may stay lost before the scene gives up on it and falls back. */
+export const LOST_CONTEXT_MS = 3000;
 
 type Size = { w: number; h: number };
+/** The DOM events the diorama listens for, including the canvas's WebGL context events. */
+type Events = HTMLElementEventMap & { webglcontextlost: WebGLContextEvent; webglcontextrestored: WebGLContextEvent };
 
 /**
- * Mounts the diorama in `host`: one PixiJS application (WebGL only), the static world, one ticker
- * throttled to 30 ms, and the camera controls. The canvas is the host's first child; `host` takes the
- * wheel and keyboard (+, −, 0), the canvas takes drags and pinches. `destroy` removes all of it.
+ * Mounts the diorama in `host`: one PixiJS application on WebGL only (no WebGPU or Canvas2D fallback;
+ * where WebGL fails, the caller shows the schematic), the static world, one ticker throttled to 30 ms,
+ * and the camera controls. The canvas is the host's first child; `host` takes the wheel and keyboard
+ * (+, −, 0), the canvas takes drags and pinches. If anything fails after the renderer has started, the
+ * renderer is destroyed before the error reaches the caller. `destroy` removes all of it.
  */
 export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => void, options: DioramaOptions = { interactive: true }): Promise<DioramaHandle> {
   const app = new Application();
+  const release = () => {
+    try {
+      app.canvas.remove();
+      app.destroy({ removeView: true }, { children: true, texture: true, textureSource: true });
+    } catch {
+      // Init failed before the renderer existed: nothing was created to release.
+    }
+  };
+  try {
+    return await mount(app, host, onCamera, options);
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
+async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) => void, options: DioramaOptions): Promise<DioramaHandle> {
   const view = (): Size => ({ w: Math.max(1, host.clientWidth), h: Math.max(1, host.clientHeight) });
   const size = view();
   await app.init({
-    preference: 'webgl',
+    // An array restricts PixiJS to WebGL; a string would only put it first, ahead of WebGPU and Canvas2D.
+    preference: ['webgl'],
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -68,6 +97,13 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
   const canvas = app.canvas;
   canvas.classList.add('scene-canvas');
   host.prepend(canvas);
+
+  const cleanups: (() => void)[] = [];
+  const listen = <K extends keyof Events>(el: HTMLElement, type: K, fn: (e: Events[K]) => void, opts?: AddEventListenerOptions) => {
+    const handler = fn as EventListener;
+    el.addEventListener(type, handler, opts);
+    cleanups.push(() => el.removeEventListener(type, handler, opts));
+  };
 
   const world = new Container({ label: 'world' });
   app.stage.addChild(world);
@@ -94,6 +130,7 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
 
   // One ticker, throttled; it renders only when something changed. Story time is scaled for e2e (R9).
   let clock = 0;
+  let frames = 0;
   app.ticker.remove(app.render, app);
   app.ticker.maxFPS = 1000 / FRAME_MS;
   const tick = (t: Ticker) => {
@@ -101,6 +138,7 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
     if (!dirty) return;
     dirty = false;
     app.render();
+    frames++;
   };
   app.ticker.add(tick);
   app.ticker.start();
@@ -114,12 +152,20 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
   });
   resize.observe(host);
 
+  // A lost context (GPU reset, driver crash, too many contexts) blanks the canvas. PixiJS asks the browser
+  // to restore it; when it comes back, redraw. If it stays lost, report failure so the schematic stands in.
+  let lostTimer: ReturnType<typeof setTimeout> | undefined;
+  listen(canvas, 'webglcontextlost', () => {
+    clearTimeout(lostTimer);
+    lostTimer = setTimeout(() => options.onFail?.(), LOST_CONTEXT_MS);
+  });
+  listen(canvas, 'webglcontextrestored', () => {
+    clearTimeout(lostTimer);
+    dirty = true;
+  });
+  cleanups.push(() => clearTimeout(lostTimer));
+
   // Camera controls.
-  const cleanups: (() => void)[] = [];
-  const listen = <K extends keyof HTMLElementEventMap>(el: HTMLElement, type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
-    el.addEventListener(type, fn, opts);
-    cleanups.push(() => el.removeEventListener(type, fn, opts));
-  };
   if (options.interactive) {
     const local = (e: { clientX: number; clientY: number }) => {
       const r = canvas.getBoundingClientRect();
@@ -178,6 +224,7 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
     camera: () => ({ ...cam }),
     defaultCamera: () => defaultCamera(current),
     groundAtCentre: () => unproject(current.w / 2, current.h / 2, cam),
+    frames: () => frames,
     async sample(step) {
       app.render();
       const { pixels, width, height } = app.renderer.extract.pixels({ target: app.stage, frame: new Rectangle(0, 0, current.w, current.h), resolution: 1 });
