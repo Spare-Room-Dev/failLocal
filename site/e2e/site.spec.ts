@@ -499,18 +499,22 @@ test('cards sit on their cables, and every post and plaque is in frame without c
       const cloth = { x: pb.side > 0 ? pb.foot.x : pb.foot.x - 13, y: pb.flagTop.y - 1, width: 13, height: 10 };
       for (const [a, ra] of rects) if (a !== b) expect(intersects(cloth, { x: ra.x, y: ra.y, width: ra.w, height: ra.h }), `${b}'s flag on ${a}'s plaque on day ${day}`).toBe(false);
     }
-    // Each area's button covers its plaque (once React has laid the DOM layer out from the same frame).
+    // Each area's button covers its plaque (once React has laid the DOM layer out from the same frame). The
+    // plaques are re-read on each try, so a layout redrawn after the reads above is compared with its own buttons.
     const uncovered = () =>
-      page.evaluate((list) => {
+      page.evaluate(() => {
+        const plaques = window.__faillocal!.diorama!.plaques() as Record<string, { rect: { x: number; y: number; w: number; h: number } | null; inFrame: boolean }>;
         const host = document.querySelector('.scene--diorama')!.getBoundingClientRect();
-        return list.flatMap(([id, r]) => {
+        return Object.entries(plaques).flatMap(([id, p]) => {
+          if (!p.inFrame || !p.rect) return [];
+          const r = p.rect;
           const b = document.querySelector(`.scene-hit[data-area="${id}"]`)!.getBoundingClientRect();
           const x = b.left - host.left;
           const y = b.top - host.top;
           const covers = x <= r.x + 1 && y <= r.y + 1 && x + b.width >= r.x + r.w - 1 && y + b.height >= r.y + r.h - 1;
           return covers ? [] : [id];
         });
-      }, rects as unknown as [string, Rect][]);
+      });
     // Under three parallel SwiftShader pages a frame can take seconds: allow more than the 5 s default.
     await expect.poll(uncovered, { timeout: 15_000 }).toEqual([]);
     // No plaque covers the honesty plate or the Fit button.
