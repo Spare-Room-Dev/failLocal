@@ -266,10 +266,6 @@ body {
   padding: 0 20px;
 }
 
-.site-strip > .event-list--strip {
-  display: none;
-}
-
 .site-detail {
   grid-area: 1 / 2 / 4 / 3;
   min-height: 0;
@@ -404,7 +400,6 @@ body {
   }
 
   .site-stage > .scene,
-  .site-stage > .legend,
   .site-stage > .guided,
   .site-card-slot {
     position: static;
@@ -427,13 +422,18 @@ body {
     margin: 0 16px;
   }
 
-  /* A horizontally scrolling strip of 210 px cards above the scene. */
+  /*
+   * A horizontally scrolling strip of 210 px cards above the scene. The next card peeks in at the right
+   * edge and fades out there, so the strip reads as one that scrolls (finish B4); the end padding lets
+   * the last card scroll clear of the fade.
+   */
   .site-cards {
     display: flex;
     gap: 8px;
-    padding: 2px 16px 8px;
+    padding: 2px 40px 8px 16px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
+    mask-image: linear-gradient(to right, black calc(100% - 48px), transparent);
   }
 
   .site-card-slot {
@@ -445,9 +445,43 @@ body {
     scroll-snap-align: start;
   }
 
-  .site-stage > .legend {
+  /* Under the scene, in reading order (finish B4): the summary strip, the timeline, the legend, the events, the stocks. */
+  .site-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px 4px;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  .site-summary > .timeline-figure-block {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .site-summary .timeline-note br {
+    display: none;
+  }
+
+  .site-summary > .revenue {
+    padding: 0 0 8px;
+    border-bottom: 0;
+  }
+
+  .site-frame--phone > .legend {
     max-width: none;
-    margin: 0 16px;
+    margin: 12px 16px 0;
+  }
+
+  .site-frame--phone > .event-list--strip {
+    padding: 4px 16px 0;
+    border-top: 0;
+  }
+
+  .site-frame--phone > .stock-meters {
+    padding: 12px 16px 16px;
   }
 
   .site-stage > .guided {
@@ -483,24 +517,10 @@ body {
     height: 92px;
   }
 
-  .site-strip > .event-list--strip {
-    display: block;
-    padding: 0;
-    border-top: 0;
-  }
-
-  .site-strip > .stock-meters {
-    flex: none;
-    padding: 0;
-  }
 
   .site-detail {
     overflow: visible;
     border-top: 1px solid var(--line);
     border-left: 0;
-  }
-
-  .site-detail > .event-list--detail {
-    display: none;
   }
 }

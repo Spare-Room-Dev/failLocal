@@ -7,10 +7,11 @@ import './panel.css';
 
 /**
  * The 372 px docked column (DESIGN.md "Docked Detail Panel"): revenue on top, the selected area below.
+ * On a phone the revenue moves up into the summary strip under the scene (`revenue={false}` here).
  * Everything is read off `lastGood`, including its variant, so after a failed recompute the panel
  * still describes one run.
  */
-export function DetailPanel() {
+export function DetailPanel({ revenue = true }: { revenue?: boolean }) {
   const timeline = useStore(appStore, (s) => s.lastGood);
   const hour = useStore(appStore, (s) => s.clock.hour);
   const selected = useStore(appStore, (s) => s.selected);
@@ -19,7 +20,7 @@ export function DetailPanel() {
 
   return (
     <aside className="detail-panel" aria-label="Detail">
-      <RevenueSection register={register} timeline={timeline} sample={sample} />
+      {revenue && <RevenueSection register={register} timeline={timeline} sample={sample} />}
       {selected && (
         <AreaPanel
           register={register}

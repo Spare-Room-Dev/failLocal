@@ -55,12 +55,34 @@ function useLanes(markers: Marker[], axisHours: number): { axis: RefObject<HTMLD
   return { axis, lanes };
 }
 
+/** "Day N of H", with the projection note when the run is one. The timeline shows it; on a phone the summary strip does (finish B4). */
+export function DayFigure() {
+  const run = useStore(appStore, (s) => s.lastGood);
+  const clock = useStore(appStore, (s) => s.clock);
+  if (!run) return null;
+  const day = Math.floor(Math.floor(Math.min(clock.hour, horizonHours(run))) / 24);
+  return (
+    <div className="timeline-figure-block">
+      <span className="timeline-figure" data-clock>
+        Day {day} of {daysText(horizonDays(run))}
+      </span>
+      {run.projection && (
+        <span className="timeline-note">
+          A projection,{' '}
+          <br />
+          not what happened
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
  * The day timeline (DESIGN.md "Day Timeline"): play controls, the "Day N of H" figure and the
- * scrubbable axis. The site page mounts the playback loop. In guided mode the run drives the clock,
+ * scrubbable axis (`figure={false}` leaves the figure to the phone's summary strip). The site page mounts the playback loop. In guided mode the run drives the clock,
  * so play and scrubbing are disabled.
  */
-export function Timeline() {
+export function Timeline({ figure = true }: { figure?: boolean }) {
   const run = useStore(appStore, (s) => s.lastGood);
   const clock = useStore(appStore, (s) => s.clock);
   const locked = useStore(appStore, (s) => s.mode === 'guided');
@@ -75,7 +97,6 @@ export function Timeline() {
   const pct = (h: number) => `${(Math.min(Math.max(h, 0), axisHours) / axisHours) * 100}%`;
   const hour = Math.min(clock.hour, maxHour);
   const whole = Math.floor(hour);
-  const day = Math.floor(whole / 24);
   const current = currentMarker(markers, hour);
   const ticks = Array.from({ length: Math.floor(days) }, (_, i) => i + 1);
 
@@ -107,18 +128,7 @@ export function Timeline() {
             {clock.playing ? <path d="M4 3h3v10H4zM9 3h3v10H9z" /> : <path d="M5 3l8 5-8 5z" />}
           </svg>
         </button>
-        <div className="timeline-figure-block">
-          <span className="timeline-figure" data-clock>
-            Day {day} of {daysText(days)}
-          </span>
-          {run.projection && (
-            <span className="timeline-note">
-              A projection,{' '}
-              <br />
-              not what happened
-            </span>
-          )}
-        </div>
+        {figure && <DayFigure />}
       </div>
       <div
         ref={axis}
