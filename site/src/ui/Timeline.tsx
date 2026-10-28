@@ -1,8 +1,11 @@
 import type { Timeline as Run } from '@faillocal/engine';
-import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, PointerEvent, RefObject } from 'react';
 import { SPEEDS, horizonDays, horizonHours, scrubTo } from '../model/clock.js';
 import { actions, appStore, useStore } from '../model/store.js';
-import { currentMarker, dayHour, timelineMarkers } from '../model/timelineEvents.js';
+import { currentMarker, dayHour, placeLabels, timelineMarkers } from '../model/timelineEvents.js';
+import type { Lane, Marker } from '../model/timelineEvents.js';
+import { useMediaQuery } from './useMediaQuery.js';
 import './chrome.css';
 import './timeline.css';
 
@@ -13,6 +16,45 @@ const LONG_TICK_DAYS = 6;
 /** The horizon as written: whole days bare, a part day to one decimal. */
 const daysText = (d: number): string => (Number.isInteger(d) ? String(d) : d.toFixed(1));
 
+/** Lanes are laid out wherever the strip is wider than a phone's; a phone labels the latest event and lists them all. */
+const LANES_QUERY = '(min-width: 761px)';
+
+/**
+ * Each label's lane, from the labels' measured widths on the axis as drawn (finish B2). Re-measured when
+ * the axis resizes or the events change; none on a phone.
+ */
+function useLanes(markers: Marker[], axisHours: number): { axis: RefObject<HTMLDivElement | null>; lanes: Lane[] } {
+  const axis = useRef<HTMLDivElement>(null);
+  const wide = useMediaQuery(LANES_QUERY);
+  const [lanes, setLanes] = useState<Lane[]>([]);
+  const key = markers.map((m) => `${m.hour}:${m.name}:${m.word}:${m.tag}`).join('|');
+  useLayoutEffect(() => {
+    const el = axis.current;
+    if (!el || !wide) {
+      setLanes((prev) => (prev.length ? [] : prev));
+      return;
+    }
+    const measure = () => {
+      const width = el.getBoundingClientRect().width;
+      const labels = [...el.querySelectorAll<HTMLElement>('.timeline-event-label')];
+      const next = placeLabels(
+        markers.map((m, i) => ({ x: (Math.min(Math.max(m.hour, 0), axisHours) / axisHours) * width, width: labels[i]?.getBoundingClientRect().width ?? 0 })),
+        width,
+      );
+      setLanes((prev) => (prev.length === next.length && prev.every((l, i) => l === next[i]) ? prev : next));
+    };
+    measure();
+    // The labels' widths change once the web font arrives.
+    void document.fonts?.ready.then(measure);
+    if (typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+    // `key` stands for `markers`, which is rebuilt each render.
+  }, [key, axisHours, wide]);
+  return { axis, lanes };
+}
+
 /**
  * The day timeline (DESIGN.md "Day Timeline"): play controls, the "Day N of H" figure and the
  * scrubbable axis. The site page mounts the playback loop. In guided mode the run drives the clock,
@@ -22,6 +64,9 @@ export function Timeline() {
   const run = useStore(appStore, (s) => s.lastGood);
   const clock = useStore(appStore, (s) => s.clock);
   const locked = useStore(appStore, (s) => s.mode === 'guided');
+  const markers = run ? timelineMarkers(run) : [];
+  const axisHoursForLanes = run ? horizonDays(run) * 24 : 1;
+  const { axis, lanes } = useLanes(markers, axisHoursForLanes);
   if (!run) return null;
 
   const maxHour = horizonHours(run);
@@ -31,7 +76,6 @@ export function Timeline() {
   const hour = Math.min(clock.hour, maxHour);
   const whole = Math.floor(hour);
   const day = Math.floor(whole / 24);
-  const markers = timelineMarkers(run);
   const current = currentMarker(markers, hour);
   const ticks = Array.from({ length: Math.floor(days) }, (_, i) => i + 1);
 
@@ -77,6 +121,7 @@ export function Timeline() {
         </div>
       </div>
       <div
+        ref={axis}
         className="timeline-axis"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -86,14 +131,15 @@ export function Timeline() {
           if (e.buttons & 1) scrubFromPointer(e);
         }}
       >
-        <div className="timeline-events">
+        <div className={`timeline-events${lanes.length ? ' has-lanes' : ''}`}>
           {markers.map((m, i) => (
             <button
               key={i}
               type="button"
               className={`timeline-event${i === current ? ' is-current' : ''}`}
               data-event={m.kind}
-              aria-label={`${m.name} ${m.word}`}
+              data-lane={lanes[i] ?? undefined}
+              aria-label={`${m.name} ${m.word}, ${m.tag}`}
               disabled={locked}
               style={{ left: pct(m.hour), '--at': Math.min(Math.max(m.hour / axisHours, 0), 1) } as CSSProperties}
               onPointerDown={(e) => e.stopPropagation()}
@@ -103,7 +149,8 @@ export function Timeline() {
                 <span className="timeline-event-name" title={m.name}>
                   {m.name}
                 </span>{' '}
-                <span className="timeline-event-word">{m.word}</span>
+                <span className="timeline-event-word">{m.word}</span>{' '}
+                <span className="timeline-event-tag">{m.tag}</span>
               </span>
             </button>
           ))}

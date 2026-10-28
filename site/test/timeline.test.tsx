@@ -9,7 +9,7 @@ import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { StockMeters } from '../src/ui/StockMeters.js';
 import { EventList } from '../src/ui/EventList.js';
 import { Timeline } from '../src/ui/Timeline.js';
-import { timelineMarkers } from '../src/model/timelineEvents.js';
+import { placeLabels, timelineMarkers } from '../src/model/timelineEvents.js';
 import { usePlayback } from '../src/ui/usePlayback.js';
 import { installE2eHook, timeScale } from '../src/model/timeScale.js';
 import { untaggedNumbers } from './helpers/untagged.js';
@@ -155,7 +155,9 @@ describe('Timeline', () => {
     const { container } = render(<Timeline />);
     const markers = timelineMarkers(appStore.get().lastGood!);
     const hairlines = () => [...container.querySelectorAll<HTMLButtonElement>('button[data-event]')];
-    expect(hairlines().map((b) => b.getAttribute('aria-label'))).toEqual(markers.map((m) => `${m.name} ${m.word}`));
+    expect(hairlines().map((b) => b.getAttribute('aria-label'))).toEqual(markers.map((m) => `${m.name} ${m.word}, ${m.tag}`));
+    // jsdom is phone-like here (no matchMedia): no lanes, so only the current label shows (R10).
+    expect(hairlines().filter((b) => b.hasAttribute('data-lane'))).toEqual([]);
     const current = () => hairlines().filter((b) => b.classList.contains('is-current'));
     expect(current()).toHaveLength(1); // hour 0 has the ERP going down
     const target = markers.findIndex((m) => m.hour > 100);
@@ -163,6 +165,40 @@ describe('Timeline', () => {
     expect(current()).toEqual([hairlines()[markers.map((m) => m.hour).lastIndexOf(markers[target]!.hour)]]);
     await user.click(hairlines()[0]!);
     expect(appStore.get().clock.hour).toBe(markers[0]!.hour);
+  });
+
+  test('each label ends in the tag word for where its time comes from', () => {
+    actions.setScenario('s1-projection');
+    const markers = timelineMarkers(appStore.get().lastGood!);
+    const tags = Object.fromEntries(markers.map((m) => [`${m.name} ${m.word}`, m.tag]));
+    // The cut's start is the scenario's assumed hour 0; its end is set by the sourced 12-day restore.
+    expect(tags['Hosted ERP down']).toBe('assumed');
+    expect(tags['Hosted ERP up']).toBe('sourced');
+    for (const m of markers.filter((x) => x.kind === 'process-stopped')) expect(m.tag).toBe('computed');
+    const { container } = render(<Timeline />);
+    expect([...container.querySelectorAll('.timeline-event-tag')].map((t) => t.textContent)).toEqual(markers.map((m) => m.tag));
+  });
+
+  test("an inherited outage is computed, and a visitor's cut is changed by you", () => {
+    actions.setScenario('s4-precautionary-isolation');
+    const inherited = timelineMarkers(appStore.get().lastGood!).filter((m) => m.kind === 'service-down' && m.name !== 'Corporate network');
+    expect(inherited.length).toBeGreaterThan(0);
+    for (const m of inherited) expect(m.tag).toBe('computed');
+    actions.enterFreePlay();
+    actions.addCut({ service: 'iroc-link', atDays: 1, forDays: 2 });
+    const free = timelineMarkers(appStore.get().lastGood!).filter((m) => m.kind !== 'process-stopped' && m.name === 'Perth operations link');
+    expect(free.map((m) => m.tag)).toEqual(['changed by you', 'changed by you']);
+  });
+
+  test('wider than a phone, labels get lanes from placeLabels', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    const { container } = render(<Timeline />);
+    // jsdom lays nothing out: the axis and every label measure 0, so all events stand at one spot. The first
+    // two take the two lanes and the rest have none (the real layout is checked end to end).
+    const lanes = [...container.querySelectorAll('button[data-event]')].map((b) => b.getAttribute('data-lane'));
+    expect(lanes.length).toBeGreaterThan(2);
+    expect(lanes).toEqual(['above', 'below', ...lanes.slice(2).map(() => null)]);
+    vi.unstubAllGlobals();
   });
 
   test('every numeral is a clock value', () => {
@@ -261,5 +297,48 @@ describe('StockMeters', () => {
     render(<StockMeters />);
     act(() => actions.setOverride('stocks.diesel.capacity', 14));
     expect(screen.getByRole('meter', { name: 'Diesel' }).getAttribute('aria-valuemax')).toBe('14');
+  });
+});
+
+describe('placeLabels', () => {
+  const overlaps = (items: { x: number; width: number }[], axis: number, lanes: (string | null)[]) => {
+    const spans = items.map(({ x, width }) => {
+      const left = x - (x / axis) * width;
+      return [left, left + width] as const;
+    });
+    const hits: string[] = [];
+    for (let i = 0; i < items.length; i++)
+      for (let j = i + 1; j < items.length; j++)
+        if (lanes[i] && lanes[i] === lanes[j] && spans[i]![0] < spans[j]![1] && spans[j]![0] < spans[i]![1]) hits.push(`${i}/${j}`);
+    return hits;
+  };
+
+  test('three events at one hour (day 3 of the projection) take above, below, then none', () => {
+    const items = [{ x: 100, width: 140 }, { x: 100, width: 150 }, { x: 100, width: 160 }];
+    const lanes = placeLabels(items, 600);
+    expect(lanes).toEqual(['above', 'below', null]);
+    expect(overlaps(items, 600, lanes)).toEqual([]);
+  });
+
+  test('labels far apart alternate lanes; a label never leaves the axis', () => {
+    const items = [{ x: 0, width: 120 }, { x: 300, width: 120 }, { x: 600, width: 120 }];
+    expect(placeLabels(items, 600)).toEqual(['above', 'below', 'above']);
+  });
+
+  test('no two labels in a lane overlap, over many random layouts', () => {
+    let seed = 7;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let round = 0; round < 200; round++) {
+      const axis = 300 + rand() * 700;
+      const items = Array.from({ length: 2 + Math.floor(rand() * 10) }, () => ({ x: rand() * axis, width: 40 + rand() * 140 })).sort((a, b) => a.x - b.x);
+      const lanes = placeLabels(items, axis);
+      expect(overlaps(items, axis, lanes)).toEqual([]);
+      for (const [i, { x, width }] of items.entries()) {
+        if (!lanes[i]) continue;
+        const left = x - (x / axis) * width;
+        expect(left).toBeGreaterThanOrEqual(-1e-9);
+        expect(left + width).toBeLessThanOrEqual(axis + 1e-9);
+      }
+    }
   });
 });

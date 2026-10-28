@@ -145,10 +145,12 @@
 }
 
 /*
- * Each event is a hairline button (ruling R10). Only the focused or hovered hairline is labelled, and
- * the latest event at or before now; the event list writes them all out. `--at` is the event's place
- * on the axis (0 to 1), which slides its label from right of the hairline to left of it, so a label
- * never leaves the axis.
+ * Each event is a hairline button. Wider than a phone, every label that fits has a lane, above or below
+ * the axis, alternating (finish B2; `data-lane`, placed by `placeLabels` from the measured widths), and
+ * ends in its tag word. A label with no lane, and every label on a phone (ruling R10), shows only when
+ * its hairline is focused or hovered, or for the latest event at or before now; the event list writes
+ * them all out. `--at` is the event's place on the axis (0 to 1), which slides its label from right of
+ * the hairline to left of it, so a label never leaves the axis.
  */
 .timeline-event {
   position: absolute;
@@ -173,6 +175,16 @@
   content: '';
 }
 
+/* A label below the axis: the hairline runs on down to it, past the track. */
+.timeline-event[data-lane='below']::after {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 5px;
+  height: 12px;
+  border-left: 1px dashed var(--ink-3);
+  content: '';
+}
+
 .timeline-event:disabled {
   cursor: default;
 }
@@ -187,30 +199,49 @@
   position: absolute;
   bottom: 100%;
   left: 5px;
-  display: none;
+  display: flex;
   gap: 3px;
-  max-width: 160px;
+  align-items: baseline;
+  max-width: 180px;
   padding: 0 3px;
   font-size: 12px;
   line-height: 1.2;
   white-space: nowrap;
+  visibility: hidden;
   transform: translateX(calc(var(--at, 0) * -100%));
 }
 
+.timeline-event[data-lane='below'] .timeline-event-label {
+  top: calc(100% + 24px);
+  bottom: auto;
+}
+
+.timeline-event[data-lane] .timeline-event-label,
 .timeline-event:hover .timeline-event-label,
 .timeline-event:focus-visible .timeline-event-label,
 .timeline-event.is-current .timeline-event-label {
-  display: flex;
+  visibility: visible;
 }
 
-/* While a hairline is hovered or focused, only its label shows. */
-.timeline-events:has(.timeline-event:hover, .timeline-event:focus-visible) .timeline-event.is-current:not(:hover, :focus-visible) .timeline-event-label {
-  display: none;
+/* With lanes, a lane-less label shows only on hover or focus, not as the latest event: it would cross a laned one. */
+.timeline-events.has-lanes .timeline-event.is-current:not([data-lane], :hover, :focus-visible) .timeline-event-label {
+  visibility: hidden;
+}
+
+/* A label shown only on hover or focus sits on paper, over any laned label it crosses. */
+.timeline-event:not([data-lane]):is(:hover, :focus-visible) .timeline-event-label {
+  z-index: 1;
+  background: var(--paper);
+}
+
+/* While a hairline is hovered or focused, only its label shows among the lane-less ones. */
+.timeline-events:has(.timeline-event:hover, .timeline-event:focus-visible) .timeline-event.is-current:not([data-lane], :hover, :focus-visible) .timeline-event-label {
+  visibility: hidden;
 }
 
 /* With focus on one hairline and the pointer on another, the pointer's wins: still one label. */
-.timeline-events:has(.timeline-event:hover) .timeline-event:focus-visible:not(:hover) .timeline-event-label {
-  display: none;
+.timeline-events:has(.timeline-event:hover) .timeline-event:focus-visible:not([data-lane], :hover) .timeline-event-label {
+  visibility: hidden;
 }
 
 .timeline-event-name {
@@ -219,9 +250,20 @@
   text-overflow: ellipsis;
 }
 
+.timeline-event.is-current .timeline-event-name {
+  color: var(--ink);
+}
+
 .timeline-event-word {
   flex: none;
   color: var(--ink-3);
+}
+
+/* The tag word: where the event's time comes from (DESIGN.md "Day Timeline"). */
+.timeline-event-tag {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 10px;
 }
 
 /* Event list: every timeline event, written out. */

@@ -33,8 +33,8 @@ const intersects = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.widt
 
 /** The boxes of the hairline labels showing now. */
 const visibleLabels = (page: Page): Promise<Box[]> =>
-  page.locator('.timeline-event-name').evaluateAll((els) =>
-    els.filter((e) => e.getClientRects().length > 0).map((e) => e.getBoundingClientRect().toJSON() as Box),
+  page.locator('.timeline-event-label').evaluateAll((els) =>
+    els.filter((e) => getComputedStyle(e).visibility === 'visible').map((e) => e.getBoundingClientRect().toJSON() as Box),
   );
 
 test('guided run plays and ends on the comparison', async ({ page }) => {
@@ -165,34 +165,48 @@ test('desktop frame', async ({ page }, info) => {
   await page.screenshot({ path: info.outputPath('desktop-1440x900.png') });
 });
 
-test('hairline labels never overlap', async ({ page }) => {
+test('hairline labels never overlap', async ({ page }, info) => {
   await open(page, '#/site');
+  const phone = info.project.name === 'phone';
+  const axis = (await page.locator('.timeline-axis').filter({ visible: true }).boundingBox())!;
   for (const day of [0, 3, 12, 16]) {
     await scrubToDay(page, day);
     const labels = await visibleLabels(page);
-    expect(labels.length, `day ${day}`).toBeLessThanOrEqual(1);
+    if (phone) {
+      // A phone labels only the latest event; the event list writes them all out (R10).
+      expect(labels.length, `day ${day}`).toBeLessThanOrEqual(1);
+      continue;
+    }
+    // Wider, every event that fits is labelled, in a lane above or below the axis, with its tag word (finish B2).
+    const laned = await page.locator('.timeline-event[data-lane]').count();
+    expect(laned, `day ${day}: labelled events`).toBeGreaterThanOrEqual(Math.min(4, await page.locator('.timeline-event').count()));
+    expect(labels.length, `day ${day}`).toBeGreaterThanOrEqual(laned);
+    for (const [i, a] of labels.entries()) {
+      expect(a.x, `day ${day}: label inside the axis`).toBeGreaterThanOrEqual(axis.x - 1);
+      expect(a.x + a.width, `day ${day}: label inside the axis`).toBeLessThanOrEqual(axis.x + axis.width + 1);
+      for (const b of labels.slice(i + 1)) expect(intersects(a, b), `day ${day}: labels overlap`).toBe(false);
+    }
+    const tags = await page.locator('.timeline-event[data-lane] .timeline-event-tag').allTextContents();
+    for (const t of tags) expect(['computed', 'sourced', 'assumed', 'measured', 'changed by you']).toContain(t);
   }
-  // Hovering a hairline shows its label alone; focusing one does the same.
-  // Events at one hour share a spot; force the hover onto whichever hairline is on top.
-  await page.locator('.timeline-event').nth(2).hover({ force: true });
-  const hovered = await visibleLabels(page);
-  expect(hovered).toHaveLength(1);
-  await page.mouse.move(0, 0);
-  await page.locator('.timeline-event').nth(4).focus();
-  const focused = await visibleLabels(page);
-  for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
-  // Focus on one hairline (by keyboard, so it is focus-visible) and the pointer on another: one label, the hovered one's.
-  await page.locator('.timeline-event').nth(3).focus();
-  await page.keyboard.press('Tab');
-  await expect(page.locator('.timeline-event').nth(4)).toBeFocused();
-  // Haulage's hairline stands alone, so the pointer lands on it and nothing else. Its top pixel: on
-  // the tablet strip the axis track covers the rest of it.
-  const haulage = page.getByRole('button', { name: 'Haulage stopped' });
-  await haulage.hover({ position: { x: 5, y: 1 } });
-  expect(await page.evaluate(() => [...document.querySelectorAll('.timeline-event:hover')].map((e) => e.getAttribute('aria-label')))).toEqual(['Haulage stopped']);
-  const shown = await page.locator('.timeline-event-name').evaluateAll((els) => els.filter((e) => e.getClientRects().length > 0).map((e) => e.textContent));
-  expect(shown).toEqual(['Haulage']);
-  await page.mouse.move(0, 0);
+  if (phone) {
+    // Hovering a hairline shows its label alone; focusing one does the same.
+    // Events at one hour share a spot; force the hover onto whichever hairline is on top.
+    await page.locator('.timeline-event').nth(2).hover({ force: true });
+    expect(await visibleLabels(page)).toHaveLength(1);
+    await page.mouse.move(0, 0);
+    await page.locator('.timeline-event').nth(4).focus();
+    const focused = await visibleLabels(page);
+    for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
+  } else {
+    // A label with no lane still shows on hover, on paper.
+    const loose = page.locator('.timeline-event:not([data-lane])');
+    if (await loose.count()) {
+      await loose.first().hover({ force: true });
+      await expect(loose.first().locator('.timeline-event-label')).toHaveCSS('visibility', 'visible');
+      await page.mouse.move(0, 0);
+    }
+  }
   // Every event is still listed, with its hour.
   const list = page.getByRole('region', { name: 'Events' }).filter({ visible: true });
   await expect(list.getByRole('listitem')).toHaveCount(await page.locator('.timeline-event').count());
@@ -384,6 +398,19 @@ test('cards sit on their cables, and every post and plaque is in frame without c
     const card = (await page.locator(`.service-card[data-service-group="${id}"]`).boundingBox())!;
     expect(card.x, `${id} left edge`).toBeGreaterThanOrEqual(stage.x);
     expect(card.x + card.width, `${id} right edge`).toBeLessThanOrEqual(stage.x + stage.width);
+  }
+  // One height along the band, the two-vendor card included (finish B3); full cards (icon and button glyph) wherever the slot allows.
+  const cardBoxes = await page.locator('.service-card').evaluateAll((els) =>
+    els.map((e) => ({ cut: (e as HTMLElement).dataset.cut === 'true', h: e.getBoundingClientRect().height, icon: !!(e.querySelector('.service-icon') as SVGElement | null)?.getBoundingClientRect().width })),
+  );
+  // A cut card may grow (its status is longer); every card in its up state is one height.
+  const upCards = cardBoxes.filter((c) => !c.cut);
+  expect(upCards.length).toBeGreaterThanOrEqual(4);
+  for (const c of upCards) expect(Math.abs(c.h - upCards[0]!.h), 'card heights').toBeLessThanOrEqual(1);
+  if (info.project.name === 'desktop') {
+    for (const c of cardBoxes) expect(c.icon, 'a full card at 1440 has its icon').toBe(true);
+    const glyphs = await page.locator('.service-button .service-glyph').evaluateAll((els) => els.filter((e) => (e as SVGElement).getBoundingClientRect().width > 0).length);
+    expect(glyphs).toBe(6);
   }
   const truncated = await page
     .locator('.service-card-name, .service-row-name')
