@@ -176,6 +176,9 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
 
 test('camera zoom and fit', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'wheel zoom on the laptop frame');
+  // A still scene: this test is about the camera, and continuous redraws under software WebGL (SwiftShader)
+  // slow each of its thirty wheel events enough to crowd the timeout when the suite runs in parallel.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await openSite(page);
   const start = await camera(page);
   const fit = await defaultCamera(page);
@@ -269,11 +272,13 @@ test('cutting hosted-erp severs its cable on the canvas layer', async ({ page },
   const post = await page.evaluate(() => window.__faillocal!.diorama!.entryPost('hosted-erp'));
   expect(post.y).toBeGreaterThan(60);
   // The break sits on the cable's last leg above the post: the ring and the "Link cut" label, in Stop Red.
+  // The patch is above the north rim, on the gallery floor, so no oxide ground can pass for red; the
+  // tolerance (25) still excludes oxide-low and ore-load (about 36 and 38 from Stop Red).
   const rect = { x: post.x - 90, y: post.y - 90, w: 110, h: 90 };
   await expect
     .poll(async () => {
       const colours = (await page.evaluate((r) => window.__faillocal!.diorama!.sample(1, r), rect)) as Rgb[];
-      return colours.filter((c) => dist(c, STOP_RED) < 40).length;
+      return colours.filter((c) => dist(c, STOP_RED) < 25).length;
     })
     .toBeGreaterThan(3);
 
@@ -283,7 +288,7 @@ test('cutting hosted-erp severs its cable on the canvas layer', async ({ page },
   await expect
     .poll(async () => {
       const colours = (await page.evaluate((r) => window.__faillocal!.diorama!.sample(1, r), rect)) as Rgb[];
-      return colours.filter((c) => dist(c, STOP_RED) < 40).length;
+      return colours.filter((c) => dist(c, STOP_RED) < 25).length;
     })
     .toBe(0);
 });

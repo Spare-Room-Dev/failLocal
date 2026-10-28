@@ -440,7 +440,10 @@ class Plaque {
   set(scene: SceneState, selected: string | null, labels: boolean): void {
     const p = scene.processes[this.id];
     if (!p) throw new Error(`scene has no process ${this.id}`);
-    const { len, side } = POLE[this.id] ?? { len: 36, side: 1 };
+    // Without plaques (the decorative scene) there is nothing to stack, so every pole is short.
+    const pole = POLE[this.id] ?? { len: 36, side: 1 };
+    const side = pole.side;
+    const len = labels ? pole.len : 26;
     const sel = selected === this.id;
     const g = this.g;
     g.clear();
