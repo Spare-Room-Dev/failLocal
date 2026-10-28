@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-25T13:08:15.137Z",
+  "generatedAt": "2026-10-28T08:50:51.947400Z",
   "title": "Design System: FailLocal",
   "extensions": {
     "colorMeta": {
@@ -47,6 +47,36 @@
           "#aaa49e",
           "#cdc8c3",
           "#f1eeeb"
+        ]
+      },
+      "ink-hover": {
+        "role": "neutral",
+        "displayName": "Ink Hover",
+        "canonical": "oklch(33.0% 0.011 56.0)",
+        "tonalRamp": [
+          "#0f0a07",
+          "#28231f",
+          "#453e3a",
+          "#635c58",
+          "#837c77",
+          "#a49d98",
+          "#cac2bd",
+          "#f5ede8"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
         ]
       },
       "paper": {
@@ -182,6 +212,51 @@
           "#a9a49d",
           "#ccc9c3",
           "#f0eeea"
+        ]
+      },
+      "legend-wash": {
+        "role": "neutral",
+        "displayName": "Legend Wash",
+        "canonical": "rgba(250, 248, 244, 0.86)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#252421",
+          "#413f3c",
+          "#5f5d5a",
+          "#7f7d79",
+          "#a09e9a",
+          "#c6c4c0",
+          "#f0eeea"
+        ]
+      },
+      "odometer-unlit": {
+        "role": "neutral",
+        "displayName": "Odometer Unlit",
+        "canonical": "oklch(70.8% 0.021 72.5)",
+        "tonalRamp": [
+          "#110a03",
+          "#2a2319",
+          "#473e34",
+          "#655c51",
+          "#857c70",
+          "#a79d91",
+          "#cdc2b6",
+          "#f7ede0"
+        ]
+      },
+      "odometer-lit-fill": {
+        "role": "neutral",
+        "displayName": "Odometer Lit Fill",
+        "canonical": "oklch(90.9% 0.017 79.3)",
+        "tonalRamp": [
+          "#0f0a04",
+          "#28231b",
+          "#443f36",
+          "#635d53",
+          "#837c72",
+          "#a49d93",
+          "#cac3b8",
+          "#f5ede2"
         ]
       },
       "stop-red": {
@@ -533,134 +608,237 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "The landing question only; 34px on phone."
+        "purpose": "The welcome question only; 32px on phone. Supporting-page h1 is 32px at the same weight and width."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Detail panel heading (process area name)."
+        "purpose": "Detail panel process-area name. The guided step title is the heavier 23px/740/wdth 94 variant."
       },
       "figure": {
         "displayName": "Figure",
-        "purpose": "Day number and revenue-at-risk value; tabular."
+        "purpose": "Day number; tabular. Revenue at risk is the 24px/700/wdth 88 panel figure."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Service names, scenario name, plaque names."
+        "purpose": "Service card names, scenario title."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "App chrome text; tabular numerals."
+        "purpose": "App chrome text; tabular numerals set at the body."
       },
       "body-long": {
         "displayName": "Body Long",
-        "purpose": "Landing prose, max 31em."
+        "purpose": "Welcome prose, max 56ch."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Status lines, legend, controls, stocks, continuity rows."
+        "purpose": "Status lines, legend, controls, stocks, section headings, panel rows."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Plaque name and state line, timeline event labels, hero service labels, panel sub-values."
       },
       "tag": {
         "displayName": "Tag",
-        "purpose": "Provenance tags only."
+        "purpose": "Provenance tags only (10px, inherited weight); timeline tag words are 9.5px."
       }
     },
     "shadows": [
       {
         "name": "card-float",
         "value": "0 1px 0 rgba(29,26,23,.04), 0 6px 14px -8px rgba(60,40,25,.25)",
-        "purpose": "Service cards floating over the stage only."
+        "purpose": "Service cards only (--card-float)."
       },
       {
         "name": "hivis-lift",
         "value": "0 1px 0 rgba(29,26,23,.25), 0 10px 22px -12px rgba(150,95,10,.55)",
-        "purpose": "Primary landing button."
+        "purpose": "Primary welcome button (--hivis-lift)."
       },
       {
-        "name": "toggle-knob",
-        "value": "0 1px 2px rgba(29,26,23,.3)",
-        "purpose": "Switch thumb."
+        "name": "odometer-cell-edge",
+        "value": "inset 0 -1px 0 rgba(29,26,23,.08)",
+        "purpose": "Lower edge of each odometer cell (--odometer-cell-edge)."
       },
       {
         "name": "scene-cast",
-        "value": "fill #3b160b @ 0.34, blur ~1.6k px; hull(footprint ∪ footprint + h·(1.5, −0.15))",
-        "purpose": "Ground shadow of every scene object (PixiJS: graphics fill + blur filter)."
+        "value": "fill cast-shadow; layer blurred ~1.6k px then alpha 0.34; hull(footprint ∪ footprint + h·(1.5, −0.15))",
+        "purpose": "Ground shadow of every scene object (PixiJS BlurFilter + AlphaFilter on one layer)."
+      },
+      {
+        "name": "plinth-floor",
+        "value": "mix(cast-shadow, plinth, .5) @ .42, blur 16",
+        "purpose": "The whole model's shadow on the gallery floor."
       }
     ],
     "motion": [
       {
-        "name": "ease-ui",
-        "value": "cubic-bezier(.2,.8,.2,1) 0.2s",
-        "purpose": "Switch knob, primary-button arrow nudge."
+        "name": "frame-throttle",
+        "value": "30ms (ticker maxFPS ≈ 33)",
+        "purpose": "Scene frame cadence."
       },
       {
-        "name": "ui-fade",
-        "value": "0.15s",
-        "purpose": "Button background and ghost circle fill."
+        "name": "max-dt",
+        "value": "0.25s",
+        "purpose": "Cap on each animation step so a background tab never jumps the scene."
+      },
+      {
+        "name": "haul",
+        "value": "12 m/s display; lanes ±4.6 m; half-circle turn at the shovel",
+        "purpose": "Running trucks (count bound to haulage state: 8 / 4 / 0)."
+      },
+      {
+        "name": "rail",
+        "value": "8 m/s × train.speed (1, 0.5, 0)",
+        "purpose": "Ore train on the balloon loop."
+      },
+      {
+        "name": "light-vehicles",
+        "value": "13 m/s while haulage is not stopped",
+        "purpose": "Crewed vehicles on the access road, stood down when haulage stops."
       },
       {
         "name": "belt",
-        "value": "9s linear infinite dash offset",
-        "purpose": "Conveyor ore dashes."
-      },
-      {
-        "name": "cut-pulse",
-        "value": "2.4s ease-in-out infinite, opacity .25 to 1",
-        "purpose": "Ring at a severed cable."
+        "value": "2.2 m dash / 5.6 m period, 56 m per 9 s",
+        "purpose": "Conveyor ore dashes while the conveyor runs."
       },
       {
         "name": "cable-dot",
-        "value": "5–7s per run, staggered",
+        "value": "5–7s per run, staggered by group",
         "purpose": "Travelling dot on a live cable."
+      },
+      {
+        "name": "cut-pulse",
+        "value": "2.4s ease-in-out, opacity 0.4 to 1; held lit under reduced motion",
+        "purpose": "Ring at a severed cable."
       },
       {
         "name": "dust",
         "value": "puff every 0.22s, 2.6s life, fade from 0.42",
-        "purpose": "Dust behind moving haul trucks."
+        "purpose": "Dust behind running haul trucks."
       },
       {
-        "name": "frame-throttle",
-        "value": "~30ms",
-        "purpose": "Scene frame update cadence."
+        "name": "timeline-now",
+        "value": "120ms linear",
+        "purpose": "Now disc and stock meter fills."
+      },
+      {
+        "name": "ui-fade",
+        "value": "0.15s",
+        "purpose": "Primary button background and press."
+      },
+      {
+        "name": "ease-ui",
+        "value": "cubic-bezier(.2,.8,.2,1) 0.2s",
+        "purpose": "Primary-button arrow nudge."
       },
       {
         "name": "reduced-motion",
-        "value": "still engine frame; static dots; no pulse, belt or UI transitions",
-        "purpose": "prefers-reduced-motion fallback."
+        "value": "one still frame of the same engine state; static dot at the bus corner; ring held lit; no belt; no UI transitions",
+        "purpose": "prefers-reduced-motion."
       }
     ],
     "breakpoints": [
       {
         "name": "phone",
-        "value": "760px"
+        "value": "760px",
+        "purpose": "max-width: single column; card strip; cables hidden; working-area crop."
+      },
+      {
+        "name": "tablet",
+        "value": "761px–1200px",
+        "purpose": "Detail panel below; two-row strip; compact cards."
+      },
+      {
+        "name": "welcome-stack",
+        "value": "1100px",
+        "purpose": "max-width: welcome hero stacks under the copy."
+      },
+      {
+        "name": "card-compact",
+        "value": "149px (container)",
+        "purpose": "Card slot width below which the card drops its icon and Cut keeps only its glyph."
+      },
+      {
+        "name": "card-stacked-foot",
+        "value": "239px (container)",
+        "purpose": "Card slot width below which status and buttons stack."
+      },
+      {
+        "name": "stage-narrow",
+        "value": "860px (container)",
+        "purpose": "Legend band grows from 56 to 84px."
       }
     ],
     "projection": {
       "type": "true 2:1 dimetric",
       "formula": "screenX = ox + (x − y)·k; screenY = oy + (x + y)·k/2 − z·k·1.2247",
-      "axes": "+x screen lower-right, +y screen lower-left, z up, north top corner",
-      "units": "metres; board 720 × 480 m",
+      "axes": "+x screen lower-right, +y screen lower-left, z up, world (0,0) the back (north) corner",
+      "units": "metres; board 1600 × 1000 m (D-100)",
       "k": {
-        "app": 0.83,
-        "landing": 1.18
+        "min": 0.35,
+        "max": 2.4,
+        "siteDefaultAt1440": 0.58,
+        "siteDefaultAt820": 0.44,
+        "hero": "≈0.49 at 1440"
       },
-      "depthSort": "x + y"
+      "depthSort": "x + y",
+      "camera": "wheel/drag/pinch/+−0, Fit; clamp keeps the ground point under the view centre inside the board"
     },
     "lighting": {
       "lightVector": "normalize(−1, 0.1, 1.05)",
-      "faceTone": "b = dot(n̂, L)·0.8 − 0.12; b<0: mix(base, #2a1a20, 0.6|b|); b>0: mix(base, #fff4e0, 0.5b)",
+      "faceTone": "b = dot(n̂, L)·0.8 − 0.12; b<0: mix(base, shade-dark, 0.6|b|); b>0: mix(base, shade-lite, 0.5b)",
       "canonicalFaces": {
         "top": 0.458,
         "yFace": -0.065,
         "xFace": -0.67
       },
-      "groundFacets": "20 m grid, ±4.5 m jitter, b ≈ top − 0.42 ± 0.045",
-      "shadowVector": "(1.5, −0.15) m per m of height"
+      "workedCheck": {
+        "galvanised": [
+          "#e2dcd1",
+          "#d2cec5",
+          "#938a87"
+        ],
+        "hivis": [
+          "#f5c04a",
+          "#eaaa1e",
+          "#a2741f"
+        ]
+      },
+      "groundFacets": "jittered triangle grid, b ≈ top − 0.42 ± 0.045",
+      "facets": "cylinder: 16 wall facets, 24-sided top; back faces culled",
+      "shadowVector": "(1.5, −0.15) m per m of height, layer at 34%"
     },
     "hatch": {
-      "pattern": "7px tile rotated 26.565°",
-      "line": "#1c1916 1.5px @ .62",
-      "wash": "#1c1916 @ .08",
-      "outline": "#1c1916 1.1px dashed 5/3 @ .8"
+      "spacing": "7px on screen, along the board x axis (26.565°)",
+      "line": "hatch-ink 1.5px @ .62",
+      "wash": "hatch-ink @ .08",
+      "outline": "hatch-ink 1.1px dashed 5/3 @ .8"
+    },
+    "cables": {
+      "stroke": "ink 1.5px, miter join, butt cap",
+      "chamfer": "9px 45°",
+      "bus": "30px below stage top, stepped 6px",
+      "anchors": "cableFraction(i) = (i+1)/6 of the scene width",
+      "live": "paper dot r2.4, ink ring 1.2px",
+      "severed": "bars 10px, 16px apart; stop-red ring r3.2 1.4px; \"Link cut\" label; remainder dashed 3/3 1.3px @ .55",
+      "revoked": "dashed 4/3 @ .9; ink \"Access revoked\" label",
+      "unreachable": "26px drop under the card only"
+    },
+    "plate": {
+      "text": "FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA",
+      "face": "DOM text, matrix(2/√5, 1/√5, 0, 1, 0, 0), from 40 m along the front-left plinth face, font max(9px, 0.55 × face height)",
+      "pinned": "bottom-right of stage: 11px, padding 4px 10px (phone 9px, 3px 7px), only while the face is off-screen"
+    },
+    "svgUnits": {
+      "file": "site/src/ui/scene.css",
+      "values": {
+        "plate": 26,
+        "area-name": 20,
+        "state": 18,
+        "cable-label": 18,
+        "note": 16
+      },
+      "note": "Schematic (no-WebGL) SVG viewBox units, 1600 wide; not page type steps. Why the design hook ignores this file."
     }
   },
   "components": [
@@ -668,17 +846,17 @@
       "name": "Service Card",
       "kind": "card",
       "refersTo": "service-card",
-      "description": "Outside service cabled into the board; Cut on the right.",
-      "html": "<div class=\"ds-svc\"><svg class=\"ds-ico\" viewBox=\"0 0 32 32\" width=\"30\" height=\"30\"><path d=\"M9 22h15a5 5 0 0 0 .6-10 7 7 0 0 0-13.5-1.6A5.8 5.8 0 0 0 9 22z\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/></svg><div><b>Cloud login</b><span class=\"ds-st\">Up</span></div><button class=\"ds-cut\" aria-pressed=\"false\">Cut</button></div>",
-      "css": ".ds-svc{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px;width:240px;height:58px;padding:0 8px 0 9px;background:#faf8f4;border:1px solid #c4bbad;border-radius:6px;box-shadow:0 1px 0 rgba(29,26,23,.04),0 6px 14px -8px rgba(60,40,25,.25);font-family:Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc b{display:block;font-size:13px;font-weight:680;font-stretch:88%;line-height:1.15}.ds-st{font-size:11.5px;color:#554e47;font-stretch:94%}.ds-cut{height:28px;padding:0 8px;border:1px solid #c4bbad;border-radius:5px;background:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-cut:hover{border-color:#1d1a17;background:#fff}.ds-cut:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+      "description": "One outside service on the stage: icon, name, status, Cut on the right.",
+      "html": "<div class=\"ds-svc\"><svg class=\"ds-ico\" viewBox=\"0 0 32 32\" width=\"26\" height=\"26\"><path d=\"M9 22h15a5 5 0 0 0 .6-10 7 7 0 0 0-13.5-1.6A5.8 5.8 0 0 0 9 22z\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\" stroke-linejoin=\"round\"/></svg><div><b>Cloud login</b><span class=\"ds-st\">Up</span></div><button class=\"ds-cut\" aria-pressed=\"false\">Cut</button></div>",
+      "css": ".ds-svc{display:grid;grid-template-columns:26px 1fr auto;align-items:start;gap:7px;width:240px;min-height:58px;box-sizing:border-box;padding:7px 8px;background:#faf8f4;border:1px solid #c4bbad;border-radius:6px;box-shadow:0 1px 0 rgba(29,26,23,.04),0 6px 14px -8px rgba(60,40,25,.25);font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc b{display:block;font-size:13px;font-weight:680;font-stretch:88%;line-height:1.15}.ds-st{font-size:12px;font-weight:600;color:#554e47;font-stretch:94%}.ds-cut{height:28px;padding:0 8px;border:1px solid #c4bbad;border-radius:5px;background:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-cut:hover{border-color:#1d1a17;background:#fff}.ds-cut:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
     },
     {
       "name": "Service Card, Cut",
       "kind": "card",
       "refersTo": "service-card-cut",
       "description": "Cut state: dashed ink border, slashed icon, red status, Restore.",
-      "html": "<div class=\"ds-svc-cut\"><svg viewBox=\"0 0 32 32\" width=\"30\" height=\"30\"><rect x=\"8\" y=\"5\" width=\"15\" height=\"20\" rx=\"1.5\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\"/><path d=\"M4 28L28 4\" stroke=\"#b3261e\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><div><b>Hosted ERP</b><span>Cut since day 0</span></div><button class=\"ds-restore\" aria-pressed=\"true\">Restore</button></div>",
-      "css": ".ds-svc-cut{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px;width:240px;height:58px;padding:0 8px 0 9px;background:#f6f1ea;border:1px dashed #1d1a17;border-radius:6px;font-family:Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc-cut b{display:block;font-size:13px;font-weight:680;font-stretch:88%}.ds-svc-cut span{font-size:11.5px;font-weight:650;color:#b3261e;font-stretch:94%}.ds-restore{height:28px;padding:0 8px;border:1px solid #1d1a17;border-radius:5px;background:#1d1a17;color:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-restore:hover{background:#3a3430}.ds-restore:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+      "html": "<div class=\"ds-svc-cut\"><svg viewBox=\"0 0 32 32\" width=\"26\" height=\"26\"><rect x=\"8\" y=\"5\" width=\"15\" height=\"20\" rx=\"1.5\" fill=\"#faf8f4\" stroke=\"#1d1a17\" stroke-width=\"1.5\"/><path d=\"M4 28L28 4\" stroke=\"#b3261e\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><div><b>Hosted ERP</b><span>Cut since day 0</span></div><button class=\"ds-restore\" aria-pressed=\"true\">Restore</button></div>",
+      "css": ".ds-svc-cut{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;width:240px;min-height:58px;box-sizing:border-box;padding:7px 8px;background:#f6f1ea;border:1px dashed #1d1a17;border-radius:6px;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;color:#1d1a17}.ds-svc-cut b{display:block;font-size:13px;font-weight:680;font-stretch:88%}.ds-svc-cut span{font-size:11.5px;font-weight:650;color:#b3261e;font-stretch:94%}.ds-restore{height:28px;padding:0 8px;border:1px solid #1d1a17;border-radius:5px;background:#1d1a17;color:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-restore:hover{background:#3a3430}.ds-restore:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
     },
     {
       "name": "Primary Button",
@@ -686,7 +864,7 @@
       "refersTo": "button-primary",
       "description": "The one hi-vis call to action on the landing page.",
       "html": "<a class=\"ds-btn-primary\" href=\"#\">Show me the site <svg width=\"18\" height=\"14\" viewBox=\"0 0 18 14\"><path d=\"M1 7h15M10.5 1.5L16 7l-5.5 5.5\" fill=\"none\" stroke=\"#1d1a17\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></a>",
-      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 20px 0 22px;border-radius:7px;background:#f2b01e;color:#1d1a17;font-family:Archivo,system-ui,sans-serif;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 1px 0 rgba(29,26,23,.25),0 10px 22px -12px rgba(150,95,10,.55);transition:background .15s,transform .15s}.ds-btn-primary svg{transition:transform .2s cubic-bezier(.2,.8,.2,1)}.ds-btn-primary:hover{background:#e09d0c}.ds-btn-primary:hover svg{transform:translateX(3px)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid #1d1a17;outline-offset:3px}"
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 20px 0 22px;border-radius:7px;background:#f2b01e;color:#1d1a17;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 1px 0 rgba(29,26,23,.25),0 10px 22px -12px rgba(150,95,10,.55);transition:background .15s,transform .15s}.ds-btn-primary svg{transition:transform .2s cubic-bezier(.2,.8,.2,1)}.ds-btn-primary:hover{background:#e09d0c}.ds-btn-primary:hover svg{transform:translateX(3px)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid #1d1a17;outline-offset:3px}"
     },
     {
       "name": "Provenance Tags",
@@ -694,7 +872,7 @@
       "refersTo": "tag-computed",
       "description": "Four kinds distinguished by border: computed, assumed, sourced, measured.",
       "html": "<span class=\"ds-tag ds-computed\">computed</span> <span class=\"ds-tag ds-assumed\">assumed</span> <span class=\"ds-tag ds-sourced\">sourced</span> <span class=\"ds-tag ds-measured\">measured</span>",
-      "css": ".ds-tag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:3px;font-family:Archivo,system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.02em;font-stretch:92%;color:#554e47;border:1px solid #c4bbad}.ds-computed{background:#efe9df;border-color:#efe9df}.ds-assumed{border-style:dashed}.ds-sourced{border-color:#6c645c}.ds-measured{border-color:#6c645c;border-width:1px 1px 2px}"
+      "css": ".ds-tag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:3px;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:.02em;font-stretch:92%;color:#554e47;border:1px solid #c4bbad}.ds-computed{background:#efe9df;border-color:#efe9df}.ds-assumed{border-style:dashed}.ds-sourced{border-color:#6c645c}.ds-measured{border-color:#6c645c;border-width:1px 1px 2px}"
     },
     {
       "name": "Segmented Control",
@@ -702,7 +880,7 @@
       "refersTo": "segmented-active",
       "description": "Unprepared / Prepared site toggle.",
       "html": "<div class=\"ds-seg\"><button aria-pressed=\"true\">Unprepared</button><button aria-pressed=\"false\">Prepared</button></div>",
-      "css": ".ds-seg{display:inline-flex;border:1px solid #c4bbad;border-radius:7px;padding:2px;background:#faf8f4;font-family:Archivo,system-ui,sans-serif}.ds-seg button{border:0;background:none;height:26px;padding:0 9px;border-radius:5px;font:inherit;font-size:12.5px;font-weight:600;color:#554e47;cursor:pointer}.ds-seg button[aria-pressed=\"true\"]{background:#1d1a17;color:#faf8f4}.ds-seg button:hover:not([aria-pressed=\"true\"]){background:#f3efe8;color:#1d1a17}.ds-seg button:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+      "css": ".ds-seg{display:inline-flex;border:1px solid #c4bbad;border-radius:7px;padding:2px;background:#faf8f4;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif}.ds-seg button{border:0;background:none;height:26px;padding:0 9px;border-radius:5px;font:inherit;font-size:12.5px;font-weight:600;color:#554e47;cursor:pointer}.ds-seg button[aria-pressed=\"true\"]{background:#1d1a17;color:#faf8f4}.ds-seg button:hover:not([aria-pressed=\"true\"]){background:#f3efe8;color:#1d1a17}.ds-seg button:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
     },
     {
       "name": "Scenario Badges",
@@ -710,14 +888,14 @@
       "refersTo": "badge",
       "description": "Pill badges; Projection is dashed.",
       "html": "<span class=\"ds-badge\">Fictional model site</span> <span class=\"ds-badge ds-dash\">Projection</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid #1d1a17;border-radius:999px;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-weight:600;font-stretch:94%;color:#1d1a17}.ds-dash{border-style:dashed}"
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid #1d1a17;border-radius:999px;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-size:12px;font-weight:600;font-stretch:94%;color:#1d1a17}.ds-dash{border-style:dashed}"
     },
     {
       "name": "Stock Meter",
       "kind": "custom",
       "description": "Days of stock on site with a computed tag.",
       "html": "<div class=\"ds-stk\"><em>Diesel</em><span class=\"ds-trk\"><i style=\"width:23%\"></i></span><b>1.4 d</b><span class=\"ds-tag2\">computed</span></div>",
-      "css": ".ds-stk{display:grid;grid-template-columns:64px 120px auto auto;align-items:center;gap:8px;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:#1d1a17}.ds-stk em{font-style:normal;color:#554e47;font-stretch:94%}.ds-trk{height:6px;border-radius:3px;background:#e4ddd2;position:relative;overflow:hidden}.ds-trk i{position:absolute;left:0;top:0;bottom:0;background:#1d1a17;border-radius:3px}.ds-stk b{font-weight:680}.ds-tag2{height:16px;padding:0 5px;border-radius:3px;background:#efe9df;font-size:10px;font-weight:600;color:#554e47;display:inline-flex;align-items:center}"
+      "css": ".ds-stk{display:grid;grid-template-columns:64px 120px auto auto;align-items:center;gap:8px;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-size:12px;font-variant-numeric:tabular-nums;color:#1d1a17}.ds-stk em{font-style:normal;color:#554e47;font-stretch:94%}.ds-trk{height:6px;border-radius:3px;background:#e4ddd2;position:relative;overflow:hidden}.ds-trk i{position:absolute;left:0;top:0;bottom:0;background:#1d1a17;border-radius:3px}.ds-stk b{font-weight:680}.ds-tag2{height:16px;padding:0 5px;border-radius:3px;background:#efe9df;font-size:10px;font-weight:600;color:#554e47;display:inline-flex;align-items:center}"
     },
     {
       "name": "State Box with Survey Flag",
@@ -725,7 +903,7 @@
       "refersTo": "state-box",
       "description": "Degraded half flag in the detail panel.",
       "html": "<div class=\"ds-state\"><svg width=\"18\" height=\"20\" viewBox=\"0 0 16 18\"><path d=\"M2 17V1\" stroke=\"#1d1a17\" stroke-width=\"1.2\"/><rect x=\"2.6\" y=\"1.5\" width=\"11\" height=\"8\" fill=\"#fff\" stroke=\"#1d1a17\"/><path d=\"M2.6 9.5V1.5L13.6 9.5z\" fill=\"#d4940a\" stroke=\"#1d1a17\" stroke-linejoin=\"round\"/></svg><b>Degraded</b><span>Diesel rationed</span></div>",
-      "css": ".ds-state{display:flex;align-items:center;gap:8px;padding:11px 12px;border:1px solid #c4bbad;border-radius:6px;background:#fbf6ea;font-family:Archivo,system-ui,sans-serif;font-size:14px;color:#1d1a17}.ds-state b{font-weight:720}"
+      "css": ".ds-state{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #c4bbad;border-radius:6px;background:#fbf6ea;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-size:14px;color:#1d1a17}.ds-state b{font-size:15px;font-weight:700}"
     },
     {
       "name": "Plaque, Selected",
@@ -733,19 +911,52 @@
       "refersTo": "plaque-selected",
       "description": "In-scene label beside a survey flag; selected inverts to ink.",
       "html": "<div class=\"ds-plq\"><b>Haulage</b><span><strong>Degraded</strong> · Diesel rationed</span></div>",
-      "css": ".ds-plq{display:inline-flex;flex-direction:column;justify-content:center;height:31px;padding:0 7px;border-radius:3px;background:#1d1a17;border:1.2px solid #1d1a17;font-family:Archivo,system-ui,sans-serif;color:#faf8f4}.ds-plq b{font-size:11px;font-weight:680;line-height:1.1}.ds-plq span{font-size:10.5px;font-stretch:92%;color:#e9e2d6;line-height:1.2}.ds-plq strong{font-weight:700;color:#faf8f4}"
+      "css": ".ds-plq{display:inline-flex;flex-direction:column;justify-content:center;height:31px;padding:0 7px;border-radius:3px;background:#1d1a17;border:1.2px solid #1d1a17;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;color:#faf8f4}.ds-plq b{font-size:11px;font-weight:700;line-height:1.1}.ds-plq span{font-size:10.5px;font-stretch:92%;color:#e9e2d6;line-height:1.2}.ds-plq strong{font-weight:700;color:#faf8f4}"
+    },
+    {
+      "name": "Vendor Card",
+      "kind": "card",
+      "refersTo": "service-card",
+      "description": "The one card for vendor A and B remote access: one status, two keyed Cut buttons.",
+      "html": "<div class=\"ds-vend\"><svg viewBox=\"0 0 32 32\" width=\"26\" height=\"26\"><path d=\"M8 24l9-9m2-6a5 5 0 1 1 4 4\" fill=\"none\" stroke=\"#1d1a17\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg><div class=\"ds-vb\"><b>Vendor remote access</b><div class=\"ds-vf\"><span class=\"ds-vs\">Up</span><span class=\"ds-vk\"><button aria-pressed=\"false\" aria-label=\"Cut Vendor A remote access\">A</button><button aria-pressed=\"false\" aria-label=\"Cut Vendor B remote access\">B</button></span></div></div></div>",
+      "css": ".ds-vend{display:flex;gap:7px;width:240px;min-height:58px;box-sizing:border-box;padding:7px 8px;background:var(--paper,#faf8f4);border:1px solid var(--line-2,#c4bbad);border-radius:6px;box-shadow:0 1px 0 rgba(29,26,23,.04),0 6px 14px -8px rgba(60,40,25,.25);font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;color:#1d1a17}.ds-vb{flex:1;display:flex;flex-direction:column;gap:4px}.ds-vend b{font-size:13px;font-weight:680;font-variation-settings:\"wdth\" 88;line-height:1.15}.ds-vf{display:flex;justify-content:space-between;align-items:center}.ds-vs{font-size:12px;font-weight:600;color:#554e47}.ds-vk{display:flex;gap:4px}.ds-vk button{height:28px;padding:0 7px;border:1px solid #c4bbad;border-radius:5px;background:#faf8f4;font:inherit;font-size:12px;font-weight:650;cursor:pointer}.ds-vk button:hover{border-color:#1d1a17;background:#fff}.ds-vk button:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
+    },
+    {
+      "name": "Odometer",
+      "kind": "custom",
+      "refersTo": "odometer-cell",
+      "description": "Production deferred: grouped digit cells, own digits lit, unit and computed tag after.",
+      "html": "<span class=\"ds-odo\"><span class=\"ds-c\">0</span><span class=\"ds-c\">0</span><span class=\"ds-c ds-g\">1</span><span class=\"ds-c ds-l\">2</span><span class=\"ds-c ds-l\">4</span><span class=\"ds-c ds-g ds-l\">0</span><span class=\"ds-c ds-l\">0</span><span class=\"ds-c ds-l\">0</span><span class=\"ds-u\">t</span></span>",
+      "css": ".ds-odo{display:inline-flex;align-items:center;gap:3px;font-family:\"Archivo Variable\",Archivo,system-ui,sans-serif;font-variant-numeric:tabular-nums}.ds-c{display:grid;place-items:center;width:21px;height:30px;border-radius:3px;background:#efe9df;box-shadow:inset 0 -1px 0 rgba(29,26,23,.08);color:#a99f93;font-size:19px;font-weight:650;line-height:1}.ds-g{margin-left:5px}.ds-l{background:#e7e0d5;color:#1d1a17}.ds-u{margin-left:6px;font-size:14px;font-weight:650;color:#1d1a17}"
+    },
+    {
+      "name": "Provenance Popover",
+      "kind": "chip",
+      "refersTo": "provenance-popover",
+      "description": "A sourced tag as a button whose popover names the source; one open at a time, Escape dismisses.",
+      "html": "<span class=\"ds-pa\">US$97.7/t <button class=\"ds-pt\" aria-expanded=\"true\">sourced</button><span class=\"ds-pp\" role=\"tooltip\"><cite>World Bank Pink Sheet</cite></span></span>",
+      "css": ".ds-pa{position:relative;display:inline-block;margin-top:34px;font:14px \"Archivo Variable\",Archivo,system-ui,sans-serif;color:#1d1a17}.ds-pt{height:16px;margin-left:4px;padding:0 4px;border:1px solid #6c645c;border-radius:3px;background:transparent;color:#554e47;font:inherit;font-size:10px;line-height:1;cursor:help}.ds-pt:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}.ds-pp{position:absolute;bottom:calc(100% + 6px);left:0;width:max-content;max-width:280px;padding:4px 6px;border:1px solid #c4bbad;border-radius:3px;background:#faf8f4;font-size:12px;line-height:1.35}.ds-pp cite{font-style:normal}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Welcome \"Explore freely\": plain outlined paper button.",
+      "html": "<button class=\"ds-btn2\">Explore freely</button>",
+      "css": ".ds-btn2{min-height:44px;padding:0 20px;border:1px solid #1d1a17;border-radius:4px;background:#faf8f4;color:#1d1a17;font:15px/1 \"Archivo Variable\",Archivo,system-ui,sans-serif;font-weight:650;cursor:pointer}.ds-btn2:hover{background:#fff}.ds-btn2:focus-visible{outline:2px solid #1d1a17;outline-offset:2px}"
     }
   ],
   "narrative": {
     "northStar": "The Living Diorama",
-    "overview": "FailLocal is the scale model of the mine that stands in a head-office foyer, switched on. An engineering-true dimetric slab of Pilbara ground, cut away at the edges to show the strata, sits on a dark plinth on a pale gallery floor. The outside services (Hosted ERP, Cloud login, Perth IROC link, Vendor remote access) are physical cables that run down from the top edge and plug into posts on the board's northern rim. Cutting one breaks the cable, and the consequence spreads across the land: trucks park at the fuel bay, ground is hatched, survey flags go up. The world refuses the flat map-plus-sidebar dashboard.\n\nTwo materials share the screen and must never blur into each other. The **scene** is lit, faceted and earthy: iron-oxide reds and ochres, dark ironstone, grey-green spinifex, galvanised plant, hi-vis yellow trucks, dark ore wagons, all drawn as flat-shaded polygons under one light. The **chrome** is paper and ink: warm off-white panels, near-black type in Archivo with the width axis doing the work of hierarchy, hairline rules, and small boxed provenance tags on every number. Chrome is quiet so the model can be loud; the only saturated colours in the chrome are the state colours and the hi-vis call to action.\n\nDensity is that of an operations tool, not a marketing page: 14 px body, 12 px labels, tabular numerals everywhere, a docked 372 px detail panel and a 92 px timeline strip. The landing page is the one place the type opens up (52 px display, 17 px prose) and the model is cropped full-bleed behind it.",
+    "overview": "FailLocal is the scale model of the mine that stands in a head-office foyer, switched on. An engineering-true dimetric slab of Pilbara ground, 1,600 × 1,000 m, cut away at the edges to show the strata, sits on a dark plinth on a pale gallery floor. The five outside services (Hosted ERP, Cloud logins, Perth operations link, Corporate network, Vendor remote access) are physical cables that drop from cards along the top of the stage and plug into entry posts on the board. Cutting one breaks the cable, and the consequence spreads across the land: trucks park at the fuel bay, ground is hatched, survey flags go up. The world refuses the flat map-plus-sidebar dashboard.\n\nTwo materials share the screen and must never blur into each other. The **scene** is lit, faceted and earthy: iron-oxide reds and ochres, dark ironstone, grey-green spinifex, galvanised plant, hi-vis yellow trucks, dark ore wagons, all drawn as flat-shaded polygons under one light, rendered by PixiJS on a transparent WebGL canvas. The **chrome** is paper and ink: warm off-white panels, near-black type in Archivo with the width axis doing the work of hierarchy, hairline rules, and small boxed provenance tags on every number. Chrome is quiet so the model can be loud; the only saturated colours in the chrome are the state colours and the hi-vis call to action.\n\nDensity is that of an operations tool, not a marketing page: 14 px body, 12 px labels, tabular numerals everywhere, a docked 372 px detail panel and a 92 px timeline strip. The welcome page is the one place the type opens up (44 px display, 17 px prose) and the model bleeds off the right edge behind it.",
     "keyCharacteristics": [
       "True 2:1 dimetric projection, every dimension in metres, one north-west light, computed facet tones.",
       "Paper-and-ink chrome; colour reserved for state and for the scene.",
-      "State told by shape first (flag form, hatching, dashes, parked marker), colour second.",
-      "Every number carries a provenance tag: sourced, measured, assumed or computed.",
-      "Dashed always means \"not solid\": assumed, projected, cut or dead.",
-      "The art is vector drawn in code. No bitmaps, no stock imagery."
+      "State told by shape first (flag form, hatching, dashes, parked marker, severed cable), colour second.",
+      "Every number carries a provenance tag: sourced, measured, assumed, computed, or changed by you.",
+      "Dashed always means \"not solid\": assumed, projected, cut, revoked or dead.",
+      "The art is vector drawn in code. No bitmaps, no stock imagery.",
+      "The scene moves only when the engine says the thing it depicts is working."
     ],
     "rules": [
       {
@@ -755,18 +966,33 @@
       },
       {
         "name": "The Parked Is Desaturated Rule",
-        "body": "Anything not working loses its colour (parked trucks go khaki, a cut service's entry post goes from galvanised to `#8a817a`). Colour on the board means activity.",
+        "body": "Anything not working loses its colour: parked trucks go khaki, a cut service's entry post greys toward ink-2. Colour on the board means activity.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Source Rule",
+        "body": "A colour exists in `tokens.css` or not at all. Chrome CSS uses `var(--…)`; the scene resolves the same names through `token()`; derived tones are computed mixes of tokens.",
         "section": "colors"
       },
       {
         "name": "The Width Before Size Rule",
-        "body": "Hierarchy comes from width and weight before size: display at 86%, figures at 90%, titles at 88 to 96%, labels at 92 to 94%, prose at 100%. Do not add a second typeface to get contrast.",
+        "body": "Hierarchy comes from width and weight before size: display at 88 %, figures at 88 to 90 %, titles at 88 to 92 %, labels at 92 to 94 %, prose at 100 %. Do not add a second typeface to get contrast.",
         "section": "typography"
       },
       {
         "name": "The Tabular Everything Rule",
         "body": "`font-variant-numeric: tabular-nums` is set at the body. Counters, stocks, days and money must not jitter as engine output changes.",
         "section": "typography"
+      },
+      {
+        "name": "The Model Is An Object Rule",
+        "body": "The first view shows the board as a thing on a plinth, with gallery floor beyond its front corner, not a crop of terrain.",
+        "section": "layout"
+      },
+      {
+        "name": "The Every Cable Lands Rule",
+        "body": "At the default view every cable reaches its post. A cable that ends in mid-air reads as a fault that is not there.",
+        "section": "layout"
       },
       {
         "name": "The One Sun Rule",
@@ -777,25 +1003,35 @@
         "name": "The Flat Chrome Rule",
         "body": "Panels, the timeline and the top bar have no shadow. If chrome needs separation, it gets a hairline in `line`.",
         "section": "elevation"
+      },
+      {
+        "name": "The Octilinear Rule",
+        "body": "Cables and their buses run only vertical and horizontal, joined by 9 px 45° chamfers. No curves, no free diagonals.",
+        "section": "shapes"
       }
     ],
     "dos": [
       "**Do** project every scene object through the one dimetric function in metres, and depth-sort by `x + y`.",
-      "**Do** tone every facet with the one-sun function (`L = normalize(−1, 0.1, 1.05)`, poles `shade-dark` / `shade-lite`) and cast its shadow with the `(1.5, −0.15)` per-metre vector.",
-      "**Do** show state by shape first: full flag, half flag, open pennant, hatched ground, parked marker, severed cable. Colour reinforces; it never carries state alone.",
+      "**Do** tone every facet with the one-sun function (`L = normalize(−1, 0.1, 1.05)`, poles `shade-dark` / `shade-lite`) and cast its shadow with the `(1.5, −0.15)` per-metre vector at 34 %.",
+      "**Do** show state by shape first: full flag, half flag, open pennant, hatched ground, parked marker, severed or dashed cable. Colour reinforces; it never carries state alone.",
       "**Do** put a provenance tag after every number on screen, distinguished by border treatment.",
-      "**Do** use dashes to mean \"not solid\": assumed tags, the Projection badge, the projected timeline, cut cards, dead network runs, the run beyond a cut.",
+      "**Do** use dashes to mean \"not solid\": assumed tags, the Projection badge, the projected timeline, cut cards, revoked cables, the run beyond a cut, event hairlines.",
       "**Do** set every numeral tabular and get hierarchy from Archivo's width axis before adding size.",
       "**Do** desaturate whatever is not working: parked trucks to khaki, a cut service's entry post to grey.",
-      "**Do** keep the plinth plate \"FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA\" visible wherever the board's front edge is in frame.",
-      "**Do** render reduced motion as a still frame of the live engine state, not a blank or a placeholder."
+      "**Do** bind every moving thing to the engine state of the process it depicts, and stop it when that process stops.",
+      "**Do** keep the plate \"FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA\" as DOM text, engraved on the front-left face when it is in view and pinned to the stage bottom only when it is not.",
+      "**Do** open the site on the model as an object on its plinth, with every cable reaching its post.",
+      "**Do** render reduced motion as a still frame of the live engine state, not a blank or a placeholder.",
+      "**Do** give every scene implementation the same accessible layer: a native button per area, the plate as text, a marker per cable."
     ],
     "donts": [
       "**Don't** use green or any third signal hue for \"normal\"; normal is a white pennant.",
       "**Don't** put shadows, gradients or textures on chrome panels; the chrome is paper and hairline.",
       "**Don't** add a second light, hand-pick side colours, or shade solids with gradients.",
-      "**Don't** apply a perspective or rotation transform to the scene; the projection is dimetric and the camera does not tilt.",
+      "**Don't** tilt, rotate or put perspective on the scene's camera or canvas; the projection is dimetric and the camera does not tilt. The plate's face-plane skew is the one transform, and it follows the projection.",
       "**Don't** draw cables as curves or free diagonals; they are octilinear with 9 px chamfers.",
+      "**Don't** show a number for an illustration: the eight trucks are a picture of the fleet's state, never \"3 of 8\".",
+      "**Don't** add a colour outside `tokens.css`.",
       "**Don't** place bitmap, AI-generated or stock imagery in the scene or chrome; all art is drawn in code.",
       "**Don't** leave a stopped or parked thing in its working colour.",
       "**Don't** put mining equipment where a real site would not: roads through the pit wall, spinifex on pads, a magazine beside the camp."
