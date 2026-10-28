@@ -80,20 +80,82 @@ describe('Qty', () => {
     expect(tip.hidden).toBe(false);
   });
 
+  it('the first press on a focused tag closes its popover, and the next opens it', () => {
+    render(<Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine (D-088).' }} />);
+    const tag = screen.getByRole('button', { name: 'assumed value' });
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    fireEvent.focus(tag);
+    expect(tag.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(tag);
+    expect(tip.hidden).toBe(true);
+    expect(tag.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(tag);
+    expect(tip.hidden).toBe(false);
+    // With the pointer over it too, the first click closes it.
+    fireEvent.pointerEnter(tag, { pointerType: 'mouse' });
+    fireEvent.click(tag);
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('a tap opens the popover and a second tap closes it', () => {
+    render(<Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine (D-088).' }} />);
+    const tag = screen.getByRole('button', { name: 'assumed value' });
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    // A tap emulates hover and focus before its click.
+    const tap = () => {
+      fireEvent.pointerDown(tag, { pointerType: 'touch' });
+      fireEvent.pointerEnter(tag, { pointerType: 'mouse' });
+      fireEvent.focus(tag);
+      fireEvent.click(tag);
+    };
+    tap();
+    expect(tip.hidden).toBe(false);
+    tap();
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('only one popover is open at a time', () => {
+    render(
+      <>
+        <Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A (D-001).' }} />
+        <Qty value={97.7} kind="usdPerT" provenance={{ kind: 'sourced', source: 's' }} sources={{ s: 'S' }} />
+      </>,
+    );
+    const [a, b] = screen.getAllByRole('button');
+    const [tipA, tipB] = screen.getAllByRole('tooltip', { hidden: true });
+    fireEvent.click(a!);
+    expect(tipA!.hidden).toBe(false);
+    fireEvent.pointerEnter(b!, { pointerType: 'mouse' });
+    expect(tipB!.hidden).toBe(false);
+    expect(tipA!.hidden).toBe(true);
+  });
+
+  it('in a popover, the reasoning is marked as such and a source title is a citation', () => {
+    render(
+      <>
+        <Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'One 12-hour shift (D-045).' }} />
+        <Qty value={97.7} kind="usdPerT" provenance={{ kind: 'sourced', source: 's' }} sources={{ s: 'Pink Sheet, October 2026' }} />
+      </>,
+    );
+    const [tipA, tipB] = screen.getAllByRole('tooltip', { hidden: true });
+    expect(tipA!.querySelector('[data-reasoning]')?.textContent).toBe('One 12-hour shift (D-045).');
+    expect(tipB!.querySelector('cite')?.textContent).toBe('Pink Sheet, October 2026');
+  });
+
   it('a sourced tag is hoverable: moving from the tag onto its tooltip keeps it open; Escape anywhere closes it', () => {
     render(<Qty value={97.7} kind="usdPerT" provenance={{ kind: 'sourced', source: 'pink-sheet' }} sources={{ 'pink-sheet': 'World Bank Pink Sheet' }} />);
     const tag = screen.getByRole('button', { name: 'sourced value' });
     const tip = screen.getByRole('tooltip', { hidden: true });
-    fireEvent.mouseEnter(tag);
+    fireEvent.pointerEnter(tag, { pointerType: 'mouse' });
     expect(tip.hidden).toBe(false);
-    fireEvent.mouseOut(tag, { relatedTarget: tip });
-    fireEvent.mouseOver(tip, { relatedTarget: tag });
+    fireEvent.pointerOut(tag, { pointerType: 'mouse', relatedTarget: tip });
+    fireEvent.pointerOver(tip, { pointerType: 'mouse', relatedTarget: tag });
     expect(tip.hidden).toBe(false);
     // Dismissable without moving the pointer (WCAG 1.4.13): Escape works wherever focus is.
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(tip.hidden).toBe(true);
-    fireEvent.mouseLeave(tip);
-    fireEvent.mouseEnter(tag);
+    fireEvent.pointerLeave(tip, { pointerType: 'mouse' });
+    fireEvent.pointerEnter(tag, { pointerType: 'mouse' });
     expect(tip.hidden).toBe(false);
   });
 
@@ -149,7 +211,7 @@ describe('untaggedNumbers', () => {
     expect(untaggedNumbers(root)).toEqual(['Read 3 times']);
   });
 
-  it('also scans aria-label and title, and the value of a read-only field', () => {
+  it('also scans aria-label, title and aria-valuetext, and the value of a read-only field', () => {
     const root = document.createElement('div');
     root.innerHTML = `
       <button aria-label="Cut for 3 days">Cut</button>
@@ -159,9 +221,12 @@ describe('untaggedNumbers', () => {
       <textarea readonly>7 trucks</textarea>
       <span data-quantity><span aria-label="5 days assumed" title="2 sources">5 days</span></span>
       <p data-clock aria-label="Day 3 of 16">Day 3</p>
-      <span data-provenance><button>assumed</button><span role="tooltip">Held for 24 h (D-007)</span></span>
+      <span><button>assumed</button><span role="tooltip"><span data-reasoning>Held for 24 h (D-007)</span><span> since 2 am</span></span></span>
+      <div role="slider" aria-valuetext="Day 4, hour 2"></div>
+      <div data-clock><div role="slider" aria-valuetext="Day 5, hour 0"></div></div>
       <button aria-label="Pause">x</button>`;
-    expect(untaggedNumbers(root)).toEqual(['7 trucks', 'Cut for 3 days', 'Holds 24 hours', '12 t']);
+    // Only the cited reasoning itself is exempt (R-u); text beside it in a popover is still scanned.
+    expect(untaggedNumbers(root)).toEqual(['7 trucks', 'since 2 am', 'Cut for 3 days', 'Holds 24 hours', '12 t', 'Day 4, hour 2']);
   });
 
   it('exempts message text inside data-message (R7), but not digits beside it', () => {

@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { Provenance } from '@faillocal/engine';
 import './qty.css';
 
@@ -16,13 +17,18 @@ interface TipTagProps {
   className: string;
   label?: string;
   text: string;
-  tip: string;
+  tip: ReactNode;
 }
 
+/** Closes the one popover open now, so opening another closes it (one at a time, like the hairline labels). */
+let closeOpenTip: (() => void) | null = null;
+
 /**
- * A tag that is a button with a popover: hover or focus shows it, a click or tap pins it open and a
- * second one closes it, and Escape dismisses it wherever focus is (WCAG 1.4.13). The popover sits
- * inside the hover area, so the pointer can move onto it and read it.
+ * A tag that is a button with a popover. Hover or focus shows it; a press toggles it (closing it if it
+ * is showing, opening and pinning it if not); Escape dismisses it wherever focus is (WCAG 1.4.13). A tap
+ * focuses before its click, so on touch the press toggles the pin alone: a tap opens it, the next
+ * closes it, and a tap elsewhere (a blur) closes it too. The popover sits inside the hover area, so the pointer can move onto it, and
+ * only one popover is open at a time.
  */
 function TipTag({ className, label, text, tip }: TipTagProps) {
   const tipId = useId();
@@ -43,28 +49,37 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
     setNudge(Math.min(0, room - (left + box.width)) + Math.max(0, 8 - left));
   }, [open]);
 
+  const touch = useRef(false);
+
   const dismiss = () => {
     setDismissed(true);
     setPinned(false);
   };
   useEffect(() => {
     if (!open) return;
+    closeOpenTip?.();
+    closeOpenTip = dismiss;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismiss();
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (closeOpenTip === dismiss) closeOpenTip = null;
+    };
   }, [open]);
 
   return (
     <span
       className="qty-tag-anchor"
-      data-provenance
-      onMouseEnter={() => {
+      // Hover is a mouse or pen's: a tap's pointer enters and leaves around every press, so touch is left to the press.
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'touch') return;
         setHovered(true);
         setDismissed(false);
       }}
-      onMouseLeave={() => {
+      onPointerLeave={(e) => {
+        if (e.pointerType === 'touch') return;
         setHovered(false);
         setPinned(false);
       }}
@@ -83,8 +98,13 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
           setFocused(false);
           setPinned(false);
         }}
+        onPointerDown={(e) => {
+          touch.current = e.pointerType === 'touch';
+        }}
         onClick={() => {
-          if (pinned) dismiss();
+          const showing = touch.current ? pinned : open;
+          touch.current = false;
+          if (showing) dismiss();
           else {
             setPinned(true);
             setDismissed(false);
@@ -109,9 +129,10 @@ export function ProvenanceTag(props: ProvenanceTagProps) {
   const label = `${display} value`;
   const className = `qty-tag qty-tag--${display}`;
   if ('provenance' in props && props.provenance.kind === 'sourced')
-    return <TipTag className={className} label={label} text={display} tip={sourceTitle(props.provenance, props.sources)} />;
+    return <TipTag className={className} label={label} text={display} tip={<cite>{sourceTitle(props.provenance, props.sources)}</cite>} />;
+  // The reasoning is the only text the untagged-number scan exempts (R-u); every one cites its decision (register test).
   if ('provenance' in props && props.provenance.kind === 'assumed')
-    return <TipTag className={className} label={label} text={display} tip={props.provenance.reasoning} />;
+    return <TipTag className={className} label={label} text={display} tip={<span data-reasoning>{props.provenance.reasoning}</span>} />;
   return (
     <span className={className} aria-label={label}>
       {display}

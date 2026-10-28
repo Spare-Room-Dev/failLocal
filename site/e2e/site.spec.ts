@@ -198,7 +198,7 @@ test('hairline labels never overlap', async ({ page }) => {
   await expect(list.getByRole('listitem')).toHaveCount(await page.locator('.timeline-event').count());
 });
 
-test('provenance tags: the sourced tooltip is hoverable and Escape closes it; the assumed reasoning opens by keyboard and by tap', async ({ page }) => {
+test('provenance tags: the sourced tooltip is hoverable and Escape closes it; the assumed reasoning toggles by keyboard and by tap', async ({ page }, info) => {
   await open(page, '#/site');
   const revenue = page.locator('.revenue-working').filter({ visible: true });
   const sourced = revenue.getByRole('button', { name: 'sourced value' }).first();
@@ -223,9 +223,24 @@ test('provenance tags: the sourced tooltip is hoverable and Escape closes it; th
   await page.keyboard.press('Escape');
   await expect(assumedTip).toBeHidden();
   await assumed.blur();
-  await assumed.click();
-  await expect(assumedTip).toBeVisible();
-  await expect(assumed).toHaveAttribute('aria-expanded', 'true');
+  if (info.project.use.hasTouch) {
+    // A tap emulates hover and focus, so it must toggle on its own: open, then closed.
+    await assumed.tap();
+    await expect(assumedTip).toBeVisible();
+    await expect(assumed).toHaveAttribute('aria-expanded', 'true');
+    await assumed.tap();
+    await expect(assumedTip).toBeHidden();
+    await expect(assumed).toHaveAttribute('aria-expanded', 'false');
+  } else {
+    // Focused (so showing), the first press closes it and the next opens it.
+    await assumed.focus();
+    await expect(assumedTip).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(assumedTip).toBeHidden();
+    await page.keyboard.press('Enter');
+    await expect(assumedTip).toBeVisible();
+    await expect(assumed).toHaveAttribute('aria-expanded', 'true');
+  }
   await page.keyboard.press('Escape');
   await page.mouse.move(0, 0);
 

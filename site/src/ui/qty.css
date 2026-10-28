@@ -89,3 +89,7 @@ button.qty-tag {
 .qty-tip[hidden] {
   display: none;
 }
+
+.qty-tip cite {
+  font-style: normal;
+}

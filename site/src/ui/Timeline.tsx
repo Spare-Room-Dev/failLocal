@@ -110,6 +110,7 @@ export function Timeline() {
         </div>
         <div
           className="timeline-track"
+          data-clock
           role="slider"
           tabIndex={locked ? -1 : 0}
           aria-disabled={locked || undefined}
