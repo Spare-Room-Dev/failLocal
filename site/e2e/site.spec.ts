@@ -428,22 +428,23 @@ test('cards sit on their cables, and every post and plaque is in frame without c
         icon: !!(e.querySelector('.service-icon') as SVGElement | null)?.getBoundingClientRect().width,
       })),
     );
+  // Polled: a card re-renders when the run or clock changes, and its slot settles a frame later.
+  const spread = (row: Awaited<ReturnType<typeof cardRow>>) => ({
+    heights: Math.max(...row.map((c) => c.h)) - Math.min(...row.map((c) => c.h)),
+    status: Math.max(...row.map((c) => c.status)) - Math.min(...row.map((c) => c.status)),
+  });
   const sameRow = async (when: string) => {
-    const row = await cardRow();
-    for (const c of row) {
-      expect(Math.abs(c.h - row[0]!.h), `${when}: card heights`).toBeLessThanOrEqual(1);
-      expect(Math.abs(c.status - row[0]!.status), `${when}: status lines`).toBeLessThanOrEqual(1);
-    }
-    return row;
+    await expect.poll(async () => { const d = spread(await cardRow()); return d.heights <= 1 && d.status <= 1; }, { message: `${when}: one card height, status lines level` }).toBe(true);
+    return cardRow();
   };
   const cardBoxes = await sameRow('day 0, Hosted ERP cut');
   // Restore and Remove cut keep their words, even on a compact card (F1).
   const words = (name: RegExp) =>
     page.getByRole('button', { name }).locator('.service-button-text').evaluate((e) => [e.textContent, e.getBoundingClientRect().width > 0] as const);
-  expect(await words(/^Restore Hosted ERP$/)).toEqual(['Restore', true]);
+  await expect.poll(() => words(/^Restore Hosted ERP$/)).toEqual(['Restore', true]);
   await scrubToDay(page, 13);
+  await expect.poll(() => words(/^Remove cut: Hosted ERP$/)).toEqual(['Remove cut', true]);
   await sameRow('day 13, Hosted ERP restored');
-  expect(await words(/^Remove cut: Hosted ERP$/)).toEqual(['Remove cut', true]);
   await scrubToDay(page, 0);
   if (info.project.name === 'desktop') {
     for (const c of cardBoxes) expect(c.icon, 'a full card at 1440 has its icon').toBe(true);
@@ -510,7 +511,8 @@ test('cards sit on their cables, and every post and plaque is in frame without c
           return covers ? [] : [id];
         });
       }, rects as unknown as [string, Rect][]);
-    await expect.poll(uncovered).toEqual([]);
+    // Under three parallel SwiftShader pages a frame can take seconds: allow more than the 5 s default.
+    await expect.poll(uncovered, { timeout: 15_000 }).toEqual([]);
     // No plaque covers the honesty plate or the Fit button.
     await expect.poll(() => plaquesOver(page, ['.scene-plinth', '.scene-fit'])).toEqual([]);
   }
