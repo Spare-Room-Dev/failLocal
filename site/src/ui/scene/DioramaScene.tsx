@@ -7,7 +7,7 @@ import { LAYOUT } from '../../scene/layout.js';
 import type { DioramaHandle, SceneLayout } from '../../scene/pixi/app.js';
 import type { FlagLayout } from '../../scene/pixi/overlay.js';
 import { FACE_TRANSFORM } from '../../scene/plate.js';
-import { flagBox } from '../../scene/plaques.js';
+import { BARE_POLE, flagBox } from '../../scene/plaques.js';
 import type { SceneViewProps } from '../SceneView.js';
 import { SchematicFallback } from './SchematicFallback.js';
 import '../scene.css';
@@ -23,8 +23,6 @@ const ANCHORS: Record<string, number> = Object.fromEntries(SERVICE_GROUPS.map((g
 /** Used until the renderer reports its first layout (and in jsdom, which measures nothing): the desktop stage's scene box. */
 const NOMINAL = { w: 1068, h: 580 };
 const NOMINAL_CAMERA = defaultCamera('site', NOMINAL, false);
-/** A flag without a plaque stands on a short pole (overlay.ts). */
-const SHORT_POLE = 26;
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -138,7 +136,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     const l = layout?.plaques[id];
     if (l && layout) return clip(hitBox(l), layout.view);
     const { sx, sy } = project(LAYOUT.areas[id]!.anchor, NOMINAL_CAMERA);
-    return hitBox({ foot: { x: sx, y: sy }, flagTop: { x: sx, y: sy - SHORT_POLE }, rect: null, inFrame: true, side: 1 });
+    return hitBox({ foot: { x: sx, y: sy }, flagTop: { x: sx, y: sy - BARE_POLE }, rect: null, inFrame: true, side: 1 });
   };
   // A focused button whose area has just left the frame keeps its last place (and its focus ring) until the
   // camera brings the area back (the effect below), so focus never lands on something invisible.
