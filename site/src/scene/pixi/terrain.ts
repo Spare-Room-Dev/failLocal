@@ -1,14 +1,13 @@
 import type { Graphics } from 'pixi.js';
 import { brightness, mix, shade } from '../iso.js';
 import type { Vec3 } from '../iso.js';
-import { BOARD, crestValue, distToPolyline, LAYOUT } from '../layout.js';
+import { BOARD, crestValue, distToPolyline, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../layout.js';
+
+export { PLINTH_DEPTH, SLAB_DEPTH };
 import { token } from '../palette.js';
 import { B_TOP, ball, chaikin, DepthQueue, fill, line, offsetLine, rng, vnoise } from './draw.js';
 import type { Pt } from './draw.js';
 
-/** The cut-away slab under the board: strata to 30 m down, then the plinth (DESIGN.md Cut-away slab). */
-export const SLAB_DEPTH = 30;
-export const PLINTH_DEPTH = 14;
 const BASE_Z = -SLAB_DEPTH - PLINTH_DEPTH;
 
 const { w: W, h: D } = BOARD;

@@ -160,7 +160,7 @@ export function clampCamera(cam: Camera, board: Size, view: Size): Camera {
 }
 
 /** The camera at scale k that puts ground point `g` at the centre of the view. */
-function centreOn(g: Point, k: number, view: Size): Camera {
+export function centreOn(g: Point, k: number, view: Size): Camera {
   const p = project({ ...g, z: 0 }, { k, ox: 0, oy: 0 });
   return { k, ox: view.w / 2 - p.sx, oy: view.h / 2 - p.sy };
 }

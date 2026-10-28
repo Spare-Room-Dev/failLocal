@@ -9,14 +9,16 @@ import { e2eHook, timeScale } from '../../model/timeScale.js';
 import type { DioramaProbe } from '../../model/timeScale.js';
 import { MAX_DT, stepAnim, stillFrame } from '../animation.js';
 import type { AnimState } from '../animation.js';
-import { keyMove, panBy, zoomAt } from '../cameraMoves.js';
-import { clampCamera, fitCamera, K_MAX, project, unproject } from '../iso.js';
+import { keyMove, panBy, wheelZoom, zoomAt } from '../cameraMoves.js';
+import { defaultCamera as defaultView } from '../framing.js';
+import type { Framing } from '../framing.js';
+import { centreOn, clampCamera, K_MAX, project, unproject } from '../iso.js';
 import type { Camera } from '../iso.js';
 import { BOARD, LAYOUT } from '../layout.js';
 import { buildDynamic } from './dynamic.js';
 import type { Dynamic } from './dynamic.js';
 import { buildOverlay } from './overlay.js';
-import type { Overlay } from './overlay.js';
+import type { FlagLayout, Overlay } from './overlay.js';
 import { Snapshot } from './snapshot.js';
 import { buildStatic } from './static.js';
 import type { StaticWorld } from './static.js';
@@ -29,14 +31,26 @@ export interface DioramaHandle {
   setState(s: SceneState, reducedMotion: boolean, selected?: string | null): void;
   /** Move the camera; it always passes through `clampCamera`. */
   setCamera(c: Camera): void;
-  /** Back to the default framing: the pit, ROM pad and crusher. */
+  /** Back to the default framing: the pit, ROM pad and crusher (on a phone, the working area). */
   fit(): void;
+  /** Pans, at the current zoom, so the area's flag is at the centre of the view (an out-of-frame area's button took focus). */
+  reveal(areaId: string): void;
   destroy(): void;
+}
+
+/** What the accessible DOM layer needs from a drawn frame, in stage pixels. */
+export interface SceneLayout {
+  cam: Camera;
+  view: Size;
+  /** Keyed by process area id. */
+  plaques: Record<string, FlagLayout>;
 }
 
 export interface DioramaOptions {
   /** Wheel, drag, pinch and keyboard camera controls. Off for the decorative welcome scene. */
   interactive: boolean;
+  /** The default view: the site's working view, or the welcome page's hero crop. */
+  framing: Framing;
   /**
    * Called once if the diorama can no longer draw after it started: its WebGL context was lost and not
    * restored within `LOST_CONTEXT_MS`. The caller destroys the handle and shows the schematic (D-106).
@@ -48,8 +62,10 @@ export interface DioramaOptions {
 const FRAME_MS = 30;
 /** At most this many capped steps per frame when the e2e time scale speeds story time up. */
 const MAX_SUBSTEPS = 8;
-/** Wheel zoom: the factor per pixel of wheel travel. */
-const WHEEL_ZOOM = 0.0015;
+/** Phones crop to the working area (DESIGN.md Layout, Phone). */
+const PHONE = '(max-width: 760px)';
+/** The Fit button's corner of the stage (scene.css), which plaques keep clear of. */
+const FIT_CORNER = { w: 56, h: 68 };
 /** How long a lost WebGL context may stay lost before the scene gives up on it and falls back. */
 export const LOST_CONTEXT_MS = 3000;
 
@@ -57,14 +73,24 @@ type Size = { w: number; h: number };
 /** The DOM events the diorama listens for, including the canvas's WebGL context events. */
 type Events = HTMLElementEventMap & { webglcontextlost: WebGLContextEvent; webglcontextrestored: WebGLContextEvent };
 
+/** Where the host's DOM children matching `selector` sit (the honesty plate), in stage pixels, padded by 4 px. */
+function domBoxes(host: HTMLElement, selector: string): { x: number; y: number; w: number; h: number }[] {
+  const origin = host.getBoundingClientRect();
+  return [...host.querySelectorAll(selector)].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width ? [{ x: r.left - origin.left - 4, y: r.top - origin.top - 4, w: r.width + 8, h: r.height + 8 }] : [];
+  });
+}
+
 /**
- * Mounts the diorama in `host`: one PixiJS application on WebGL only (no WebGPU or Canvas2D fallback;
+ * Mounts the diorama in `host`. `onLayout` hears where the camera, flags and plaques are after each frame that
+ * moved them (at most once per drawn frame, so a drag does not re-render the DOM layer per pointer event).: one PixiJS application on WebGL only (no WebGPU or Canvas2D fallback;
  * where WebGL fails, the caller shows the schematic), the static world, one ticker throttled to 30 ms,
  * and the camera controls. The canvas is the host's first child; `host` takes the wheel and keyboard
  * (+, −, 0), the canvas takes drags and pinches. If anything fails after the renderer has started, the
  * renderer is destroyed before the error reaches the caller. `destroy` removes all of it.
  */
-export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => void, options: DioramaOptions = { interactive: true }): Promise<DioramaHandle> {
+export async function createDiorama(host: HTMLElement, onLayout: (l: SceneLayout) => void, options: DioramaOptions = { interactive: true, framing: 'site' }): Promise<DioramaHandle> {
   const app = new Application();
   const release = () => {
     try {
@@ -75,14 +101,14 @@ export async function createDiorama(host: HTMLElement, onCamera: (c: Camera) => 
     }
   };
   try {
-    return await mount(app, host, onCamera, options);
+    return await mount(app, host, onLayout, options);
   } catch (error) {
     release();
     throw error;
   }
 }
 
-async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) => void, options: DioramaOptions): Promise<DioramaHandle> {
+async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLayout) => void, options: DioramaOptions): Promise<DioramaHandle> {
   const view = (): Size => ({ w: Math.max(1, host.clientWidth), h: Math.max(1, host.clientHeight) });
   const size = view();
   await app.init({
@@ -132,7 +158,8 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   let anim: AnimState | null = null;
   let reduced = false;
   let current = size;
-  const defaultCamera = (v: Size) => clampCamera(fitCamera(BOARD, v, LAYOUT.defaultFocus), BOARD, v);
+  const phone = window.matchMedia?.(PHONE);
+  const defaultCamera = (v: Size) => defaultView(options.framing, v, phone?.matches ?? false);
   let cam = defaultCamera(current);
   let moved = false;
   let dirty = true;
@@ -146,7 +173,6 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     built?.setZoom(cam.k);
     for (const snap of snapshots) snap.invalidate();
     dirty = true;
-    onCamera(cam);
   };
   const move = (next: Camera) => {
     moved = true;
@@ -158,6 +184,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   // and redraws; otherwise it renders only when the state or camera changed. Ambient time is scaled for e2e (R9),
   // in steps of at most MAX_DT. Nothing renders while the WebGL context is lost.
   let clock = 0;
+  let laid: Record<string, FlagLayout> = {};
   let frames = 0;
   app.ticker.remove(app.render, app);
   app.ticker.maxFPS = 1000 / FRAME_MS;
@@ -168,7 +195,11 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
       if (dynamic.prepare(cam.k)) for (const snap of snapshots) snap.invalidate();
       for (const snap of snapshots) snap.update(app.renderer, cam);
       dynamic.frame(anim);
-      overlay.frame(anim, scene, cam, current, clock, reduced);
+      const plaques = overlay.frame(anim, scene, cam, current, clock, reduced);
+      if (plaques) {
+        laid = plaques;
+        onLayout({ cam: { ...cam }, view: { ...current }, plaques });
+      }
     }
     app.render();
   };
@@ -225,10 +256,13 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
       host,
       'wheel',
       (e) => {
-        e.preventDefault();
         const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? current.h : 1;
         const p = local(e);
-        move(zoomAt(cam, Math.exp(-e.deltaY * unit * WHEEL_ZOOM), p.x, p.y, BOARD, current));
+        const next = wheelZoom(cam, e.deltaY * unit, p.x, p.y, BOARD, current);
+        // Already zoomed as far as it goes that way: let the page scroll instead.
+        if (!next) return;
+        e.preventDefault();
+        move(next);
       },
       { passive: false },
     );
@@ -275,6 +309,7 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     defaultCamera: () => defaultCamera(current),
     groundAtCentre: () => unproject(current.w / 2, current.h / 2, cam),
     frames: () => frames,
+    plaques: () => Object.fromEntries(Object.entries(laid).map(([id, l]) => [id, { rect: l.rect && { ...l.rect }, inFrame: l.inFrame }])),
     entryPost(id) {
       const post = LAYOUT.entryPosts[id];
       if (!post) throw new Error(`layout has no entry post ${id}`);
@@ -310,7 +345,11 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
         overSlot.addChild(snapshots[1]!.sprite);
         for (const snap of snapshots) snap.resize(current.w, current.h, app.renderer.resolution);
         dynamic = buildDynamic(built.slots, aboveWorld);
-        overlay = buildOverlay(overlayRoot, { labels: options.interactive, resolution: window.devicePixelRatio || 1 });
+        overlay = buildOverlay(overlayRoot, {
+          labels: options.interactive,
+          resolution: window.devicePixelRatio || 1,
+          keepClear: (v) => [{ x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h }, ...domBoxes(host, '.scene-plinth')],
+        });
       }
       scene = s;
       reduced = reducedMotion;
@@ -326,6 +365,11 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     fit() {
       moved = false;
       apply(defaultCamera(current));
+    },
+    reveal(areaId) {
+      const area = LAYOUT.areas[areaId];
+      if (!area) throw new Error(`layout has no area ${areaId}`);
+      move(centreOn(area.anchor, cam.k, current));
     },
     destroy() {
       for (const off of cleanups) off();

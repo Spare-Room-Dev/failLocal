@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { register } from '../../src/model/register.js';
-import { SERVICE_GROUPS } from '../../src/model/serviceGroups.js';
+import { cableFraction, SERVICE_GROUPS } from '../../src/model/serviceGroups.js';
+import { cableRoutes } from '../../src/scene/cables.js';
+import { defaultCamera } from '../../src/scene/framing.js';
 import { project, type Vec3 } from '../../src/scene/iso.js';
 import {
   BATTER_RUN,
+  ENTRY_POST_H,
   BOARD,
   LAYOUT,
   RAMP_HEAD_APPROACH,
@@ -381,16 +384,47 @@ describe('process areas and entry posts', () => {
     }
   });
 
-  it('give every service group an entry post on the north rim, left to right in card order', () => {
+  it('set the entry posts in a row along the default framing\'s north edge, left to right in card order, clear of everything', () => {
     expect(Object.keys(entryPosts)).toEqual(SERVICE_GROUPS.map((g) => g.id));
-    const xs = SERVICE_GROUPS.map((g) => screen(entryPosts[g.id]!).sx);
-    for (let i = 1; i < xs.length; i++) expect(xs[i]!).toBeGreaterThan(xs[i - 1]!);
-    const backHalf = screen({ x: BOARD.w / 2, y: BOARD.h / 2 }).sy;
-    for (const g of SERVICE_GROUPS) {
-      const p = entryPosts[g.id]!;
-      expect(Math.min(p.x, p.y), g.id).toBeLessThanOrEqual(30); // on a back edge
-      expect(screen(p).sy, g.id).toBeLessThan(backHalf / 2); // up the screen
-      for (const s of structures) expect(rectDistance({ x: p.x, y: p.y, w: 0, h: 0 }, footprint(s)), `${g.id} in ${s.id}`).toBeGreaterThan(0);
+    const posts = SERVICE_GROUPS.map((g) => entryPosts[g.id]!);
+    const xs = posts.map((p) => screen(p).sx);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(100); // spread, not bunched
+    // One row: the same world y, just north of the framing's north edge.
+    const f = LAYOUT.defaultFocus;
+    for (const p of posts) {
+      expect(p.y).toBe(posts[0]!.y);
+      expect(p.y).toBeLessThan(f.y);
+      expect(p.y).toBeGreaterThan(f.y - 40);
+      expect(p.x).toBeGreaterThan(f.x);
+      expect(p.x).toBeLessThan(f.x + f.w);
+    }
+    // A 3 × 3 m post, at least 10 m from every road edge, pad, structure and flag, and outside the pit's setback.
+    for (const [i, p] of posts.entries()) {
+      const id = SERVICE_GROUPS[i]!.id;
+      const foot = { x: p.x - 1.5, y: p.y - 1.5, w: 3, h: 3 };
+      for (const r of roads) expect(distToPolyline(p, r.points) - r.width / 2, `${id} by ${r.id}`).toBeGreaterThan(10);
+      for (const s of structures) expect(rectDistance(foot, footprint(s)), `${id} by ${s.id}`).toBeGreaterThan(10);
+      for (const [aid, a] of Object.entries(areas)) {
+        expect(insidePolygon(p, a.pad), `${id} on ${aid}`).toBe(false);
+        expect(distToPolyline(p, [...a.pad, a.pad[0]!]), `${id} by ${aid}`).toBeGreaterThan(10);
+        expect(Math.hypot(p.x - a.anchor.x, p.y - a.anchor.y), `${id} by ${aid}'s flag`).toBeGreaterThan(10);
+      }
+      expect(crestValue(p, 30), id).toBeGreaterThan(1);
+    }
+  });
+
+  it('put every entry post inside the stage at the default views, with room for its cable to drop onto it', () => {
+    // The diorama's box at 1440 × 900, 1150 × 800, 1024 × 768 and 820 × 1180 (the stage between the card and legend bands).
+    for (const view of [{ w: 1068, h: 580 }, { w: 1150, h: 440 }, { w: 1024, h: 408 }, { w: 820, h: 512.5 }]) {
+      const cam = defaultCamera('site', view, false);
+      const tops = SERVICE_GROUPS.map((g) => project({ ...entryPosts[g.id]!, z: ENTRY_POST_H }, cam));
+      for (const t of tops) {
+        expect(t.sx, `${view.w}`).toBeGreaterThan(20);
+        expect(t.sx, `${view.w}`).toBeLessThan(view.w - 20);
+        expect(t.sy, `${view.w}`).toBeLessThan(view.h - 20);
+      }
+      const routes = cableRoutes(SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w), tops.map((t) => ({ x: t.sx, y: t.sy })));
+      for (const [i, r] of routes.entries()) expect(r.reaches, `${SERVICE_GROUPS[i]!.id} at ${view.w}`).toBe(true);
     }
   });
 });

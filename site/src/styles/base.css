@@ -88,10 +88,12 @@ body {
   height: var(--scene-h);
 }
 
-/* The diorama is exactly the letterboxed scene box, so its anchors are fractions of the width the cards use. */
-.site-stage > .scene--diorama {
-  left: calc(50% - var(--scene-w) / 2);
-  width: var(--scene-w);
+/*
+ * The diorama is not letterboxed: its canvas spans the stage (the board runs out to the stage's edges, as in
+ * the mock), so its scene box is the full stage width and the cards spread across all of it.
+ */
+.site-stage:has(> .scene--diorama) > * {
+  --scene-w: 100cqw;
 }
 
 /* The D-106 note, under the cards at the scene's top left. */

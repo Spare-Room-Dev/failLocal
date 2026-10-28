@@ -108,6 +108,17 @@
   height: auto;
 }
 
+/* The hero: a tall crop of the board (DESIGN.md Layout, Landing). */
+.welcome-scene .scene--diorama {
+  aspect-ratio: 1.08;
+}
+
+@media (max-width: 760px) {
+  .welcome-scene .scene--diorama {
+    aspect-ratio: 1.3;
+  }
+}
+
 /* Sources and controls */
 .source-list li,
 .control-list li {

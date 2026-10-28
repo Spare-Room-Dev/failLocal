@@ -6,11 +6,12 @@ import { CABLE, cableRoutes } from '../cables.js';
 import type { CableRoute } from '../cables.js';
 import { mix, project } from '../iso.js';
 import type { Camera, Vec3 } from '../iso.js';
-import { LAYOUT } from '../layout.js';
+import { ENTRY_POST_H, LAYOUT } from '../layout.js';
 import { token } from '../palette.js';
+import { placePlaques } from '../plaques.js';
+import type { Box, PlaqueRequest } from '../plaques.js';
 import { dashes, pointAt, slice } from '../polyline.js';
 import type { Pt } from '../polyline.js';
-import { ENTRY_POST_H } from './dynamic.js';
 
 /**
  * The board's screen-space marks, in stage pixels over the board (their sizes are pixel sizes, so they
@@ -21,13 +22,30 @@ import { ENTRY_POST_H } from './dynamic.js';
 export interface Overlay {
   /** The engine state (and the selected area) changed. */
   setScene(scene: SceneState, selected: string | null): void;
-  /** Draws one frame under camera `cam` in a `view`-sized stage. `clock` (s) drives the cut-link pulse. */
-  frame(a: AnimState, scene: SceneState, cam: Camera, view: { w: number; h: number }, clock: number, reduced: boolean): void;
+  /**
+   * Draws one frame under camera `cam` in a `view`-sized stage. `clock` (s) drives the cut-link pulse.
+   * Returns the flags' layout when it was laid out again (the camera, the stage or the state changed), else null.
+   */
+  frame(a: AnimState, scene: SceneState, cam: Camera, view: { w: number; h: number }, clock: number, reduced: boolean): Record<string, FlagLayout> | null;
+}
+
+/** Where an area's flag and plaque are, in stage pixels. */
+export interface FlagLayout {
+  /** The pole's foot. */
+  foot: { x: number; y: number };
+  /** The top of the pole, where the flag flies. */
+  flagTop: { x: number; y: number };
+  /** The plaque, or null when it has none: its flag is out of frame, or no spot fits it. */
+  rect: Box | null;
+  /** Whether the flag's foot is inside the stage. */
+  inFrame: boolean;
 }
 
 export interface OverlayOptions {
   /** Cables and plaques: off for the decorative welcome scene, which has no cards to cable to. */
   labels: boolean;
+  /** Stage-pixel boxes, for a stage `w` wide, that plaques must keep clear of (the Fit button). */
+  keepClear?(view: { w: number; h: number }): Box[];
   /** Pixel density for overlay text. */
   resolution: number;
 }
@@ -60,16 +78,8 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
     },
     frame(a, scene, cam, view, clock, reduced) {
       const key = `${cam.k},${cam.ox},${cam.oy},${view.w},${view.h}`;
-      if (key !== placedKey) {
-        placedKey = key;
-        for (const f of flags) f.place(cam);
-      }
-      drawMarkers(markers, a, cam);
       const showCables = options.labels && !phone?.matches;
-      cables.visible = showCables;
-      for (const l of cableLabels) l.root.visible = false;
-      if (!showCables) return;
-      if (key !== routeKey) {
+      if (showCables && key !== routeKey) {
         routeKey = key;
         routes = cableRoutes(
           SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w),
@@ -79,9 +89,55 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
           }),
         );
       }
-      drawCables(cables, cableLabels, routes, a, scene, view, clock, reduced);
+      let laid: Record<string, FlagLayout> | null = null;
+      const placeKey = `${key},${showCables}`;
+      if (placeKey !== placedKey) {
+        placedKey = placeKey;
+        laid = layFlags(flags, scene, cam, view, options, showCables ? routes : []);
+      }
+      drawMarkers(markers, a, cam);
+      cables.visible = showCables;
+      for (const l of cableLabels) l.root.visible = false;
+      if (showCables) drawCables(cables, cableLabels, routes, a, scene, view, clock, reduced);
+      return laid;
     },
   };
+}
+
+/** Stopped areas claim plaque space first, then degraded, then normal; ties keep the layout's order. */
+const SEVERITY = { stopped: 0, degraded: 1, normal: 2 } as const;
+/** A flag without a plaque stands on a short pole. */
+const SHORT_POLE = 26;
+/** Cables are 1.5 px; plaques keep this clear of them where they can. */
+const CABLE_CLEAR = 3;
+
+/** Places every plaque clear of the others (plaques.ts), poses each flag, and reports where everything went. */
+function layFlags(flags: Plaque[], scene: SceneState, cam: Camera, view: { w: number; h: number }, options: OverlayOptions, routes: CableRoute[]): Record<string, FlagLayout> {
+  const feet = new Map(flags.map((f) => [f.id, f.foot(cam)]));
+  const order = flags.map((f, i) => ({ f, i, rank: SEVERITY[scene.processes[f.id]!.state] })).sort((a, b) => a.rank - b.rank || a.i - b.i);
+  const requests: PlaqueRequest[] = options.labels ? order.map(({ f }) => ({ id: f.id, foot: feet.get(f.id)!, w: f.width, side: POLE_SIDE[f.id] ?? 1 })) : [];
+  const soft = routes.flatMap((r) => segmentBoxes(r.points, CABLE_CLEAR));
+  const placed = placePlaques(requests, view, options.keepClear?.(view) ?? [], soft);
+  const out: Record<string, FlagLayout> = {};
+  for (const f of flags) {
+    const foot = feet.get(f.id)!;
+    const p = placed[f.id] ?? null;
+    const len = p ? p.len : SHORT_POLE;
+    f.pose(foot, len, p ? p.side : (POLE_SIDE[f.id] ?? 1), p && { ...p.rect, x: p.rect.x - foot.x, y: p.rect.y - foot.y });
+    out[f.id] = { foot, flagTop: { x: foot.x, y: foot.y - len }, rect: p ? p.rect : null, inFrame: foot.x >= 0 && foot.x <= view.w && foot.y >= 0 && foot.y <= view.h };
+  }
+  return out;
+}
+
+/** Each straight run of a polyline as a thin box, grown by `pad`. */
+function segmentBoxes(points: Pt[], pad: number): Box[] {
+  const out: Box[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    out.push({ x: Math.min(a.x, b.x) - pad, y: Math.min(a.y, b.y) - pad, w: Math.abs(a.x - b.x) + 2 * pad, h: Math.abs(a.y - b.y) + 2 * pad });
+  }
+  return out;
 }
 
 /** The boxed pause glyph on a short post over each parked truck (DESIGN.md Survey Flags: Parked). */
@@ -166,18 +222,18 @@ function placeLabel(l: Label, text: string, colour: string, at: Pt, width: numbe
 
 // --- Survey flags and plaques ------------------------------------------------------------------
 
-/** Pole length (px) and plaque side per area, chosen so plaques do not collide at the default framing. */
-const POLE: Record<string, { len: number; side: 1 | -1 }> = {
-  'diesel-ordering': { len: 22, side: -1 },
-  'explosives-ordering': { len: 34, side: 1 },
-  'work-orders': { len: 46, side: -1 },
-  payroll: { len: 50, side: -1 },
-  'control-room': { len: 100, side: -1 },
-  'remote-operations': { len: 150, side: -1 },
-  'drill-and-blast': { len: 46, side: -1 },
-  haulage: { len: 40, side: 1 },
-  crushing: { len: 34, side: 1 },
-  rail: { len: 46, side: -1 },
+/** The side each area's plaque prefers (plaques.ts flips it where there is no room). */
+const POLE_SIDE: Record<string, 1 | -1> = {
+  'diesel-ordering': -1,
+  'explosives-ordering': 1,
+  'work-orders': -1,
+  payroll: -1,
+  'control-room': -1,
+  'remote-operations': 1,
+  'drill-and-blast': -1,
+  haulage: 1,
+  crushing: 1,
+  rail: -1,
 };
 
 const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' } as const;
@@ -187,6 +243,7 @@ const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' 
  * ellipse at its foot and a flag at the top — full Stop Red with a white X when stopped, white with an
  * amber lower-left triangle when degraded, an open white pennant when normal — and a paper plaque with the
  * area name over the state word and note. The selected area's plaque inverts to ink and its pole thickens.
+ * `set` takes the state and sets the text; `pose` draws it with the pole and side the placement chose.
  */
 class Plaque {
   readonly root: Container;
@@ -195,6 +252,10 @@ class Plaque {
   private readonly word: Text;
   private readonly note: Text;
   private readonly anchor: Vec3;
+  private flag: SceneState['processes'][string]['flag'] = 'pennant';
+  private selected = false;
+  /** The plaque's width with its current text, px. */
+  width = 0;
 
   constructor(readonly id: string, resolution: number) {
     this.root = new Container({ label: `flag-${id}` });
@@ -209,39 +270,43 @@ class Plaque {
   set(scene: SceneState, selected: string | null, labels: boolean): void {
     const p = scene.processes[this.id];
     if (!p) throw new Error(`scene has no process ${this.id}`);
-    // Without plaques (the decorative scene) there is nothing to stack, so every pole is short.
-    const pole = POLE[this.id] ?? { len: 36, side: 1 };
-    const side = pole.side;
-    const len = labels ? pole.len : 26;
-    const sel = selected === this.id;
-    const g = this.g;
-    g.clear();
-    g.ellipse(0, 0, 3.4, 1.6).fill({ color: INK, alpha: 0.45 });
-    g.moveTo(0, 0).lineTo(0, -len).stroke({ color: INK, width: sel ? 1.6 : 1.1 });
-    flagCloth(g, p.flag, side * 0.6, -len, side);
-
+    this.flag = p.flag;
+    this.selected = selected === this.id;
     this.name.visible = this.word.visible = this.note.visible = labels;
     if (!labels) return;
+    const sel = this.selected;
     this.name.text = p.label;
     this.word.text = STATE_WORD[p.state];
     this.note.text = p.note ? ` · ${p.note}` : '';
     this.name.style.fill = sel ? PAPER : INK;
     this.word.style.fill = sel ? PAPER : p.state === 'stopped' ? c('stop-red-text') : INK;
     this.note.style.fill = sel ? mix(PAPER, INK, 0.12) : c('ink-2');
-    const w = Math.ceil(Math.max(this.name.width, this.word.width + this.note.width)) + 14;
-    const x0 = side > 0 ? 13 : -13 - w;
-    const top = -len - 5;
-    g.roundRect(x0, top, w, 31, 3)
-      .fill({ color: sel ? INK : PAPER, alpha: sel ? 1 : 0.96 })
-      .stroke({ color: INK, width: sel ? 1.2 : 0.8, alpha: sel ? 1 : 0.96 });
-    this.name.position.set(x0 + 7, top + 2.5);
-    this.word.position.set(x0 + 7, top + 15.5);
-    this.note.position.set(x0 + 7 + this.word.width, top + 15.5);
+    this.width = Math.ceil(Math.max(this.name.width, this.word.width + this.note.width)) + 14;
   }
 
-  place(cam: Camera): void {
+  /** The pole's foot on screen. */
+  foot(cam: Camera): { x: number; y: number } {
     const { sx, sy } = project(this.anchor, cam);
-    this.root.position.set(Math.round(sx), Math.round(sy));
+    return { x: Math.round(sx), y: Math.round(sy) };
+  }
+
+  /** Draws the flag at `foot` on a pole `len` px long, its cloth flying to `side`, with its plaque at `r` (relative to the foot) if any. */
+  pose(foot: { x: number; y: number }, len: number, side: 1 | -1, r: Box | null): void {
+    const sel = this.selected;
+    const g = this.g;
+    this.root.position.set(foot.x, foot.y);
+    g.clear();
+    g.ellipse(0, 0, 3.4, 1.6).fill({ color: INK, alpha: 0.45 });
+    g.moveTo(0, 0).lineTo(0, -len).stroke({ color: INK, width: sel ? 1.6 : 1.1 });
+    flagCloth(g, this.flag, side * 0.6, -len, side);
+    this.name.visible = this.word.visible = this.note.visible = r !== null;
+    if (!r) return;
+    g.roundRect(r.x, r.y, r.w, r.h, 3)
+      .fill({ color: sel ? INK : PAPER, alpha: sel ? 1 : 0.96 })
+      .stroke({ color: INK, width: sel ? 1.2 : 0.8, alpha: sel ? 1 : 0.96 });
+    this.name.position.set(r.x + 7, r.y + 2.5);
+    this.word.position.set(r.x + 7, r.y + 15.5);
+    this.note.position.set(r.x + 7 + this.word.width, r.y + 15.5);
   }
 }
 

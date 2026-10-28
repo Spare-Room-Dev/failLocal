@@ -100,6 +100,25 @@
   outline-offset: 0;
 }
 
+/* Over a plaque and its flag: the plaque's own corners. */
+.scene-hit--plaque {
+  border-radius: 3px;
+}
+
+/*
+ * An area out of frame: no hit target on the canvas (nothing to point at), but still in the tab order and
+ * the accessibility tree; focusing it brings the area into view, and it takes its place over the plaque.
+ */
+.scene-hit--away {
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+
 /* Where each service cable drops from its card into the scene: a marker over the head of the cable the canvas draws. */
 .scene-cable-drop {
   position: absolute;
@@ -109,11 +128,16 @@
   pointer-events: none;
 }
 
-/* The honesty plate as DOM text, set like the engraved plate on the plinth. */
+/*
+ * The honesty plate as DOM text, set like the engraved plate on the plinth. DioramaScene hangs it from the
+ * board's front plinth face (inline left and top); while that face is out of view it is pinned here, to the
+ * bottom of the stage, so it is always visible.
+ */
 .scene.scene--diorama .scene-plinth {
   position: absolute;
   right: 12px;
   bottom: 10px;
+  white-space: nowrap;
   margin: 0;
   padding: 4px 10px;
   border-radius: 3px;
@@ -125,6 +149,11 @@
   letter-spacing: 0.12em;
   line-height: 1.3;
   pointer-events: none;
+}
+
+.scene.scene--diorama .scene-plinth[data-placement='face'] {
+  right: auto;
+  bottom: auto;
 }
 
 .scene-fit {
@@ -153,4 +182,28 @@
   color: var(--ink-2);
   font-size: 12px;
   font-weight: 600;
+}
+
+/* Phones hide the cables (DESIGN.md Layout, Phone): the card strip above the scene shows the services' states. */
+@media (max-width: 760px) {
+  .scene--diorama {
+    aspect-ratio: 1.25;
+  }
+
+  .scene--diorama .scene-cable-drop {
+    display: none;
+  }
+
+  .scene.scene--diorama .scene-plinth {
+    right: 8px;
+    bottom: 8px;
+    padding: 3px 7px;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  .scene-fit {
+    top: 8px;
+    right: 8px;
+  }
 }

@@ -270,7 +270,7 @@ A warm paper-and-ink chrome around a lit iron-oxide scene, with exactly two sign
 
 **Phone (≤ 760 px).** The grid collapses to a single column. Service cards become a horizontally scrolling strip of 210 px cards above the scene; the cables are hidden; the scene's view box crops to the working area of the board; legend wraps; timeline and stocks stack. The network overlay, assets tab and assumptions editor stay desktop-only.
 
-**Cables.** Service cables are octilinear: straight vertical and horizontal runs joined by 9 px 45° chamfers, dropping from the card to a horizontal bus, then to an entry post on the board's northern rim at (entry, 0, 0). Buses sit at two heights so neighbours do not cross.
+**Cables.** Service cables are octilinear: straight vertical and horizontal runs joined by 9 px 45° chamfers, dropping from the card to a horizontal bus, then to an entry post. The posts stand in a row just north of the default framing, so every cable reaches its post in the default view (D-109). Buses are stepped so neighbours do not cross.
 
 ## Elevation & Depth
 

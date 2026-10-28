@@ -280,11 +280,11 @@ test('cutting hosted-erp severs its cable on the canvas layer', async ({ page },
   await page.locator('.scene--diorama').focus();
   for (let i = 0; i < 6; i++) await page.keyboard.press('-');
   const post = await page.evaluate(() => window.__faillocal!.diorama!.entryPost('hosted-erp'));
-  expect(post.y).toBeGreaterThan(60);
-  // The break sits on the cable's last leg above the post: the ring and the "Link cut" label, in Stop Red.
-  // The patch is above the north rim, on the gallery floor, so no oxide ground can pass for red; the
-  // tolerance (25) still excludes oxide-low and ore-load (about 36 and 38 from Stop Red).
-  const rect = { x: post.x - 90, y: post.y - 90, w: 110, h: 90 };
+  expect(post.y).toBeGreaterThan(100);
+  // The break sits near the top of the cable's last leg, the one that drops onto the post (cables.ts): the
+  // ring and, to its left, the "Link cut" label, in Stop Red. The tolerance (25) excludes oxide-low and
+  // ore-load (about 36 and 38 from Stop Red), so the ground the leg crosses cannot pass for red.
+  const rect = { x: post.x - 90, y: 20, w: 100, h: post.y - 30 };
   await expect
     .poll(async () => {
       const colours = (await page.evaluate((r) => window.__faillocal!.diorama!.sample(1, r), rect)) as Rgb[];

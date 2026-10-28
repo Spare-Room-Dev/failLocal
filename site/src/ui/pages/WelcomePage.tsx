@@ -4,14 +4,19 @@ import { sceneState } from '../../model/sceneState.js';
 import { actions, appStore, useStore } from '../../model/store.js';
 import { hrefOf, navigate } from '../../routes.js';
 import { SceneView } from '../SceneView.js';
+import { useMediaQuery } from '../useMediaQuery.js';
 
-/** The schematic at hour 0 of the current run, as a picture: hidden from assistive tech and out of the tab order. */
+/**
+ * The hero: the model at hour 0 of the current run, cropped on the pit, ROM pad and crusher at k = 1.18, with
+ * its ambient motion (a still frame under reduced motion). A picture: hidden from assistive tech and out of the tab order.
+ */
 function ScenePreview() {
   const run = useStore(appStore, (s) => s.lastGood);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   if (!run) return null;
   return (
     <div className="welcome-scene" aria-hidden="true" data-decorative inert>
-      <SceneView scene={sceneState(register, sampleAt(run, 0))} selected={null} onSelect={() => {}} reducedMotion decorative />
+      <SceneView scene={sceneState(register, sampleAt(run, 0))} selected={null} onSelect={() => {}} reducedMotion={reducedMotion} decorative />
     </div>
   );
 }

@@ -15,6 +15,18 @@ export function zoomAt(cam: Camera, factor: number, sx: number, sy: number, boar
   return clampCamera(next, board, view);
 }
 
+/** Wheel zoom: the factor per pixel of wheel travel. */
+const WHEEL_ZOOM = 0.0015;
+
+/**
+ * The camera after `deltaY` pixels of wheel travel over screen point (sx, sy) (negative zooms in), or null
+ * when the zoom is already at its limit that way: the wheel then belongs to the page, which scrolls.
+ */
+export function wheelZoom(cam: Camera, deltaY: number, sx: number, sy: number, board: Size, view: Size): Camera | null {
+  if (deltaY === 0 || (deltaY < 0 && cam.k >= K_MAX) || (deltaY > 0 && cam.k <= K_MIN)) return null;
+  return zoomAt(cam, Math.exp(-deltaY * WHEEL_ZOOM), sx, sy, board, view);
+}
+
 /** Move the board by (dx, dy) screen pixels, as a drag does. */
 export function panBy(cam: Camera, dx: number, dy: number, board: Size, view: Size): Camera {
   return clampCamera({ k: cam.k, ox: cam.ox + dx, oy: cam.oy + dy }, board, view);

@@ -5,7 +5,7 @@ import { BELT_DASH, DUST_LIFE, pastLoadout, RAIL_LENGTH, TRAIN_CARS } from '../a
 import type { AnimState } from '../animation.js';
 import { depthKey, mix, shadowHull } from '../iso.js';
 import type { Vec3 } from '../iso.js';
-import { LAYOUT } from '../layout.js';
+import { ENTRY_POST_H, LAYOUT } from '../layout.js';
 import { token } from '../palette.js';
 import { CONVEYOR, RAIL_LOOP } from '../paths.js';
 import { dashes } from '../polyline.js';
@@ -43,7 +43,6 @@ const INK = c('ink');
 const PAPER = c('paper');
 /** DESIGN.md's cut-post grey `#8a817a`, as galvanised desaturated toward ink-2. */
 const POST_CUT = mix(c('galvanised'), c('ink-2'), 0.61);
-export const ENTRY_POST_H = 5;
 
 export function buildDynamic(slots: StaticWorld['slots'], above: Container): Dynamic {
   const hatch = new Graphics({ label: 'hatch' });

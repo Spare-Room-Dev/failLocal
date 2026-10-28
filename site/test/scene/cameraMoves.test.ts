@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { fitCamera, K_MAX, K_MIN, unproject } from '../../src/scene/iso.js';
 import { BOARD, LAYOUT } from '../../src/scene/layout.js';
-import { keyMove, panBy, zoomAt } from '../../src/scene/cameraMoves.js';
+import { keyMove, panBy, wheelZoom, zoomAt } from '../../src/scene/cameraMoves.js';
 
 const view = { w: 928, h: 580 };
 const start = fitCamera(BOARD, view, LAYOUT.defaultFocus);
@@ -45,5 +45,17 @@ describe('camera moves', () => {
     expect(keyMove('-', start, BOARD, view, fit)!.k).toBeLessThan(start.k);
     expect(keyMove('0', plus, BOARD, view, fit)).toEqual(fit);
     expect(keyMove('a', start, BOARD, view, fit)).toBeNull();
+  });
+
+  test('a wheel turn zooms, but passes to the page when the zoom is already at its limit that way', () => {
+    expect(wheelZoom(start, -100, 300, 260, BOARD, view)!.k).toBeGreaterThan(start.k);
+    expect(wheelZoom(start, 100, 300, 260, BOARD, view)!.k).toBeLessThan(start.k);
+    const max = { ...start, k: K_MAX };
+    const min = { ...start, k: K_MIN };
+    expect(wheelZoom(max, -100, 300, 260, BOARD, view)).toBeNull();
+    expect(wheelZoom(min, 100, 300, 260, BOARD, view)).toBeNull();
+    expect(wheelZoom(max, 100, 300, 260, BOARD, view)!.k).toBeLessThan(K_MAX);
+    expect(wheelZoom(min, -100, 300, 260, BOARD, view)!.k).toBeGreaterThan(K_MIN);
+    expect(wheelZoom(start, 0, 300, 260, BOARD, view)).toBeNull();
   });
 });

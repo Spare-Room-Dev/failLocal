@@ -11,6 +11,13 @@ type Pt = { x: number; y: number };
 
 export const BOARD = { w: 1600, h: 1000 } as const;
 
+/** The cut-away slab under the board: strata to 30 m down, then a 14 m plinth (DESIGN.md Cut-away slab). */
+export const SLAB_DEPTH = 30;
+export const PLINTH_DEPTH = 14;
+
+/** A service's entry post is 3 × 3 × 5 m (DESIGN.md Cable and Entry Post). */
+export const ENTRY_POST_H = 5;
+
 /** Ultra-class haul truck (CAT 793 / Komatsu 930E), metres. */
 export const TRUCK = { length: 13, width: 7.6 } as const;
 
@@ -46,7 +53,10 @@ export interface Layout {
   structures: Structure[];
   /** Keyed by register process id: the flag pole and the hatched pad. */
   areas: Record<string, { anchor: Vec3; pad: Pt[] }>;
-  /** Keyed by service group id, in SERVICE_GROUPS order, along the back edge. */
+  /**
+   * Keyed by service group id, in SERVICE_GROUPS order, left to right on screen: a row just north of the
+   * default framing (ruling R-p), so every cable visibly reaches its post at the default views.
+   */
   entryPosts: Record<string, Vec3>;
   railLoop: { centre: Vec3; radius: number };
   stockyard: { windrows: number; at: Rect };
@@ -56,6 +66,8 @@ export interface Layout {
   ridge: Pt[];
   /** Default framing: the pit, ROM pad and crusher. */
   defaultFocus: Rect;
+  /** A phone's framing (DESIGN.md Layout, Phone): the working area, pit to crusher to stockyard. */
+  workingArea: Rect;
 }
 
 const PIT_CENTRE: Vec3 = { x: 500, y: 560, z: 0 };
@@ -179,11 +191,12 @@ export const LAYOUT: Layout = {
     rail: { anchor: { x: 1300, y: 590, z: 0 }, pad: quad(1290, 520, 100, 80) },
   },
   entryPosts: {
-    'hosted-erp': { x: 120, y: 12, z: 0 },
-    'cloud-identity': { x: 240, y: 12, z: 0 },
-    'iroc-link': { x: 360, y: 12, z: 0 },
-    'corporate-network': { x: 480, y: 12, z: 0 },
-    'vendor-access': { x: 600, y: 12, z: 0 },
+    // On open ground between the pit's north crest and the workshop roads, 120 m apart.
+    'hosted-erp': { x: 420, y: 285, z: 0 },
+    'cloud-identity': { x: 540, y: 285, z: 0 },
+    'iroc-link': { x: 660, y: 285, z: 0 },
+    'corporate-network': { x: 780, y: 285, z: 0 },
+    'vendor-access': { x: 900, y: 285, z: 0 },
   },
   railLoop: { centre: { x: 1340, y: 770, z: 0 }, radius: 210 },
   stockyard: { windrows: 2, at: { x: 1230, y: 290, w: 340, h: 190 } },
@@ -206,6 +219,7 @@ export const LAYOUT: Layout = {
     { x: 50, y: 820 },
   ],
   defaultFocus: { x: 220, y: 300, w: 830, h: 490 },
+  workingArea: { x: 300, y: 300, w: 1000, h: 450 },
 };
 
 // --- Small helpers --------------------------------------------------------------

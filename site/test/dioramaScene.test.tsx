@@ -3,18 +3,23 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { register } from '../src/model/register.js';
 import { sceneState } from '../src/model/sceneState.js';
-import type { DioramaOptions } from '../src/scene/pixi/app.js';
+import type { DioramaOptions, SceneLayout } from '../src/scene/pixi/app.js';
+import { BOARD, LAYOUT } from '../src/scene/layout.js';
+import { fitCamera } from '../src/scene/iso.js';
 import { DioramaScene } from '../src/ui/scene/DioramaScene.js';
 
 /** How the mocked renderer behaves on this test's mount. */
 const pixi = vi.hoisted(() => ({
   mode: 'ok' as 'ok' | 'reject' | 'throw',
   destroy: vi.fn(),
+  reveal: vi.fn(),
   options: null as DioramaOptions | null,
+  onLayout: null as ((l: SceneLayout) => void) | null,
 }));
 vi.mock('../src/scene/pixi/app.js', () => ({
-  createDiorama: vi.fn(async (_host: HTMLElement, _onCamera: unknown, options: DioramaOptions) => {
+  createDiorama: vi.fn(async (_host: HTMLElement, onLayout: (l: SceneLayout) => void, options: DioramaOptions) => {
     pixi.options = options;
+    pixi.onLayout = onLayout;
     if (pixi.mode === 'reject') throw new Error('no WebGL renderer');
     return {
       setState() {
@@ -22,6 +27,7 @@ vi.mock('../src/scene/pixi/app.js', () => ({
       },
       setCamera() {},
       fit() {},
+      reveal: pixi.reveal,
       destroy: pixi.destroy,
     };
   }),
@@ -30,7 +36,9 @@ vi.mock('../src/scene/pixi/app.js', () => ({
 beforeEach(() => {
   pixi.mode = 'ok';
   pixi.destroy.mockClear();
+  pixi.reveal.mockClear();
   pixi.options = null;
+  pixi.onLayout = null;
 });
 afterEach(cleanup);
 
@@ -63,4 +71,57 @@ test('a renderer that reports a failure later (a lost context that never returns
   act(() => pixi.options!.onFail!());
   await expectFallback(container);
   expect(pixi.destroy).toHaveBeenCalledTimes(1);
+});
+
+/** A layout as the renderer reports it: haulage's plaque placed, crushing's flag in frame without one, rail out of frame. */
+function layout(): SceneLayout {
+  const view = { w: 1000, h: 600 };
+  const plaques: SceneLayout['plaques'] = {};
+  for (const id of Object.keys(LAYOUT.areas)) plaques[id] = { foot: { x: 500, y: 300 }, flagTop: { x: 500, y: 274 }, rect: null, inFrame: true };
+  plaques.haulage = { foot: { x: 400, y: 300 }, flagTop: { x: 400, y: 260 }, rect: { x: 413, y: 255, w: 150, h: 31 }, inFrame: true };
+  plaques.crushing = { foot: { x: 700, y: 350 }, flagTop: { x: 700, y: 324 }, rect: null, inFrame: true };
+  plaques.rail = { foot: { x: 1300, y: 900 }, flagTop: { x: 1300, y: 874 }, rect: null, inFrame: false };
+  return { cam: fitCamera(BOARD, view, LAYOUT.defaultFocus), view, plaques };
+}
+
+async function mounted() {
+  const r = render(<DioramaScene scene={scene} selected={null} onSelect={() => {}} reducedMotion={false} />);
+  await waitFor(() => expect(r.container.querySelector('.scene--diorama')!.getAttribute('data-ready')).toBe('true'));
+  act(() => pixi.onLayout!(layout()));
+  const button = (id: string) => r.container.querySelector<HTMLElement>(`.scene-hit[data-area="${id}"]`)!;
+  return { ...r, button };
+}
+
+test('an area button covers its plaque and flag, or its flag alone when it has no plaque', async () => {
+  const { button } = await mounted();
+  const h = button('haulage').style;
+  // The plaque (413..563 × 255..286) and the flag's cloth and pole top beside it.
+  expect(parseFloat(h.left)).toBeLessThanOrEqual(400 - 12);
+  expect(parseFloat(h.left) + parseFloat(h.width)).toBeGreaterThanOrEqual(563);
+  expect(parseFloat(h.top)).toBeLessThanOrEqual(255);
+  expect(parseFloat(h.top) + parseFloat(h.height)).toBeGreaterThanOrEqual(286);
+  const c = button('crushing').style;
+  expect(parseFloat(c.left) + parseFloat(c.width) / 2).toBeCloseTo(700, 0);
+  expect(parseFloat(c.top)).toBeLessThanOrEqual(324);
+});
+
+test('an area out of frame keeps its button for keyboard and screen reader users, hidden, and focusing it brings the area into view', async () => {
+  const { button } = await mounted();
+  expect(button('rail').classList.contains('scene-hit--away')).toBe(true);
+  expect(button('haulage').classList.contains('scene-hit--away')).toBe(false);
+  act(() => button('rail').focus());
+  expect(pixi.reveal).toHaveBeenCalledWith('rail');
+  expect(screen.getByRole('button', { name: /^Rail loading and haul to port: / })).toBe(button('rail'));
+});
+
+test('the decorative scene asks for the hero framing; the site for its own', async () => {
+  const site = render(<DioramaScene scene={scene} selected={null} onSelect={() => {}} reducedMotion={false} />);
+  await waitFor(() => expect(pixi.options).not.toBeNull());
+  expect(pixi.options!.framing).toBe('site');
+  site.unmount();
+  pixi.options = null;
+  render(<DioramaScene scene={scene} selected={null} onSelect={() => {}} reducedMotion decorative />);
+  await waitFor(() => expect(pixi.options).not.toBeNull());
+  expect(pixi.options!.framing).toBe('hero');
+  expect(pixi.options!.interactive).toBe(false);
 });

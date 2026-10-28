@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent } from 'react';
+import type { KeyboardEvent } from 'react';
 import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
-import { fitCamera, project } from '../../scene/iso.js';
-import type { Camera } from '../../scene/iso.js';
-import { BOARD, LAYOUT } from '../../scene/layout.js';
-import type { DioramaHandle } from '../../scene/pixi/app.js';
+import { defaultCamera } from '../../scene/framing.js';
+import { project } from '../../scene/iso.js';
+import { LAYOUT } from '../../scene/layout.js';
+import type { DioramaHandle, SceneLayout } from '../../scene/pixi/app.js';
+import type { FlagLayout } from '../../scene/pixi/overlay.js';
+import { platePosition } from '../../scene/plate.js';
 import type { SceneViewProps } from '../SceneView.js';
 import { SchematicFallback } from './SchematicFallback.js';
 import '../scene.css';
@@ -17,25 +19,42 @@ const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' 
  */
 const ANCHORS: Record<string, number> = Object.fromEntries(SERVICE_GROUPS.map((g, i) => [g.id, cableFraction(i)]));
 
-/** Used until the host has been measured (and in jsdom, which measures nothing): the desktop stage's scene box. */
-const NOMINAL = { w: 928, h: 580 };
-/** Half the area buttons' hit target, in px. */
+/** Used until the renderer reports its first layout (and in jsdom, which measures nothing): the desktop stage's scene box. */
+const NOMINAL = { w: 1068, h: 580 };
+const NOMINAL_CAMERA = defaultCamera('site', NOMINAL, false);
+/** Half the side of an area button over a flag with no plaque, in px. */
 const HIT = 14;
 
-type Frame = { cam: Camera; w: number; h: number };
+type Box = { left: number; top: number; width: number; height: number };
+
+/** The button over an area: its plaque and flag, or the flag alone; null when the flag is out of frame. */
+function hitBox(l: FlagLayout): Box | null {
+  if (!l.inFrame) return null;
+  // The flag's cloth flies up to 12 px either side of the top of its pole.
+  const flag = { left: l.flagTop.x - HIT, top: l.flagTop.y - 4, width: 2 * HIT, height: 2 * HIT };
+  if (!l.rect) return flag;
+  const left = Math.min(flag.left, l.rect.x);
+  const top = Math.min(flag.top, l.rect.y);
+  return { left, top, width: Math.max(flag.left + flag.width, l.rect.x + l.rect.w) - left, height: Math.max(flag.top + 12, l.rect.y + l.rect.h) - top };
+}
 
 /**
  * The scene as the PixiJS diorama. PixiJS loads on mount (a separate chunk), so pages without the
- * scene never fetch it. Over the canvas sits the scene contract's accessible DOM layer: a native
- * button per process area at its projected anchor, the plate as DOM text, and a marker for each
- * service cable where it drops into the scene. If the renderer fails to start, or later loses its WebGL context for good, the schematic stands in.
+ * scene never fetch it. Over the canvas sits the scene contract's accessible DOM layer, laid out from what
+ * the renderer reports after each frame that moved anything: a native button per process area over its
+ * plaque and flag, the plate as DOM text hung on the board's front plinth face (pinned to the bottom of
+ * the stage when that face is out of view), and a marker for each service cable where it drops into the
+ * scene. An area out of frame keeps its button, visually hidden, so keyboard and screen reader users can
+ * still reach it; focusing it brings the area into view. If the renderer fails to start, or later loses
+ * its WebGL context for good, the schematic stands in.
  */
 export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorative = false, onAnchors }: SceneViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const plateRef = useRef<HTMLParagraphElement>(null);
   const handle = useRef<DioramaHandle | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [frame, setFrame] = useState<Frame>(() => ({ cam: fitCamera(BOARD, NOMINAL, LAYOUT.defaultFocus), ...NOMINAL }));
+  const [layout, setLayout] = useState<SceneLayout | null>(null);
   const latest = useRef({ scene, reducedMotion, selected });
   latest.current = { scene, reducedMotion, selected };
 
@@ -45,7 +64,9 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     const host = hostRef.current;
     if (!host) return;
     let cancelled = false;
-    const onCamera = (cam: Camera) => setFrame({ cam, w: host.clientWidth || NOMINAL.w, h: host.clientHeight || NOMINAL.h });
+    const onLayout = (l: SceneLayout) => {
+      if (!cancelled) setLayout(l);
+    };
     // The renderer lost its context for good: release it and let the schematic stand in.
     const onFail = () => {
       if (cancelled) return;
@@ -54,7 +75,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
       setFailed(true);
     };
     import('../../scene/pixi/app.js')
-      .then(({ createDiorama }) => createDiorama(host, onCamera, { interactive: !decorative, onFail }))
+      .then(({ createDiorama }) => createDiorama(host, onLayout, { interactive: !decorative, framing: decorative ? 'hero' : 'site', onFail }))
       .then(
         (h) => {
           // Unmounted while the renderer was starting: release its context at once.
@@ -79,6 +100,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
       handle.current?.destroy();
       handle.current = null;
       setReady(false);
+      setLayout(null);
     };
   }, [decorative]);
 
@@ -92,14 +114,14 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     e.preventDefault();
     onSelect(id);
   };
-  // Positions are clamped into the scene box, so a button for an area out of frame waits at the edge.
-  const place = (p: { x: number; y: number; z: number }): CSSProperties => {
-    const s = project(p, frame.cam);
-    return {
-      left: Math.min(frame.w - 2 * HIT, Math.max(0, s.sx - HIT)),
-      top: Math.min(frame.h - 2 * HIT, Math.max(0, s.sy - HIT)),
-    };
+  // Before the first layout: each button at its area's projected anchor under the nominal camera.
+  const boxFor = (id: string): Box | null => {
+    const l = layout?.plaques[id];
+    if (l) return hitBox(l);
+    const { sx, sy } = project(LAYOUT.areas[id]!.anchor, NOMINAL_CAMERA);
+    return { left: sx - HIT, top: sy - HIT, width: 2 * HIT, height: 2 * HIT };
   };
+  const plate = layout && plateRef.current?.offsetWidth ? platePosition(layout.cam, layout.view, { w: plateRef.current.offsetWidth, h: plateRef.current.offsetHeight }) : null;
 
   return (
     <div
@@ -110,16 +132,18 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
       {...(decorative ? { 'aria-hidden': true } : { role: 'group', 'aria-label': 'Model site', tabIndex: 0 })}
     >
       {!decorative &&
-        Object.entries(LAYOUT.areas).map(([id, area]) => {
+        Object.keys(LAYOUT.areas).map((id) => {
           const p = scene.processes[id];
           if (!p) throw new Error(`scene has no process ${id}`);
+          const box = boxFor(id);
           return (
             <button
               key={id}
               type="button"
-              className="scene-hit"
+              className={box ? `scene-hit${layout?.plaques[id]?.rect ? ' scene-hit--plaque' : ''}` : 'scene-hit scene-hit--away'}
               data-area={id}
-              style={place(area.anchor)}
+              style={box ?? undefined}
+              onFocus={box ? undefined : () => handle.current?.reveal(id)}
               aria-pressed={selected === id}
               aria-label={`${p.label}: ${STATE_WORD[p.state]}${p.note ? `. ${p.note}` : ''}`}
               onClick={() => onSelect(id)}
@@ -133,7 +157,9 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
         if (!state) throw new Error(`scene has no cable for ${g.id}`);
         return <span key={g.id} className="scene-cable-drop" data-cable-group={g.id} data-cable-state={state} style={{ left: `${ANCHORS[g.id]! * 100}%` }} aria-hidden="true" />;
       })}
-      <p className="scene-plinth">{scene.plate.text}</p>
+      <p ref={plateRef} className="scene-plinth" data-placement={plate ? 'face' : 'pinned'} style={plate ? { left: plate.x, top: plate.y } : undefined}>
+        {scene.plate.text}
+      </p>
       {!decorative && (
         <button type="button" className="scene-fit" onClick={() => handle.current?.fit()}>
           Fit

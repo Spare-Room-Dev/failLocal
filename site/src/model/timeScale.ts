@@ -20,6 +20,11 @@ export interface DioramaProbe {
   frames(): number;
   /** Where an entry post's foot is drawn, in stage pixels. */
   entryPost(groupId: string): { x: number; y: number };
+  /**
+   * Each process area's plaque as placed now, in stage pixels: null when it has none (its flag is out of
+   * frame, or no spot fits it). `inFrame`: whether the flag's foot is inside the stage.
+   */
+  plaques(): Record<string, { rect: { x: number; y: number; w: number; h: number } | null; inFrame: boolean }>;
   /** The rendered colour of every `step`-th CSS pixel (of the whole stage, or of `rect`), as [r, g, b]. */
   sample(step: number, rect?: { x: number; y: number; w: number; h: number }): Promise<[number, number, number][]>;
 }

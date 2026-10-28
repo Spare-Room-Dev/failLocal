@@ -19,7 +19,7 @@ export interface SceneViewProps {
   onSelect(processId: string): void;
   reducedMotion: boolean;
   decorative?: boolean;
-  /** Group id → x of its cable's entry post, as a fraction (0..1) of the scene box's width. */
+  /** Group id → x where its cable enters the top of the scene, under its card, as a fraction (0..1) of the scene box's width (ruling R-n). */
   onAnchors?(anchors: Record<string, number>): void;
 }
 

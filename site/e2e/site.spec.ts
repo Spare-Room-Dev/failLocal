@@ -293,3 +293,131 @@ test('the site runs under the deployed CSP', async ({ page }) => {
   await scrubToDay(page, 6);
   expect(await violations()).toEqual([]);
 });
+
+// --- The diorama's DOM layer at each width (task 7) ---------------------------------------------------
+
+type Rect = { x: number; y: number; w: number; h: number };
+type PlaqueInfo = { rect: Rect | null; inFrame: boolean };
+const GROUPS = ['hosted-erp', 'cloud-identity', 'iroc-link', 'corporate-network', 'vendor-access'];
+
+/** The site with a still diorama (reduced motion: these checks are about layout, not motion). */
+async function openStill(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, '#/site');
+  await expect(page.locator('.scene--diorama[data-ready="true"]')).toBeVisible({ timeout: 20_000 });
+}
+
+test('cards sit on their cables, and every post and plaque is in frame without collisions', async ({ page }, info) => {
+  test.skip(info.project.name === 'phone', 'phones hide the cables and crop the scene');
+  await openStill(page);
+  const scene = (await page.locator('.scene--diorama').boundingBox())!;
+
+  // Each card is centred on its reported anchor (where its cable enters the scene) and covers at most 8 px of it.
+  for (const [i, id] of GROUPS.entries()) {
+    const card = (await page.locator(`.service-card[data-service-group="${id}"]`).boundingBox())!;
+    const cable = (await page.locator(`[data-cable-group="${id}"]`).boundingBox())!;
+    const anchor = cable.x + cable.width / 2;
+    expect(Math.abs(anchor - (scene.x + ((i + 1) / 6) * scene.width)), `${id} anchor`).toBeLessThanOrEqual(1);
+    expect(Math.abs(card.x + card.width / 2 - anchor), `${id} centring`).toBeLessThanOrEqual(2);
+    expect(card.y + card.height - cable.y, `${id} covers its cable`).toBeLessThanOrEqual(8);
+  }
+
+  // Every entry post is drawn inside the stage, so every cable visibly reaches it.
+  for (const id of GROUPS) {
+    const post = await page.evaluate((g) => window.__faillocal!.diorama!.entryPost(g), id);
+    expect(post.x, id).toBeGreaterThan(0);
+    expect(post.x, id).toBeLessThan(scene.width);
+    expect(post.y, id).toBeGreaterThan(0);
+    expect(post.y, id).toBeLessThan(scene.height);
+  }
+
+  for (const day of [0, 13]) {
+    await scrubToDay(page, day);
+    // The plaques are laid out on the next drawn frame: wait until two reads agree.
+    const read = () => page.evaluate(() => JSON.stringify(window.__faillocal!.diorama!.plaques()));
+    await expect.poll(async () => {
+      const a = await read();
+      await page.waitForTimeout(150);
+      return a === (await read());
+    }).toBe(true);
+    // At the start of the run and at day 13 (wider plaques): every flag in frame has its plaque, whole inside the stage, and no two plaques overlap.
+    const plaques = (await page.evaluate(() => window.__faillocal!.diorama!.plaques())) as Record<string, PlaqueInfo>;
+    const shown = Object.entries(plaques).filter(([, p]) => p.inFrame);
+    expect(shown.length).toBeGreaterThanOrEqual(8);
+    for (const [id, p] of shown) {
+      expect(p.rect, `${id} on day ${day}`).not.toBeNull();
+      const r = p.rect!;
+      expect(r.x >= 0 && r.y >= 0 && r.x + r.w <= scene.width && r.y + r.h <= scene.height, `${id} clipped`).toBe(true);
+    }
+    const rects = shown.map(([id, p]) => [id, p.rect!] as const);
+    for (const [i, [a, ra]] of rects.entries())
+      for (const [b, rb] of rects.slice(i + 1))
+        expect(intersects({ x: ra.x, y: ra.y, width: ra.w, height: ra.h }, { x: rb.x, y: rb.y, width: rb.w, height: rb.h }), `${a} and ${b}`).toBe(false);
+
+    // Each area's button covers its plaque (once React has laid the DOM layer out from the same frame).
+    const uncovered = () =>
+      page.evaluate((list) => {
+        const host = document.querySelector('.scene--diorama')!.getBoundingClientRect();
+        return list.flatMap(([id, r]) => {
+          const b = document.querySelector(`.scene-hit[data-area="${id}"]`)!.getBoundingClientRect();
+          const x = b.left - host.left;
+          const y = b.top - host.top;
+          const covers = x <= r.x + 1 && y <= r.y + 1 && x + b.width >= r.x + r.w - 1 && y + b.height >= r.y + r.h - 1;
+          return covers ? [] : [id];
+        });
+      }, rects as unknown as [string, Rect][]);
+    await expect.poll(uncovered).toEqual([]);
+  }
+  await page.screenshot({ path: info.outputPath(`plaques-${page.viewportSize()!.width}.png`) });
+});
+
+test('the honesty plate stays visible at maximum zoom', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'one viewport is enough for the zoom');
+  await openStill(page);
+  await page.locator('.scene--diorama').focus();
+  for (let i = 0; i < 12; i++) await page.keyboard.press('+');
+  expect((await page.evaluate(() => window.__faillocal!.diorama!.camera())).k).toBeCloseTo(2.4, 6);
+  const plate = page.locator('.scene-plinth');
+  await expect(plate).toBeVisible();
+  await expect(plate).toContainText('SYNTHETIC DATA');
+  const scene = (await page.locator('.scene--diorama').boundingBox())!;
+  const b = (await plate.boundingBox())!;
+  expect(b.x).toBeGreaterThanOrEqual(scene.x);
+  expect(b.y).toBeGreaterThanOrEqual(scene.y);
+  expect(b.x + b.width).toBeLessThanOrEqual(scene.x + scene.width);
+  expect(b.y + b.height).toBeLessThanOrEqual(scene.y + scene.height);
+});
+
+test('phone: the scene crops to the working area, hides the cables, and a tap selects an area', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'the phone scene');
+  await openStill(page);
+  for (const id of GROUPS) await expect(page.locator(`[data-cable-group="${id}"]`)).toBeHidden();
+  const centre = await page.evaluate(() => window.__faillocal!.diorama!.groundAtCentre());
+  // The working area's centre (layout.ts): between the pit and the crusher.
+  expect(centre.x).toBeCloseTo(800, 0);
+  expect(centre.y).toBeCloseTo(525, 0);
+  const crushing = page.getByRole('button', { name: /^Crushing and conveying: / });
+  await expect(crushing).toHaveAttribute('aria-pressed', 'false');
+  await crushing.tap();
+  await expect(crushing).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: 'Crushing and conveying' })).toBeVisible();
+});
+
+test('welcome hero: the k = 1.18 crop, moving, and still under reduced motion', async ({ page }, info) => {
+  test.skip(!['desktop', 'phone'].includes(info.project.name), 'the welcome page on a laptop and a phone');
+  await open(page, '#/');
+  await expect(page.locator('.welcome-scene .scene--diorama[data-ready="true"]')).toBeVisible({ timeout: 20_000 });
+  expect((await page.evaluate(() => window.__faillocal!.diorama!.camera())).k).toBe(1.18);
+  await expect(page.locator('.welcome-scene button, .welcome-scene [tabindex]')).toHaveCount(0);
+  const frames = () => page.evaluate(() => window.__faillocal!.diorama!.frames());
+  const before = await frames();
+  await expect.poll(frames).toBeGreaterThan(before + 3);
+  await page.screenshot({ path: info.outputPath(`welcome-${page.viewportSize()!.width}.png`) });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(async () => {
+    const a = await frames();
+    await page.waitForTimeout(300);
+    return (await frames()) - a;
+  }).toBe(0);
+});

@@ -215,7 +215,9 @@ export function stepAnim(a: AnimState, scene: SceneState, dtSeconds: number): An
     cableDots[g.id] = scene.cables[g.id] === 'live' ? mod(phase + dt / CABLE_RUN[i]!, 1) : phase;
   });
 
-  const lv = scene.processes.haulage?.state === 'stopped' ? a.lv : a.lv + LV_SPEED * dt;
+  const haulage = scene.processes.haulage;
+  if (!haulage) throw new Error('scene has no process haulage');
+  const lv = haulage.state === 'stopped' ? a.lv : a.lv + LV_SPEED * dt;
   return {
     trucks: next,
     dust,

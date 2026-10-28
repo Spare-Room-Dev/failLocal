@@ -221,6 +221,12 @@ describe('animation', () => {
     expect(run(stopped, 30, 0.1, moved).lvs).toEqual(moved.lvs);
   });
 
+  it('refuses a scene without haulage rather than letting the light vehicles run by default', () => {
+    const s = scene();
+    const { haulage: _, ...rest } = s.processes;
+    expect(() => stepAnim(initAnim(s), { ...s, processes: rest }, 0.1)).toThrow(/haulage/);
+  });
+
   it('refuses a fleet that is not the illustrative eight', () => {
     const s = scene();
     expect(() => initAnim({ ...s, fleet: { moving: 5, parked: 4 } })).toThrow();
