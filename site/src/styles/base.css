@@ -179,12 +179,13 @@ body {
    * ("Up", "Cut since day 0", "Restored day 12"), so every card along the band is one height and every
    * status line starts at the same place (finish D4).
    */
-  .service-card-foot {
+  /* Qualified by the card: chrome.css, which loads later, sets the row form. */
+  .service-card .service-card-foot {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .service-card-buttons {
+  .service-card .service-card-buttons {
     align-self: flex-end;
   }
 }
