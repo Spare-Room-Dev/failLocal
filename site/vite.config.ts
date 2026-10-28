@@ -10,5 +10,5 @@ export default defineConfig({
   plugins: [react()],
   preview: { headers: deployedHeaders },
   // Playwright owns e2e/.
-  test: { environment: 'jsdom', exclude: ['e2e/**', 'node_modules/**'] },
+  test: { environment: 'jsdom', exclude: ['e2e/**', 'node_modules/**'], css: { include: [/tokens\.css/] } },
 });
