@@ -62,8 +62,15 @@
   padding: 24px 0 0;
 }
 
-.page-frame--welcome > .badge {
-  margin-left: 64px;
+/* The FailLocal lockup, top left over the gallery floor, in line with the copy. */
+.welcome-top {
+  position: relative;
+  z-index: 1;
+  padding: 6px 64px 0;
+}
+
+.welcome-top .brand-word {
+  font-size: 19px;
 }
 
 .welcome {
@@ -87,6 +94,7 @@
 
 .welcome-copy p {
   max-width: 56ch;
+  color: var(--ink-2);
   font-size: 17px;
   line-height: 1.55;
 }
@@ -111,12 +119,53 @@
   cursor: pointer;
 }
 
+/* DESIGN.md "Landing Buttons": hi-vis, 50 px, 7 px radius, the hi-vis lift; hover deepens and nudges the arrow. */
 .button--primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 20px 0 22px;
+  border: 0;
+  border-radius: 7px;
   background: var(--hivis);
+  box-shadow: var(--hivis-lift);
+  font-size: 16px;
+  font-weight: 700;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.button--primary:hover {
+  background: var(--hivis-pressed);
 }
 
 .button--primary:active {
   background: var(--hivis-pressed);
+  transform: translateY(1px);
+}
+
+.button-arrow {
+  flex: none;
+  width: 18px;
+  height: 14px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.button--primary:hover .button-arrow {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button--primary,
+  .button-arrow {
+    transition: none;
+  }
+}
+
+/* The welcome's one bold line. */
+.welcome-copy strong {
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .small-print {
@@ -145,8 +194,8 @@
     padding: 24px 16px 0;
   }
 
-  .page-frame--welcome > .badge {
-    margin-left: 0;
+  .welcome-top {
+    padding: 0;
   }
 
   .welcome {

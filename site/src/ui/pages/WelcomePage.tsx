@@ -3,6 +3,7 @@ import { register } from '../../model/register.js';
 import { sceneState } from '../../model/sceneState.js';
 import { actions, appStore, useStore } from '../../model/store.js';
 import { hrefOf, navigate } from '../../routes.js';
+import { Brand } from '../Brand.js';
 import { SceneView } from '../SceneView.js';
 import { useMediaQuery } from '../useMediaQuery.js';
 
@@ -34,37 +35,45 @@ export function WelcomePage() {
   };
 
   return (
-    <div className="welcome">
-      <div className="welcome-copy">
-        <h1>What stops a mine when the systems outside it go down?</h1>
-        <p>
-          In <time dateTime="2026-05">May 2026</time>, a ransomware attack on Scope Systems, a Perth company that hosts
-          finance and maintenance software for miners, took it offline for about twelve days. The plants were fine.
-          Purchasing, maintenance and payroll were not.
-        </p>
-        <p>
-          This is a fictional model iron ore site. Cut the outside services it relies on, watch what stops and what it
-          costs, then see what a prepared site does differently.
-        </p>
-        <div className="welcome-actions">
-          <button type="button" className="button button--primary" onClick={showSite}>
-            Show me the site
-          </button>
-          <button type="button" className="button" onClick={explore}>
-            Explore freely
-          </button>
+    <>
+      <header className="welcome-top">
+        <Brand />
+      </header>
+      <div className="welcome">
+        <div className="welcome-copy">
+          <h1>What stops a mine when the systems outside it go down?</h1>
+          <p>
+            In <time dateTime="2026-05">May 2026</time>, a ransomware attack on Scope Systems, a Perth company that hosts
+            finance and maintenance software for miners, took it offline for about twelve days.{' '}
+            <strong>The plants were fine. Purchasing, maintenance and payroll were not.</strong>
+          </p>
+          <p>
+            This is a fictional model iron ore site. Cut the outside services it relies on, watch what stops and what it
+            costs, then see what a prepared site does differently.
+          </p>
+          <div className="welcome-actions">
+            <button type="button" className="button button--primary" onClick={showSite}>
+              Show me the site
+              <svg className="button-arrow" viewBox="0 0 18 14" aria-hidden="true">
+                <path d="M1 7h15M10.5 1.5L16 7l-5.5 5.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button type="button" className="button" onClick={explore}>
+              Explore freely
+            </button>
+          </div>
+          <p className="small-print">
+            Built from public sources: Scope Systems incident updates, the MM-ISAC Mining OT Reference Architecture (
+            <time dateTime="2026-08">2026</time>), Rio Tinto&rsquo;s Western Australia operations and the World Bank Pink
+            Sheet. <a href={hrefOf('sources')}>Sources →</a>
+          </p>
+          <p className="small-print byline">
+            Built by <span className="placeholder">[Your name]</span>, cyber security graduate, Perth ·{' '}
+            <a href={hrefOf('built')}>How I built this →</a>
+          </p>
         </div>
-        <p className="small-print">
-          Built from public sources: Scope Systems incident updates, the MM-ISAC Mining OT Reference Architecture (
-          <time dateTime="2026-08">2026</time>), Rio Tinto&rsquo;s Western Australia operations and the World Bank Pink
-          Sheet. <a href={hrefOf('sources')}>Sources →</a>
-        </p>
-        <p className="small-print byline">
-          Built by <span className="placeholder">[Your name]</span>, cyber security graduate, Perth ·{' '}
-          <a href={hrefOf('built')}>How I built this →</a>
-        </p>
+        <ScenePreview />
       </div>
-      <ScenePreview />
-    </div>
+    </>
   );
 }

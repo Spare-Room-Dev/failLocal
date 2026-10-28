@@ -1,6 +1,7 @@
 import type { Variant } from '@faillocal/engine';
 import { register } from '../model/register.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { Brand } from './Brand.js';
 import { ProvenanceTag } from './ProvenanceTag.js';
 import './chrome.css';
 
@@ -11,16 +12,6 @@ const VARIANTS: { id: Variant; label: string }[] = [
 
 /** The free-play run's title; every register scenario uses its own `title`. */
 const FREE_PLAY_TITLE = 'Your scenario';
-
-/** A pit in section: four bench lines narrowing upward, cut at the top right by a short red stroke. */
-function BrandMark() {
-  return (
-    <svg className="brand-mark" viewBox="0 0 28 24" aria-hidden="true">
-      <path d="M2 21 H26 M5 16 H23 M8 11 H20 M11 6 H17" stroke="var(--ink)" strokeWidth={2} fill="none" />
-      <path d="M19 2 L25 9" stroke="var(--stop-red)" strokeWidth={2.2} />
-    </svg>
-  );
-}
 
 /** The fictional-site badge's glyph: a model block on its plinth, in the scene's 2:1 projection. */
 function ModelGlyph() {
@@ -59,10 +50,7 @@ export function TopBar() {
 
   return (
     <header className="top-bar">
-      <div className="brand">
-        <BrandMark />
-        <span className="brand-word">FailLocal</span>
-      </div>
+      <Brand />
       <div className="top-bar-title">
         <h1 className="top-bar-scenario">{title}</h1>
         {basis && (

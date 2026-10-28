@@ -26,7 +26,8 @@ const PAGES: Record<Exclude<Route, 'site'>, () => ReactNode> = {
 
 /**
  * Hash-routed pages. The site view carries the badge in its top bar and the footer at the end of its
- * detail column; every other page shows the badge above its copy.
+ * detail column; the welcome page says it in its copy and on the hero's engraved plate (finish B5);
+ * every other page shows the badge above its copy.
  */
 export function App({ register = defaultRegister }: AppProps) {
   const route = useRoute();
@@ -40,7 +41,7 @@ export function App({ register = defaultRegister }: AppProps) {
   return (
     <>
       <main className={route === 'welcome' ? 'page-frame page-frame--welcome' : 'page-frame'}>
-        {register.site.fictional && <span className="badge">Fictional model site</span>}
+        {register.site.fictional && route !== 'welcome' && <span className="badge">Fictional model site</span>}
         <Page />
       </main>
       <FooterNav current={route} />

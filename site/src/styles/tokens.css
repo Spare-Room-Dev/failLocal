@@ -41,6 +41,8 @@
   --ink-hover: #3a3430;
   --card-float: 0 1px 0 rgba(29, 26, 23, 0.04), 0 6px 14px -8px rgba(60, 40, 25, 0.25);
   --legend-wash: rgba(250, 248, 244, 0.86);
+  /* "Elevation": the hi-vis lift under the welcome page's primary button. */
+  --hivis-lift: 0 1px 0 rgba(29, 26, 23, 0.25), 0 10px 22px -12px rgba(150, 95, 10, 0.55);
   /* "Docked Detail Panel": the odometer's unlit digits, its lit cell's fill and the cell's lower edge. */
   --odometer-unlit: #a99f93;
   --odometer-lit-fill: #e7e0d5;
