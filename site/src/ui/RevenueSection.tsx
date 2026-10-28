@@ -1,6 +1,6 @@
 import type { Register, Sample, Timeline, UsedInput } from '@faillocal/engine';
 import type { QtyKind } from '../model/format.js';
-import { revenueAtRiskPerDay, shippingStock, stockpileDaysLeft } from '../model/revenueOutlook.js';
+import { hoursToCutBack, revenueAtRiskPerDay, shippingStock } from '../model/revenueOutlook.js';
 import { usedTag } from '../model/tags.js';
 import { Qty } from './Qty.js';
 
@@ -27,8 +27,9 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
   const shipping = register.processes.find((p) => p.id === register.production.shippingProcess);
   if (!shipping) throw new Error(`register has no shipping process ${register.production.shippingProcess}`);
   const shippingName = shipping.name.toLowerCase();
-  const daysLeft = stockpileDaysLeft(register, timeline, sample);
-  const rates = daysLeft === null ? null : revenueAtRiskPerDay(timeline);
+  // Both outlook lines show only when the run itself cuts loadings back later (ruling R-ac).
+  const hoursLeft = hoursToCutBack(register, timeline, sample);
+  const rates = hoursLeft === null ? null : revenueAtRiskPerDay(timeline);
   const stock = shippingStock(register);
 
   return (
@@ -37,9 +38,10 @@ export function RevenueSection({ register, timeline, sample }: RevenueSectionPro
       <div className="odometer">
         <Qty value={sample.tonnesDeferred} kind="tonnes" computed odometer />
       </div>
-      {daysLeft !== null && (
+      {hoursLeft !== null && (
         <p className="revenue-state" data-outlook="stockpile">
-          Stockpile feeding rail: <Qty value={daysLeft} kind="days" computed /> before loadings are cut back
+          Stockpile feeding rail: loadings are cut back in{' '}
+          {hoursLeft < 24 ? <Qty value={hoursLeft} kind="hours" computed /> : <Qty value={hoursLeft / 24} kind="days" computed />}
         </p>
       )}
       <hr className="panel-rule" />

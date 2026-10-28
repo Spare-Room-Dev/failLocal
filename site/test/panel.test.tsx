@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { Variant } from '@faillocal/engine';
 import { formatQty } from '../src/model/format.js';
 import { register } from '../src/model/register.js';
-import { revenueAtRiskPerDay, shippingStock } from '../src/model/revenueOutlook.js';
+import { hoursToCutBack, revenueAtRiskPerDay, shippingStock } from '../src/model/revenueOutlook.js';
 import { serviceName } from '../src/model/serviceGroups.js';
 import { actions, appStore, initialAppState } from '../src/model/store.js';
 import { DetailPanel } from '../src/ui/DetailPanel.js';
@@ -57,7 +57,7 @@ describe('RevenueSection', () => {
   });
 });
 
-describe('the stockpile outlook (B1, C1, C2: ruling R-z)', () => {
+describe('the stockpile outlook (B1, C1, C2: ruling R-z; final review I2: ruling R-ac)', () => {
   const stock = shippingStock(register);
   const shipping = register.production.shippingProcess;
   const run = () => appStore.get().lastGood!;
@@ -75,14 +75,18 @@ describe('the stockpile outlook (B1, C1, C2: ruling R-z)', () => {
     expect(stock.id).toBe('ore-stockpile');
   });
 
-  test('s1 projection, day 13: days before loadings are cut back, and both daily rates, all computed', () => {
+  test('s1 projection, day 13: the run\'s own time until loadings are cut back, and both daily rates, all computed', () => {
     actions.setScenario('s1-projection');
     const hour = 13 * 24;
     expect(level(hour + 1)).toBeLessThan(level(hour));
     expect(run().samples[hour]!.processes[shipping]).toBe('normal');
+    // The run cuts loadings back 24 hours later: the first later hour with shipping not normal or the stockpile below its low mark.
+    const cut = run().samples.find((s) => s.hour > hour && (s.processes[shipping] !== 'normal' || level(s.hour) < stock.lowThreshold.value))!;
+    expect(cut.hour - hour).toBe(24);
+    expect(hoursToCutBack(register, run(), run().samples[hour]!)).toBe(24);
     at(hour);
-    const left = level(hour) - stock.lowThreshold.value;
-    expect(stateLine()!.textContent).toBe(`Stockpile feeding rail: ${formatQty(left, 'days')}computed before loadings are cut back`);
+    expect(stateLine()!.textContent).toBe(`Stockpile feeding rail: loadings are cut back in ${formatQty(1, 'days')}computed`);
+    expect(formatQty(1, 'days')).toBe('1 day');
     const half = daily * (1 - degradedOutput.value);
     expect(rateLine()!.textContent).toBe(
       `Revenue at risk once loadings are cut back ≈ ${formatQty(half, 'usd')}computed per day, ${formatQty(daily, 'usd')}computed once the stockpile is empty`,
@@ -96,6 +100,12 @@ describe('the stockpile outlook (B1, C1, C2: ruling R-z)', () => {
     expect(untaggedNumbers(panel)).toEqual([]);
   });
 
+  test('under a day to go, the countdown reads in hours', () => {
+    actions.setScenario('s1-projection');
+    at(330);
+    expect(stateLine()!.textContent).toBe(`Stockpile feeding rail: loadings are cut back in ${formatQty(6, 'hours')}computed`);
+  });
+
   test('hidden while the stockpile refills (s2, s3): it is not covering for anything', () => {
     for (const scenario of ['s2-iroc-lost', 's3-vendor-setpoint']) {
       cleanup();
@@ -106,6 +116,29 @@ describe('the stockpile outlook (B1, C1, C2: ruling R-z)', () => {
       at(refill);
       expect(stateLine(), scenario).toBeNull();
       expect(rateLine(), scenario).toBeNull();
+    }
+  });
+
+  test('hidden where the stockpile falls but the run never cuts loadings back (s2 hour 24, s3 hours 2 to 13, unprepared)', () => {
+    for (const [scenario, hours] of [
+      ['s2-iroc-lost', [24]],
+      ['s3-vendor-setpoint', [2, 7, 13]],
+    ] as const) {
+      actions.setScenario(scenario);
+      for (const hour of hours) {
+        cleanup();
+        const sample = run().samples[hour]!;
+        // The stockpile is above its low mark, falling, and shipping normal: the old line showed here.
+        expect(level(hour), `${scenario} ${hour}`).toBeGreaterThan(stock.lowThreshold.value);
+        expect(level(hour + 1), `${scenario} ${hour}`).toBeLessThan(level(hour));
+        expect(sample.processes[shipping]).toBe('normal');
+        expect(run().samples.some((s) => s.hour > hour && (s.processes[shipping] !== 'normal' || level(s.hour) < stock.lowThreshold.value))).toBe(false);
+        expect(hoursToCutBack(register, run(), sample)).toBeNull();
+        at(hour);
+        expect(stateLine(), `${scenario} ${hour}`).toBeNull();
+        expect(rateLine(), `${scenario} ${hour}`).toBeNull();
+        expect(document.querySelector('[data-outlook="working"]')).toBeNull();
+      }
     }
   });
 

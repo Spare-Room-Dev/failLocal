@@ -16,22 +16,26 @@ function used(timeline: Timeline, path: string): number {
 }
 
 /**
- * Days of stockpile left before rail loadings are cut back (finish fix C2, ruling R-z): the stockpile's
- * level less its low mark. Shown only while shipping is still normal, the stockpile is above its low
- * mark, and it is falling, so it is covering for the site (C1): compared with the next hour (the last
- * hour compares with the one before). Null otherwise: a full or refilling stockpile is no countdown,
- * and once shipping is degraded or stopped revenue at risk itself takes over.
+ * Hours from `sample` until the run cuts rail loadings back (final review I2, ruling R-ac): the first
+ * later sample where shipping is no longer normal or the stockpile is below its low mark. Shown only
+ * while shipping is still normal, the stockpile is above its low mark, and it is falling, so it is
+ * covering for the site (C1): compared with the next hour (the last hour compares with the one
+ * before). Null otherwise, and null when the cut-back never comes within the run: the countdown is the
+ * run's own result, never the stock's days read as time. Samples are hourly (`samples[h].hour === h`).
  */
-export function stockpileDaysLeft(r: Register, timeline: Timeline, sample: Sample): number | null {
+export function hoursToCutBack(r: Register, timeline: Timeline, sample: Sample): number | null {
   const stock = shippingStock(r);
+  const shipping = r.production.shippingProcess;
+  const low = used(timeline, `stocks.${stock.id}.lowThreshold`);
   const level = (s: Sample | undefined) => s?.stocks[stock.id];
   const days = level(sample);
   if (days === undefined) throw new Error(`run has no level for stock ${stock.id}`);
   const next = level(timeline.samples[sample.hour + 1]);
   const prev = level(timeline.samples[sample.hour - 1]);
   const falling = next !== undefined ? next < days : prev !== undefined && days < prev;
-  const left = days - used(timeline, `stocks.${stock.id}.lowThreshold`);
-  return falling && left > 0 && sample.processes[r.production.shippingProcess] === 'normal' ? left : null;
+  if (!falling || days <= low || sample.processes[shipping] !== 'normal') return null;
+  const cut = timeline.samples.find((s) => s.hour > sample.hour && (s.processes[shipping] !== 'normal' || level(s)! < low));
+  return cut ? cut.hour - sample.hour : null;
 }
 
 /** The two daily rates of revenue at risk, from the run's annual tonnes, price and degraded output: no new number. */
