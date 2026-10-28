@@ -18,8 +18,10 @@ export interface DioramaProbe {
   groundAtCentre(): { x: number; y: number };
   /** How many frames the ticker has rendered since mount. */
   frames(): number;
-  /** The rendered colour of every `step`-th CSS pixel, as [r, g, b]. */
-  sample(step: number): Promise<[number, number, number][]>;
+  /** Where an entry post's foot is drawn, in stage pixels. */
+  entryPost(groupId: string): { x: number; y: number };
+  /** The rendered colour of every `step`-th CSS pixel (of the whole stage, or of `rect`), as [r, g, b]. */
+  sample(step: number, rect?: { x: number; y: number; w: number; h: number }): Promise<[number, number, number][]>;
 }
 
 declare global {

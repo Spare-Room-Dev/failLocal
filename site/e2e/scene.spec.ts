@@ -24,6 +24,7 @@ const OXIDE_HIGH = hex('#bf6a36');
 /** Galvanised `#d9d5cc` and its lit top `#e2dcd1` (DESIGN.md worked check). */
 const GALVANISED = [hex('#d9d5cc'), hex('#e2dcd1')];
 const PLINTH = hex('#3b3632');
+const STOP_RED = hex('#b3261e');
 const TOLERANCE = 18;
 
 async function openSite(page: Page): Promise<void> {
@@ -70,16 +71,22 @@ const liveContexts = (page: Page) =>
     return c.created - c.lost;
   });
 
-/** Loses (and with `restore`, then restores) the diorama's WebGL context, as a GPU reset or driver crash would. */
-function loseContext(page: Page, restore: boolean): Promise<void> {
+/**
+ * Loses (and with `restore`, then restores) the diorama's WebGL context, as a GPU reset or driver crash would.
+ * Returns the frame count read while the context was lost, before any restore: nothing renders while it is
+ * lost, so a frame counted after that one was drawn on the restored context.
+ */
+function loseContext(page: Page, restore: boolean): Promise<number> {
   return page.evaluate(async (restore) => {
     const canvas = document.querySelector<HTMLCanvasElement>('.scene--diorama canvas')!;
     const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as WebGLRenderingContext;
     const ext = gl.getExtension('WEBGL_lose_context')!;
     ext.loseContext();
-    if (!restore) return;
+    const frames = window.__faillocal!.diorama!.frames();
+    if (!restore) return frames;
     await new Promise((r) => setTimeout(r, 300));
     ext.restoreContext();
+    return frames;
   }, restore);
 }
 
@@ -210,8 +217,7 @@ test('camera zoom and fit', async ({ page }, info) => {
 test('a lost context that comes back draws the board again', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'one viewport is enough for context loss');
   await openSite(page);
-  await loseContext(page, true);
-  const frames = await page.evaluate(() => window.__faillocal!.diorama!.frames());
+  const frames = await loseContext(page, true);
   // The ticker redraws on its own after the restore, without anything else changing.
   await expect.poll(() => page.evaluate(() => window.__faillocal!.diorama!.frames())).toBeGreaterThan(frames);
   await expect(page.locator('.scene--diorama[data-ready="true"]')).toBeVisible();
@@ -245,4 +251,39 @@ test('a failure after the renderer starts releases it and falls back', async ({ 
   await expect(page.locator('canvas')).toHaveCount(0);
   // The started renderer's context was released; at most PixiJS's page-wide test context remains.
   await expect.poll(() => liveContexts(page)).toBeLessThanOrEqual(1);
+});
+
+test('cutting hosted-erp severs its cable on the canvas layer', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'cables are drawn on the laptop frame (hidden on phones)');
+  await openSite(page);
+  const group = page.locator('[data-cable-group="hosted-erp"]');
+  // Free play opens on s1-projection, which already has the ERP cut: restore it, then cut it.
+  await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+  await expect(group).toHaveAttribute('data-cable-state', 'live');
+  await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
+  await expect(group).toHaveAttribute('data-cable-state', 'severed');
+
+  // The default framing is on the pit, with the board's north rim above the frame: zoom all the way out.
+  await page.locator('.scene--diorama').focus();
+  for (let i = 0; i < 6; i++) await page.keyboard.press('-');
+  const post = await page.evaluate(() => window.__faillocal!.diorama!.entryPost('hosted-erp'));
+  expect(post.y).toBeGreaterThan(60);
+  // The break sits on the cable's last leg above the post: the ring and the "Link cut" label, in Stop Red.
+  const rect = { x: post.x - 90, y: post.y - 90, w: 110, h: 90 };
+  await expect
+    .poll(async () => {
+      const colours = (await page.evaluate((r) => window.__faillocal!.diorama!.sample(1, r), rect)) as Rgb[];
+      return colours.filter((c) => dist(c, STOP_RED) < 40).length;
+    })
+    .toBeGreaterThan(3);
+
+  // Restored, the cable is live again and no Stop Red is left near the post.
+  await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+  await expect(group).toHaveAttribute('data-cable-state', 'live');
+  await expect
+    .poll(async () => {
+      const colours = (await page.evaluate((r) => window.__faillocal!.diorama!.sample(1, r), rect)) as Rgb[];
+      return colours.filter((c) => dist(c, STOP_RED) < 40).length;
+    })
+    .toBe(0);
 });

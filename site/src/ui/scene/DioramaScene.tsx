@@ -13,7 +13,7 @@ const STATE_WORD = { normal: 'Normal', degraded: 'Degraded', stopped: 'Stopped' 
 
 /**
  * Cards sit evenly along the scene's top edge and each cable drops from its card, so the anchors are
- * the even card positions; the cable runs from that drop to its entry post on the board (Task 6 draws it).
+ * the even card positions; the canvas draws the cable from that drop to its entry post (dynamic.ts).
  */
 const ANCHORS: Record<string, number> = Object.fromEntries(SERVICE_GROUPS.map((g, i) => [g.id, cableFraction(i)]));
 
@@ -36,8 +36,8 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [frame, setFrame] = useState<Frame>(() => ({ cam: fitCamera(BOARD, NOMINAL, LAYOUT.defaultFocus), ...NOMINAL }));
-  const latest = useRef({ scene, reducedMotion });
-  latest.current = { scene, reducedMotion };
+  const latest = useRef({ scene, reducedMotion, selected });
+  latest.current = { scene, reducedMotion, selected };
 
   useEffect(() => onAnchors?.(ANCHORS), [onAnchors]);
 
@@ -60,7 +60,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
           // Unmounted while the renderer was starting: release its context at once.
           if (cancelled) return h.destroy();
           try {
-            h.setState(latest.current.scene, latest.current.reducedMotion);
+            h.setState(latest.current.scene, latest.current.reducedMotion, latest.current.selected);
           } catch {
             // The world failed to build: release the context and show the schematic instead.
             h.destroy();
@@ -82,7 +82,7 @@ export function DioramaScene({ scene, selected, onSelect, reducedMotion, decorat
     };
   }, [decorative]);
 
-  useEffect(() => handle.current?.setState(scene, reducedMotion), [scene, reducedMotion]);
+  useEffect(() => handle.current?.setState(scene, reducedMotion, selected), [scene, reducedMotion, selected]);
 
   if (failed) return <SchematicFallback scene={scene} selected={selected} onSelect={onSelect} reducedMotion={reducedMotion} decorative={decorative} onAnchors={onAnchors} />;
 

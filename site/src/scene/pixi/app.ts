@@ -7,16 +7,23 @@ import type { Ticker } from 'pixi.js';
 import type { SceneState } from '../../model/sceneState.js';
 import { e2eHook, timeScale } from '../../model/timeScale.js';
 import type { DioramaProbe } from '../../model/timeScale.js';
+import { MAX_DT, stepAnim, stillFrame } from '../animation.js';
+import type { AnimState } from '../animation.js';
 import { keyMove, panBy, zoomAt } from '../cameraMoves.js';
-import { clampCamera, fitCamera, K_MAX, unproject } from '../iso.js';
+import { clampCamera, fitCamera, K_MAX, project, unproject } from '../iso.js';
 import type { Camera } from '../iso.js';
 import { BOARD, LAYOUT } from '../layout.js';
+import { buildDynamic } from './dynamic.js';
+import type { Dynamic } from './dynamic.js';
 import { buildStatic } from './static.js';
 import type { StaticWorld } from './static.js';
 
 export interface DioramaHandle {
-  /** The engine state to draw. The first call builds the static world (its plate comes from the state). */
-  setState(s: SceneState, reducedMotion: boolean): void;
+  /**
+   * The engine state to draw, whether to hold still (reduced motion: one still frame of the same state)
+   * and the selected area, whose plaque inverts. The first call builds the world (its plate comes from the state).
+   */
+  setState(s: SceneState, reducedMotion: boolean, selected?: string | null): void;
   /** Move the camera; it always passes through `clampCamera`. */
   setCamera(c: Camera): void;
   /** Back to the default framing: the pit, ROM pad and crusher. */
@@ -36,8 +43,8 @@ export interface DioramaOptions {
 
 /** Frame updates are throttled to about 30 ms (DESIGN.md Motion). */
 const FRAME_MS = 30;
-/** dt is capped at 0.25 s so a background tab never jumps the scene. */
-const MAX_DT = 0.25;
+/** At most this many capped steps per frame when the e2e time scale speeds story time up. */
+const MAX_SUBSTEPS = 8;
 /** Wheel zoom: the factor per pixel of wheel travel. */
 const WHEEL_ZOOM = 0.0015;
 /** How long a lost WebGL context may stay lost before the scene gives up on it and falls back. */
@@ -106,8 +113,14 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   };
 
   const world = new Container({ label: 'world' });
-  app.stage.addChild(world);
+  // Stage-pixel marks over the board: cables, flags and plaques, parked markers (dynamic.ts).
+  const overlay = new Container({ label: 'overlay' });
+  app.stage.addChild(world, overlay);
   let built: StaticWorld | null = null;
+  let dynamic: Dynamic | null = null;
+  let scene: SceneState | null = null;
+  let anim: AnimState | null = null;
+  let reduced = false;
   let current = size;
   const defaultCamera = (v: Size) => clampCamera(fitCamera(BOARD, v, LAYOUT.defaultFocus), BOARD, v);
   let cam = defaultCamera(current);
@@ -128,15 +141,28 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   };
   apply(cam);
 
-  // One ticker, throttled; it renders only when something changed. Story time is scaled for e2e (R9).
+  // One ticker, throttled. While anything may move (not reduced motion) every tick steps the animation
+  // and redraws; otherwise it renders only when the state or camera changed. Ambient time is scaled for e2e (R9),
+  // in steps of at most MAX_DT. Nothing renders while the WebGL context is lost.
   let clock = 0;
   let frames = 0;
   app.ticker.remove(app.render, app);
   app.ticker.maxFPS = 1000 / FRAME_MS;
+  const contextLost = () => (app.renderer as unknown as { context?: { isLost?: boolean } }).context?.isLost === true;
   const tick = (t: Ticker) => {
-    clock += Math.min(t.deltaMS / 1000, MAX_DT) * timeScale();
-    if (!dirty) return;
+    const dt = Math.min(t.deltaMS / 1000, MAX_DT) * timeScale();
+    clock += dt;
+    if (scene && anim && !reduced) {
+      let left = dt;
+      for (let i = 0; i < MAX_SUBSTEPS && left > 1e-9; i++) {
+        anim = stepAnim(anim, scene, Math.min(left, MAX_DT));
+        left -= MAX_DT;
+      }
+      dirty = true;
+    }
+    if (!dirty || contextLost()) return;
     dirty = false;
+    if (dynamic && scene && anim) dynamic.frame(anim, scene, cam, current, clock, reduced);
     app.render();
     frames++;
   };
@@ -225,9 +251,20 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
     defaultCamera: () => defaultCamera(current),
     groundAtCentre: () => unproject(current.w / 2, current.h / 2, cam),
     frames: () => frames,
-    async sample(step) {
+    entryPost(id) {
+      const post = LAYOUT.entryPosts[id];
+      if (!post) throw new Error(`layout has no entry post ${id}`);
+      const { sx, sy } = project(post, cam);
+      return { x: sx, y: sy };
+    },
+    async sample(step, rect) {
+      if (dynamic && scene && anim) dynamic.frame(anim, scene, cam, current, clock, reduced);
       app.render();
-      const { pixels, width, height } = app.renderer.extract.pixels({ target: app.stage, frame: new Rectangle(0, 0, current.w, current.h), resolution: 1 });
+      const r = rect ?? { x: 0, y: 0, w: current.w, h: current.h };
+      const x0 = Math.max(0, Math.floor(r.x));
+      const y0 = Math.max(0, Math.floor(r.y));
+      const frame = new Rectangle(x0, y0, Math.max(1, Math.min(current.w - x0, Math.ceil(r.w))), Math.max(1, Math.min(current.h - y0, Math.ceil(r.h))));
+      const { pixels, width, height } = app.renderer.extract.pixels({ target: app.stage, frame, resolution: 1 });
       const out: [number, number, number][] = [];
       for (let y = 0; y < height; y += step)
         for (let x = 0; x < width; x += step) {
@@ -240,12 +277,18 @@ async function mount(app: Application, host: HTMLElement, onCamera: (c: Camera) 
   if (window.__faillocal === e2eHook) e2eHook.diorama = probe;
 
   return {
-    setState(s) {
+    setState(s, reducedMotion, selected = null) {
       if (!built) {
         built = buildStatic(s.plate.text, (window.devicePixelRatio || 1) * K_MAX);
         world.addChild(built.root);
         built.setZoom(cam.k);
+        dynamic = buildDynamic(built.slots, overlay, { labels: options.interactive, resolution: window.devicePixelRatio || 1 });
       }
+      scene = s;
+      reduced = reducedMotion;
+      // Reduced motion: one still frame of this state. Otherwise motion carries on from where it was.
+      if (!anim || reduced) anim = stillFrame(s);
+      dynamic!.setScene(s, selected);
       dirty = true;
     },
     setCamera(c) {

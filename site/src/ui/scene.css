@@ -100,19 +100,13 @@
   outline-offset: 0;
 }
 
-/* Where each service cable drops from its card into the scene. */
+/* Where each service cable drops from its card into the scene: a marker over the head of the cable the canvas draws. */
 .scene-cable-drop {
   position: absolute;
   top: 0;
+  width: 0;
   height: 24px;
-  border-left: 1.5px solid var(--ink);
-  transform: translateX(-0.75px);
   pointer-events: none;
-}
-
-.scene-cable-drop:not([data-cable-state='live']) {
-  border-left-style: dashed;
-  opacity: 0.55;
 }
 
 /* The honesty plate as DOM text, set like the engraved plate on the plinth. */

@@ -19,6 +19,19 @@ export interface StaticWorld {
   root: Container;
   /** Screen-space effects that must follow the zoom: the blur radii. */
   setZoom(k: number): void;
+  /** Where the dynamic layers draw, each at its place in the painter's order (dynamic.ts). */
+  slots: {
+    /** Ground marks over the pads, under shadows and plant: the stopped areas' hatching. */
+    ground: Container;
+    /** Extra cast shadows, blurred and set to 34 % like the static ones: the fill-dependent heaps'. */
+    shadows: Container;
+    /** Over the static plant: the fill-dependent heaps, entry posts and everything that moves on the surface. */
+    above: Container;
+    /** Vehicles in the pit, by level (see `Pit.actors`). */
+    pit: Container[];
+    /** Ground marks on the pit's first berm. */
+    firstBerm: Container;
+  };
 }
 
 /** Blur radius of cast shadows (DESIGN.md: about 1.6·k px) and of the plinth's floor shadow. */
@@ -60,13 +73,21 @@ export function buildStatic(plateText: string, resolution: number): StaticWorld 
   const objects = new Graphics();
   queue.flush(objects);
 
-  root.addChild(floorShadow, slab, engraving(plateText, resolution), terrain, buildPit(), ground, shadowLayer, objects);
+  const pit = buildPit();
+  const groundSlot = new Container({ label: 'ground-marks' });
+  const shadowSlot = new Container({ label: 'dynamic-shadows' });
+  const slotBlur = new BlurFilter({ strength: SHADOW_BLUR, quality: 2 });
+  shadowSlot.filters = [slotBlur, new AlphaFilter({ alpha: 0.34 })];
+  const above = new Container({ label: 'dynamic' });
+  root.addChild(floorShadow, slab, engraving(plateText, resolution), terrain, pit.root, ground, groundSlot, shadowLayer, shadowSlot, objects, above);
   return {
     root,
     setZoom(k) {
       floorBlur.strength = PLINTH_BLUR * k;
       castBlur.strength = SHADOW_BLUR * k;
+      slotBlur.strength = SHADOW_BLUR * k;
     },
+    slots: { ground: groundSlot, shadows: shadowSlot, above, pit: pit.actors, firstBerm: pit.firstBerm },
   };
 }
 

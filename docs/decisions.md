@@ -779,3 +779,9 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** The YAML parser was about a fifth of the site's JavaScript and parsed one file that never changes at runtime. Moving it behind its own entry point keeps the CLI and tests reading YAML while the browser never downloads the parser.
 - **Source / provenance:** measured (site build: 153.5 KB to 123.2 KB gzipped)
 - **Owner change:**
+
+## D-108 What moves on the diorama, and what it is bound to
+- **Decision:** Motion on the diorama follows the D-099 bindings and nothing else. Moving trucks run the haul cycle at a display speed of 12 m/s, empty down the ramp and loaded back up; each one turns round at the shovel on a half circle, so it never slides sideways between lanes, and it is hidden for the moment it backs into the dump pocket behind the crusher wall. Parked trucks stand in eight bays south of the fuel-bay canopy. The train runs at 8 m/s times the rail speed; a wagon takes ore when it passes under the loadout while the conveyor runs, and each lap starts with empty wagons (the loaded rake has gone to port). Light vehicles have no engine binding, so they circulate on the access road whenever motion is on. With reduced motion the scene draws one still frame of the same state. A cable whose entry post is above the stage, or too close under its top for a bus, is drawn only as the drop under its card, with its break or dot, until the camera brings the post into reach.
+- **Reasoning:** The scene shows engine output by shape. Ambient movement must not suggest a state the engine did not produce, so every moving thing except the light vehicles stops when its process stops. A cable cannot climb out of the stage to a post above it without crossing its neighbours, and a crossing would read as wiring that is not there.
+- **Source / provenance:** assumed (display speeds); modelling rule (site, `scene/animation.ts`, `scene/cables.ts`)
+- **Owner change:**

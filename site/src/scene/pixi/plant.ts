@@ -140,13 +140,35 @@ export function drawPads(g: Graphics): void {
 
 // --- Structures ------------------------------------------------------------------------
 
-/** Every structure in the layout, queued at its depth, with its cast shadow. */
+/**
+ * Structures drawn by the dynamic layer instead (dynamic.ts): the windrows rise and fall with the
+ * stockpile, and the stacker and reclaimer stand between them, so they share the windrows' painter's queue.
+ */
+const STATEFUL = new Set(['windrow-1', 'windrow-2', 'stacker', 'reclaimer']);
+
+/** Every structure in the layout that does not depend on engine state, queued at its depth, with its cast shadow. */
 export function queueStructures(q: DepthQueue, shadows: Shadows): void {
   for (const s of LAYOUT.structures) {
+    if (STATEFUL.has(s.id)) continue;
     const draw = DRAW[s.id] ?? DRAW_KIND[s.kind];
     draw(s, q, shadows);
   }
-  queueRomStocks(q, shadows);
+}
+
+/**
+ * The stockyard and the ROM pad at the engine's fill levels (0..1 of capacity, D-099): windrow and
+ * ROM heap heights are proportional to them. Below 2 % a heap is not drawn. With the stacker,
+ * reclaimer and yard rails, which sit between the windrows in the same painter's order.
+ */
+export function queueFills(q: DepthQueue, shadows: Shadows, fills: { stockpile: number; romPad: number }): void {
+  for (const s of LAYOUT.structures) {
+    if (!STATEFUL.has(s.id)) continue;
+    if (s.kind === 'cone') {
+      if (fills.stockpile >= 0.02) windrow({ ...s, size: { ...s.size, z: s.size.z * fills.stockpile } }, q, shadows);
+    } else yardMachine(s, q, shadows);
+  }
+  queueYardRails(q);
+  queueRomStocks(q, shadows, fills.romPad);
 }
 
 type Draw = (s: Structure, q: DepthQueue, shadows: Shadows) => void;
@@ -393,15 +415,21 @@ const reclaimGallery: Draw = (s, q, shadows) => {
 
 /** The train loadout: a bin on four legs straddling the loop track. */
 const loadout: Draw = (s, q, shadows) => {
+  q.add(LOADOUT_KEY, drawLoadout);
+  shadows.cast(footprint(s), s.size.z);
+};
+
+/** The loadout's painter's key: the moving train sorts against it (dynamic.ts draws it again over the wagons it covers). */
+export const LOADOUT_KEY = centreKey(structure('loadout'), 3);
+
+export function drawLoadout(g: Graphics): void {
+  const s = structure('loadout');
   const { x, y } = s.at;
   const { x: w, y: d, z: h } = s.size;
-  q.add(centreKey(s, 3), (g) => {
-    for (const [px, py] of [[x + 2, y + 2], [x + w - 4, y + 2], [x + 2, y + d - 4], [x + w - 4, y + d - 4]] as const) box(g, px, py, 0, 2, 2, h - 11, mix(c('roof-steel'), c('ink-3'), 0.2));
-    convex(g, frustum(x + 6, y + 5, x + w - 6, y + d - 5, h - 13, h - 10, -3), c(s.base));
-    box(g, x + 3, y + 2, h - 10, w - 6, d - 4, 10, c(s.base), c('roof-steel'));
-  });
-  shadows.cast(footprint(s), h);
-};
+  for (const [px, py] of [[x + 2, y + 2], [x + w - 4, y + 2], [x + 2, y + d - 4], [x + w - 4, y + d - 4]] as const) box(g, px, py, 0, 2, 2, h - 11, mix(c('roof-steel'), c('ink-3'), 0.2));
+  convex(g, frustum(x + 6, y + 5, x + w - 6, y + d - 5, h - 13, h - 10, -3), c(s.base));
+  box(g, x + 3, y + 2, h - 10, w - 6, d - 4, 10, c(s.base), c('roof-steel'));
+}
 
 /** A stockpile windrow: a long ridge of ore, faceted. */
 function windrowFaces(x0: number, x1: number, cy: number, hw: number, H: number): Vec3[][] {
@@ -493,7 +521,8 @@ function queueYardRails(q: DepthQueue): void {
 }
 
 /** ROM stocks on the ROM pad, between the haul road's dump pocket and the pad's east edge (derived from the crushing pad). */
-function queueRomStocks(q: DepthQueue, shadows: Shadows): void {
+function queueRomStocks(q: DepthQueue, shadows: Shadows, fill: number): void {
+  if (fill < 0.02) return;
   const pad = LAYOUT.areas.crushing!.pad;
   const x0 = Math.min(...pad.map((p) => p.x));
   const y0 = Math.min(...pad.map((p) => p.y));
@@ -508,9 +537,9 @@ function queueRomStocks(q: DepthQueue, shadows: Shadows): void {
     const cy = y0 + (y1 - y0) * fy;
     const n = 12;
     const base = Array.from({ length: n }, (_, i) => ({ x: cx + r * Math.cos(0.3 + (i / n) * 2 * Math.PI), y: cy + r * 0.85 * Math.sin(0.3 + (i / n) * 2 * Math.PI), z: 0 }));
-    const apex = { x: cx, y: cy, z: h };
+    const apex = { x: cx, y: cy, z: h * fill };
     q.add(depthKey(apex), (g) => convex(g, base.map((p, i) => [p, base[(i + 1) % n]!, apex]), ore));
-    shadows.cast(base, h * 0.75);
+    shadows.cast(base, h * fill * 0.75);
   }
 }
 
@@ -540,10 +569,9 @@ const DRAW_KIND: Record<Structure['kind'], Draw> = {
   camp,
 };
 
-/** Fixtures that are not structures: the compound fence and the yard rails. */
+/** Fixtures that are not structures: the compound fence (the yard rails go with `queueFills`). */
 export function queueFixtures(q: DepthQueue): void {
   queueFence(q);
-  queueYardRails(q);
 }
 
 // --- Spinifex ---------------------------------------------------------------------------

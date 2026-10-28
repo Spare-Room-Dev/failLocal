@@ -16,7 +16,7 @@ type Pt = { x: number; y: number };
 /** Haul trucks keep ±4.6 m either side of the centreline: two lanes 9.2 m apart (DESIGN.md Motion). */
 export const HAUL_LANE_OFFSET = 4.6;
 /** Light vehicles on the 10 m access road. */
-const LV_LANE_OFFSET = 2.2;
+export const LV_LANE_OFFSET = 2.2;
 
 function polylinePath(points: Vec3[], closed: boolean): Path {
   const pts = closed ? [...points, points[0]!] : points;
@@ -146,6 +146,9 @@ export const HAUL_CENTRELINE: Vec3[] = [
 
 export const HAUL_CYCLE: Path = polylinePath(twoLaneLoop(HAUL_CENTRELINE, HAUL_LANE_OFFSET), true);
 
+/** Length of the outbound lane (dump pocket to shovel): `HAUL_CYCLE` turns round at the shovel here. */
+export const HAUL_OUTBOUND_LENGTH = polylinePath(offsetPolyline(HAUL_CENTRELINE, HAUL_LANE_OFFSET), false).length;
+
 export const RAIL_LOOP: Path = (() => {
   const { centre, radius } = LAYOUT.railLoop;
   return {
@@ -157,7 +160,13 @@ export const RAIL_LOOP: Path = (() => {
   };
 })();
 
-export const LV_LOOP: Path = polylinePath(twoLaneLoop(ground(road('access').points), LV_LANE_OFFSET), true);
+/** The light-vehicle road's centreline, camp end first. */
+export const LV_CENTRELINE: Vec3[] = ground(road('access').points);
+
+export const LV_LOOP: Path = polylinePath(twoLaneLoop(LV_CENTRELINE, LV_LANE_OFFSET), true);
+
+/** Length of `LV_LOOP`'s first lane: it turns round at the road's far end here. */
+export const LV_OUTBOUND_LENGTH = polylinePath(offsetPolyline(LV_CENTRELINE, LV_LANE_OFFSET), false).length;
 
 /** Belt heights off the gallery: the crusher discharge and the stockyard belt. */
 const DISCHARGE_Z = 4;

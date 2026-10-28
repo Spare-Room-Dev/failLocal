@@ -219,6 +219,10 @@ export class DepthQueue {
   add(key: number, draw: (g: Graphics) => void): void {
     this.items.push({ key, draw });
   }
+  /** Adds every item of `other`, which keeps its own. */
+  merge(other: DepthQueue): void {
+    this.items.push(...other.items);
+  }
   flush(g: Graphics): void {
     this.items.sort((a, b) => a.key - b.key);
     for (const item of this.items) item.draw(g);
