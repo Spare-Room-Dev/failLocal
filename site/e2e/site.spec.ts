@@ -199,6 +199,19 @@ test('hairline labels never overlap', async ({ page }, info) => {
     await page.locator('.timeline-event').nth(4).focus();
     const focused = await visibleLabels(page);
     for (const [i, a] of focused.entries()) for (const b of focused.slice(i + 1)) expect(intersects(a, b)).toBe(false);
+    // Focus on one hairline (by keyboard, so it is focus-visible) and the pointer on another: one label, the hovered one's.
+    await page.locator('.timeline-event').nth(3).focus();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.timeline-event').nth(4)).toBeFocused();
+    // Haulage's hairline stands alone, so the pointer lands on it and nothing else (its top pixel).
+    const haulage = page.getByRole('button', { name: 'Haulage stopped, computed' });
+    await haulage.hover({ position: { x: 5, y: 1 } });
+    expect(await page.evaluate(() => [...document.querySelectorAll('.timeline-event:hover')].map((e) => e.getAttribute('aria-label')))).toEqual(['Haulage stopped, computed']);
+    const shown = await page
+      .locator('.timeline-event-name')
+      .evaluateAll((els) => els.filter((e) => getComputedStyle(e).visibility === 'visible').map((e) => e.textContent));
+    expect(shown).toEqual(['Haulage']);
+    await page.mouse.move(0, 0);
   } else {
     // A label with no lane still shows on hover, on paper.
     // (Events at one hour share a spot; use the first lane-less hairline the pointer actually lands on.)

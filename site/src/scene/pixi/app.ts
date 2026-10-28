@@ -33,7 +33,7 @@ export interface DioramaHandle {
   setState(s: SceneState, reducedMotion: boolean, selected?: string | null): void;
   /** Move the camera; it always passes through `clampCamera`. */
   setCamera(c: Camera): void;
-  /** Back to the default framing: the pit, ROM pad and crusher (on a phone, the working area). */
+  /** Back to the default framing: the model on its plinth, its front-left corner and every flag and post (`SITE_FRAME`); on a phone, the working area. */
   fit(): void;
   /** Pans, at the current zoom, so the area's flag is at the centre of the view (an out-of-frame area's button took focus). */
   reveal(areaId: string): void;
