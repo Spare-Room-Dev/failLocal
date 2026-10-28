@@ -213,3 +213,77 @@ describe('app store', () => {
     expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: true });
   });
 });
+
+describe('refused overrides (final review I3, M3)', () => {
+  const INITIAL = 'stocks.diesel.initial';
+  const CAPACITY = 'stocks.diesel.capacity';
+  const capacity = () => register.stocks.find((s) => s.id === 'diesel')!.capacity.value;
+
+  test('a refused value is tried again after setVariant: accepted once valid', () => {
+    // Refused against the register's capacity, with stale issues; a raised capacity is already applied.
+    appStore.set({ overrides: { [CAPACITY]: capacity() + 10 }, fieldIssues: { [INITIAL]: { value: capacity() + 5, issues: ['stale'] } } });
+    actions.setVariant('prepared');
+    const s = appStore.get();
+    expect(s.overrides).toEqual({ [CAPACITY]: capacity() + 10, [INITIAL]: capacity() + 5 });
+    expect(s.fieldIssues).toEqual({});
+    expect(s.lastGood?.variant).toBe('prepared');
+    expect(s.lastGood?.assumptionsUsed[INITIAL]?.value).toBe(capacity() + 5);
+  });
+
+  test('a refused value is tried again after setScenario: accepted once valid', () => {
+    appStore.set({ overrides: { [CAPACITY]: capacity() + 10 }, fieldIssues: { [INITIAL]: { value: capacity() + 5, issues: ['stale'] } } });
+    actions.setScenario('s2-iroc-lost');
+    const s = appStore.get();
+    expect(s.overrides).toEqual({ [CAPACITY]: capacity() + 10, [INITIAL]: capacity() + 5 });
+    expect(s.fieldIssues).toEqual({});
+    expect(s.lastGood?.scenarioId).toBe('s2-iroc-lost');
+  });
+
+  test('re-refused on retry, a value keeps the new issues, not the old ones', () => {
+    for (const change of [() => actions.setVariant('prepared'), () => actions.setScenario('s2-iroc-lost')]) {
+      appStore.set(initialAppState());
+      appStore.set({ fieldIssues: { [INITIAL]: { value: capacity() + 5, issues: ['stale'] } } });
+      change();
+      const f = appStore.get().fieldIssues[INITIAL]!;
+      expect(f.value).toBe(capacity() + 5);
+      expect(f.issues).not.toContain('stale');
+      expect(f.issues.join('\n')).toMatch(/stocks\.diesel/);
+      expect(appStore.get().overrides).toEqual({});
+    }
+  });
+
+  test('dropRefused forgets an abandoned value, so a later change does not apply it', () => {
+    actions.setOverride(INITIAL, capacity() + 992);
+    expect(Object.keys(appStore.get().fieldIssues)).toEqual([INITIAL]);
+    const resets = appStore.get().resets;
+    const good = appStore.get().lastGood;
+    actions.dropRefused(INITIAL);
+    expect(appStore.get().fieldIssues).toEqual({});
+    // No reset and no new run: the field keeps its draft, the site keeps its run.
+    expect(appStore.get().resets).toBe(resets);
+    expect(appStore.get().lastGood).toBe(good);
+    actions.setOverride(CAPACITY, capacity() + 993);
+    expect(appStore.get().overrides).toEqual({ [CAPACITY]: capacity() + 993 });
+    expect(appStore.get().fieldIssues).toEqual({});
+  });
+
+  test("setScenario drops refused values on another scenario's paths, and keeps register-level ones for the retry", () => {
+    actions.setOverride('scenarios.s1-projection.events[0].restoreAfter', -5);
+    actions.setOverride('scenarios.s2-iroc-lost.events[0].restoreAfter', -5);
+    actions.setOverride('production.price', -1);
+    actions.setScenario('s2-iroc-lost');
+    const s = appStore.get();
+    expect(Object.keys(s.fieldIssues).sort()).toEqual(['production.price', 'scenarios.s2-iroc-lost.events[0].restoreAfter']);
+    expect(s.issues).toEqual([]);
+    expect(s.lastGood?.scenarioId).toBe('s2-iroc-lost');
+  });
+
+  test('setScenario drops refused values on free-play event paths', () => {
+    actions.enterFreePlay();
+    actions.addCut({ service: 'iroc-link', atDays: 0, forDays: 2 });
+    // The cut's own values win over an editor override there, so the refusal is set directly.
+    appStore.set({ fieldIssues: { 'scenarios.free-play.events[0].restoreAfter': { value: -5, issues: ['refused'] } } });
+    actions.setScenario('s1-as-reported');
+    expect(appStore.get().fieldIssues).toEqual({});
+  });
+});

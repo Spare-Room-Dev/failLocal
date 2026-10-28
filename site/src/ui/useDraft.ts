@@ -7,8 +7,10 @@ export function parseDraft(text: string): number {
 
 /**
  * The text of a number field. It keeps what the visitor types, even when that is blank or not yet a
- * number, and follows `value` when it changes from outside (a reset) to something the text does not
- * already say. The field is not remounted while the visitor types, so it keeps focus; the editor
+ * number, and follows `value` when it changes from outside to something the text does not already
+ * say, unless the text is blank or unparseable: that is the visitor mid-edit (dropping a refused value
+ * changes `value` under a blanked field), and refilling it would splice their next keystroke onto the
+ * old number. The field is not remounted while the visitor types, so it keeps focus; the editor
  * remounts it only on a reset, which drops any draft text, even one that never parsed.
  */
 export function useDraft(value: number): [string, (text: string) => void] {
@@ -16,7 +18,8 @@ export function useDraft(value: number): [string, (text: string) => void] {
   const [seen, setSeen] = useState(value);
   if (seen !== value) {
     setSeen(value);
-    if (parseDraft(draft) !== value) setDraft(String(value));
+    const typed = parseDraft(draft);
+    if (Number.isFinite(typed) && typed !== value) setDraft(String(value));
   }
   return [draft, setDraft];
 }

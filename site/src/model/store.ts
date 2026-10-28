@@ -80,6 +80,9 @@ export function initialAppState(): AppState {
 
 export const appStore = createStore<AppState>(initialAppState());
 
+/** A path under one scenario; group 1 is the scenario id. */
+const SCENARIO_PATH = /^scenarios\.([^.]+)\./;
+
 /** A path under one free-play event; group 1 is the event index. */
 const FREE_EVENT_PATH = new RegExp(`^scenarios\\.${FREE_PLAY_ID}\\.events\\[(\\d+)\\]\\.`);
 
@@ -122,8 +125,18 @@ export const actions = {
     appStore.set({ variant: v });
     actions.recompute();
   },
+  /**
+   * Shows register scenario `id`. Refused values on another scenario's paths (free play's included) are
+   * dropped, as they have no row on the new run and no Reset; register-level ones stay for the retry.
+   */
   setScenario(id: string): void {
-    appStore.set((s) => ({ spec: { kind: 'register', scenarioId: id }, clock: paused(s.clock) }));
+    appStore.set((s) => {
+      const belongs = ([path]: [string, unknown]) => {
+        const scenario = SCENARIO_PATH.exec(path);
+        return !scenario || scenario[1] === id;
+      };
+      return { spec: { kind: 'register', scenarioId: id }, clock: paused(s.clock), fieldIssues: Object.fromEntries(Object.entries(s.fieldIssues).filter(belongs)) };
+    });
     actions.recompute();
   },
   addCut(c: FreeCut): void {
@@ -171,6 +184,15 @@ export const actions = {
     }
     appStore.set({ overrides, fieldIssues: without(s.fieldIssues, path) });
     actions.recompute();
+  },
+  /**
+   * Forgets the value refused at `path`, which the visitor has abandoned by blanking the field or typing
+   * something that does not parse, so a later change never applies it. Nothing is re-run and the row is
+   * not remounted, so the visitor's draft stays as typed.
+   */
+  dropRefused(path: string): void {
+    const s = appStore.get();
+    if (path in s.fieldIssues) appStore.set({ fieldIssues: without(s.fieldIssues, path) });
   },
   clearOverrides(): void {
     appStore.set((s) => ({ overrides: {}, fieldIssues: {}, resets: s.resets + 1 }));

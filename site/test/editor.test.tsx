@@ -205,6 +205,27 @@ describe('AssumptionsEditor', () => {
     expect(input('stocks.diesel.initial').value).toBe(String(capacity + 1));
   });
 
+  test('a refused value the visitor blanks is abandoned: the field stays blank and a later change does not apply it (final review I3)', () => {
+    render(<AssumptionsEditor />);
+    const capacity = register.stocks.find((s) => s.id === 'diesel')!.capacity.value;
+    fireEvent.change(input('stocks.diesel.initial'), { target: { value: String(capacity + 992) } });
+    expect(appStore.get().fieldIssues['stocks.diesel.initial']?.value).toBe(capacity + 992);
+    fireEvent.change(input('stocks.diesel.initial'), { target: { value: '' } });
+    expect(appStore.get().fieldIssues).toEqual({});
+    expect(within(row('stocks.diesel.initial')).queryByRole('alert')).toBeNull();
+    // Still blank, for the visitor to type into: it does not refill mid-edit.
+    expect(input('stocks.diesel.initial').value).toBe('');
+    fireEvent.change(input('stocks.diesel.capacity'), { target: { value: String(capacity + 993) } });
+    expect(appStore.get().overrides).toEqual({ 'stocks.diesel.capacity': capacity + 993 });
+    expect(appStore.get().fieldIssues).toEqual({});
+    expect(input('stocks.diesel.initial').value).toBe('');
+    // Unparseable text (a number field reports it as blank) abandons a refused value the same way.
+    fireEvent.change(input('production.price'), { target: { value: '-1' } });
+    fireEvent.change(input('production.price'), { target: { value: '-' } });
+    expect(appStore.get().fieldIssues).toEqual({});
+    expect(input('production.price').value).toBe('');
+  });
+
   test('a phone gets the laptop note instead of the editor', () => {
     stubMedia(false);
     render(<AssumptionsEditor />);

@@ -147,6 +147,8 @@ function EditorRow({ row, override, refused, issues, sources }: RowProps) {
             setDraft(e.target.value);
             const value = parseDraft(e.target.value);
             if (Number.isFinite(value)) actions.setOverride(path, value);
+            // Blank or unparseable: the visitor has abandoned the refused value, so no later change applies it.
+            else if (refused !== undefined) actions.dropRefused(path);
           }}
         />
       </label>
@@ -171,7 +173,7 @@ function EditorRow({ row, override, refused, issues, sources }: RowProps) {
  * The inputs the current run used, editable (desktop only). Each row shows the value the last good
  * run used, with its tag, beside an input; a value goes to the store once it parses. A value the run
  * refuses stays in the field with its issues beside it (the store's `fieldIssues`), and the site stays
- * on the last good run, until a later change makes it valid. A reset remounts the rows, so no draft
+ * on the last good run, until a later change makes it valid; blanking the field abandons it. A reset remounts the rows, so no draft
  * outlives it. Issues on a path with no row, and those of a failed run, show above the rows.
  * Renders only in free play.
  */
