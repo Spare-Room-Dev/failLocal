@@ -48,9 +48,13 @@ export function serviceLabel(id: string): string {
   return group.services.length === 1 ? group.name : serviceName(id);
 }
 
-/** The group's cable: the worst state among its services (severed, then revoked, then live). */
-export function groupState(scene: SceneState, g: ServiceGroup): Cable {
-  const cables = g.services.map((id) => scene.services[id]?.cable ?? 'live');
+/** The group's cable: the worst state among its services (severed, then revoked, then live). Throws on a missing service. */
+export function groupState(services: SceneState['services'], g: ServiceGroup): Cable {
+  const cables = g.services.map((id) => {
+    const service = services[id];
+    if (!service) throw new Error(`scene has no service ${id}`);
+    return service.cable;
+  });
   if (cables.includes('severed')) return 'severed';
   if (cables.includes('revoked')) return 'revoked';
   return 'live';

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { register } from '../../model/register.js';
 import { sampleAt } from '../../model/clock.js';
@@ -19,13 +19,13 @@ import { TopBar } from '../TopBar.js';
 import { useMediaQuery } from '../useMediaQuery.js';
 import { usePlayback } from '../usePlayback.js';
 
-function Scene() {
+function Scene({ onAnchors }: { onAnchors(anchors: Record<string, number>): void }) {
   const run = useStore(appStore, (s) => s.lastGood);
   const hour = useStore(appStore, (s) => s.clock.hour);
   const selected = useStore(appStore, (s) => s.selected);
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   if (!run) return null;
-  return <SceneView scene={sceneState(register, sampleAt(run, hour))} selected={selected} onSelect={actions.select} reducedMotion={reducedMotion} />;
+  return <SceneView scene={sceneState(register, sampleAt(run, hour))} selected={selected} onSelect={actions.select} reducedMotion={reducedMotion} onAnchors={onAnchors} />;
 }
 
 /**
@@ -38,6 +38,8 @@ function Scene() {
 export function SitePage({ footer }: { footer?: ReactNode }) {
   usePlayback();
   const mode = useStore(appStore, (s) => s.mode);
+  // Each card sits over its cable's entry post, as the scene reports it; evenly spaced until then.
+  const [anchors, setAnchors] = useState<Record<string, number> | null>(null);
   // Reached by a link, reload or footer rather than a welcome button: start in free play.
   useEffect(() => {
     if (appStore.get().mode === 'welcome') actions.enterFreePlay();
@@ -48,12 +50,12 @@ export function SitePage({ footer }: { footer?: ReactNode }) {
       <div className="site-stage">
         <div className="site-cards">
           {SERVICE_GROUPS.map((g, i) => (
-            <div key={g.id} className="site-card-slot" style={{ '--cable': cableFraction(i) } as CSSProperties}>
+            <div key={g.id} className="site-card-slot" style={{ '--cable': anchors?.[g.id] ?? cableFraction(i) } as CSSProperties}>
               <ServiceCard group={g} />
             </div>
           ))}
         </div>
-        <Scene />
+        <Scene onAnchors={setAnchors} />
         <Legend />
         {mode === 'guided' && <GuidedRun />}
       </div>

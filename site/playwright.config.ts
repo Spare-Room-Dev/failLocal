@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4173;
+// E2E_PORT moves the preview off 4173 when that port is taken.
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 /** End-to-end checks against the built site under `vite preview`, on a laptop, a small laptop, two tablet and a phone viewport. */
 export default defineConfig({

@@ -27,8 +27,12 @@ describe('service groups', () => {
     const sample = timeline.samples.find((s) => s.hour === 12)!;
     expect(sample.services['vendor-a-access']).toBe('revoked');
     expect(sample.services['vendor-b-access']).toBe('up');
-    expect(groupState(sceneState(register, sample), vendor)).toBe('revoked');
-    expect(groupState(sceneState(register, timeline.samples[0]!), vendor)).toBe('live');
+    expect(groupState(sceneState(register, sample).services, vendor)).toBe('revoked');
+    expect(groupState(sceneState(register, timeline.samples[0]!).services, vendor)).toBe('live');
+  });
+
+  test('a group whose service the scene lacks throws rather than reading live', () => {
+    expect(() => groupState({}, vendor)).toThrow(/vendor-a-access/);
   });
 });
 

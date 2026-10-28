@@ -152,7 +152,7 @@ test('desktop frame', async ({ page }, info) => {
     const next = cards[i + 1];
     if (next) expect(c.x + c.width).toBeLessThanOrEqual(next.x);
     // Centred on its own cable, which starts below it and stays visible.
-    const cable = await box(`[data-cable="${c.group}"] [data-cable-group] line`);
+    const cable = await box(`[data-cable-group="${c.group}"]`);
     expect(Math.abs(c.x + c.width / 2 - (cable.x + cable.width / 2))).toBeLessThanOrEqual(2);
     expect(c.y + c.height).toBeLessThanOrEqual(cable.y);
     expect(cable.height).toBeGreaterThan(20);

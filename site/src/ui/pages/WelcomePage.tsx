@@ -11,7 +11,7 @@ function ScenePreview() {
   if (!run) return null;
   return (
     <div className="welcome-scene" aria-hidden="true" data-decorative inert>
-      <SceneView scene={sceneState(register, sampleAt(run, 0))} selected={null} onSelect={() => {}} reducedMotion />
+      <SceneView scene={sceneState(register, sampleAt(run, 0))} selected={null} onSelect={() => {}} reducedMotion decorative />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { simulate } from '@faillocal/engine';
-import type { Sample } from '@faillocal/engine';
+import type { Register, Sample } from '@faillocal/engine';
 import { describe, expect, test } from 'vitest';
 import { register } from '../src/model/register.js';
 import { sceneState } from '../src/model/sceneState.js';
@@ -65,5 +65,35 @@ describe('sceneState', () => {
     const clamped = sceneState(register, { ...base, stocks: { ...base.stocks, diesel: 99, 'rom-pad': -1 } });
     expect(clamped.fills.diesel).toBe(1);
     expect(clamped.fills.romPad).toBe(0);
+  });
+
+  test('cables are keyed by service group, the worst state of each group', () => {
+    const base = sampleAt(0);
+    const scene = sceneState(register, { ...base, services: { ...base.services, 'hosted-erp': 'up', 'vendor-b-access': 'revoked' } });
+    expect(scene.cables).toEqual({
+      'hosted-erp': 'live',
+      'cloud-identity': 'live',
+      'iroc-link': 'live',
+      'corporate-network': 'live',
+      'vendor-access': 'revoked',
+    });
+  });
+
+  test('the plate carries the fixed honesty wording', () => {
+    expect(sceneState(register, sampleAt(0)).plate).toEqual({ fictional: true, text: 'FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA' });
+  });
+
+  test('a register not marked fictional throws rather than render an unlabelled site', () => {
+    const real = { ...register, site: { ...register.site, fictional: false } } as unknown as Register;
+    expect(() => sceneState(real, sampleAt(0))).toThrow(/fictional/);
+  });
+
+  test('a missing process, service or stock value throws', () => {
+    const base = sampleAt(0);
+    const without = <T extends object>(o: T, key: string) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== key)) as T;
+    expect(() => sceneState(register, { ...base, processes: without(base.processes, 'payroll') })).toThrow(/payroll/);
+    expect(() => sceneState(register, { ...base, processes: without(base.processes, 'crushing') })).toThrow(/crushing/);
+    expect(() => sceneState(register, { ...base, services: without(base.services, 'iroc-link') })).toThrow(/iroc-link/);
+    expect(() => sceneState(register, { ...base, stocks: without(base.stocks, 'diesel') })).toThrow(/diesel/);
   });
 });
