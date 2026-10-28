@@ -755,3 +755,9 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Reasoning:** On the prepared site the independent restore brings the ERP back at hour 48, before the fallback moments (fuel ordering at 72, the fleet at 276) taken from the projection. In the brief's order the clock would have had to run backward.
 - **Source / provenance:** modelling rule (site, `guided.ts`)
 - **Owner change:**
+
+## D-105 The world layout is display geometry at real setbacks
+- **Decision:** The 1,600 × 1,000 m board (D-100) is laid out in metres in `site/src/scene/layout.ts`, with the moving paths in `paths.ts`. The pit sits west of centre, with a 540 × 420 m crest, five 12 m benches (5 m batter, 11 m berm) and a 25 m ramp that spirals down at 11 %. East of it are the ROM pad and crusher, then the overland conveyor on a gallery over the creek to the stockyard. The balloon loop (radius 210 m) is to the south-east, the workshop and fuel farm to the north-east, and the camp to the east. The explosives magazine is in the far corner, more than 800 m from the workshop, fuel farm and camp. Haul roads are 26 m wide, and trucks keep ±4.6 m either side of the centreline (lanes 9.2 m apart). The light-vehicle road (10 m) and magazine track (7 m) are separate from the haul roads. Tests pin each invariant. These values only drive the drawing; nothing in the layout feeds the engine.
+- **Reasoning:** DESIGN.md Mining Accuracy says the art must hold up to a recruiter who knows mining, and D-100 grew the board so real setbacks fit. The values are assumed, chosen to be credible rather than to match a particular mine. The mock's compressed placements are not inherited. The ramp's sweep is solved from the grade rather than drawn by eye, so the 11 % holds.
+- **Source / provenance:** assumed
+- **Owner change:**
