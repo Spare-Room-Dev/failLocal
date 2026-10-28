@@ -101,13 +101,56 @@ describe('TopBar', () => {
 });
 
 describe('ServiceCard', () => {
-  test('the vendor card labels its rows Vendor A and Vendor B, keeping the register names for tooltips and buttons', () => {
+  test('the vendor card is one card: one status, and a keyed Cut button per vendor named for it', () => {
     render(<>{cards()}</>);
     const vendor = card('vendor-access');
-    const rows = [...vendor.querySelectorAll('.service-row-name')];
-    expect(rows.map((r) => r.textContent)).toEqual(['Vendor A', 'Vendor B']);
-    expect(rows.map((r) => r.getAttribute('title'))).toEqual([serviceName('vendor-a-access'), serviceName('vendor-b-access')]);
-    expect(within(vendor).getByRole('button', { name: `Cut ${serviceName('vendor-a-access')}` })).toBeTruthy();
+    expect(vendor.querySelectorAll('.service-card-name')).toHaveLength(1);
+    expect(within(vendor).getByText('Up')).toBeTruthy();
+    const buttons = within(vendor).getAllByRole('button');
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([`Cut ${serviceName('vendor-a-access')}`, `Cut ${serviceName('vendor-b-access')}`]);
+    expect(buttons.map((b) => b.textContent)).toEqual(['A', 'B']);
+    expect(buttons.map((b) => b.getAttribute('title'))).toEqual([serviceName('vendor-a-access'), serviceName('vendor-b-access')]);
+  });
+
+  test('each card has its own line icon, hidden from assistive technology, slashed when cut', () => {
+    actions.setScenario('s1-projection');
+    const { container } = render(<>{cards()}</>);
+    const icons = [...container.querySelectorAll('svg.service-icon')];
+    expect(icons.map((i) => i.getAttribute('data-icon'))).toEqual(SERVICE_GROUPS.map((g) => g.id));
+    expect(new Set(icons.map((i) => i.querySelector('g')!.innerHTML)).size).toBe(SERVICE_GROUPS.length);
+    for (const i of icons) expect(i.getAttribute('aria-hidden')).toBe('true');
+    const slashed = icons.filter((i) => i.querySelector('[stroke="var(--stop-red)"]')).map((i) => i.getAttribute('data-icon'));
+    expect(slashed).toEqual(['hosted-erp']);
+  });
+
+  test('once a cut has ended the card says when it was restored and offers to remove the cut', () => {
+    actions.enterFreePlay();
+    const run = appStore.get().lastGood!;
+    const up = run.events.find((e) => e.kind === 'service-up' && e.subject === 'hosted-erp')!;
+    actions.setClock({ hour: up.hour + 5 });
+    const { container } = render(<>{cards()}</>);
+    const erp = card('hosted-erp');
+    expect(within(erp).getByText(/^Restored/).textContent).toBe(`Restored day ${Math.floor(up.hour / 24)}`);
+    expect(within(erp).queryByText('Up')).toBeNull();
+    const remove = within(erp).getByRole('button', { name: 'Remove the Hosted ERP cut' });
+    expect(remove.textContent).toBe('Remove cut');
+    expect(remove.getAttribute('aria-pressed')).toBe('true');
+    expect(within(erp).queryByRole('button', { name: /^Restore/ })).toBeNull();
+    expect(untaggedNumbers(container)).toEqual([]);
+    fireEvent.click(remove);
+    expect(appStore.get().spec).toEqual({ kind: 'free', cuts: [], workaroundsHold: false });
+    expect(within(erp).getByRole('button', { name: 'Cut Hosted ERP' })).toBeTruthy();
+  });
+
+  test('a cut that has not started yet reads "Cut from day N", with Remove cut', () => {
+    actions.enterFreePlay();
+    actions.setClock({ hour: 50 });
+    render(<>{cards()}</>);
+    fireEvent.click(within(card('cloud-identity')).getByRole('button', { name: /^Cut/ }));
+    act(() => actions.setClock({ hour: 10 }));
+    const cloud = card('cloud-identity');
+    expect(within(cloud).getByText(/^Cut from/).textContent).toBe('Cut from day 2');
+    expect(within(cloud).getByRole('button', { name: /^Remove the/ }).textContent).toBe('Remove cut');
   });
 
   test('cut in free play adds a cut and the card shows Restore with aria-pressed', () => {
@@ -180,8 +223,8 @@ describe('ServiceCard', () => {
     actions.setClock({ hour: 12 });
     render(<>{cards()}</>);
     const vendor = card('vendor-access');
-    expect(within(vendor).getByText('Access revoked')).toBeTruthy();
-    expect(within(vendor).getByText('Up')).toBeTruthy();
+    const lines = [...vendor.querySelectorAll('.service-row-status')].map((l) => l.textContent);
+    expect(lines).toEqual(['Vendor A Access revoked', 'Vendor B Up']);
     expect(within(vendor).getAllByRole('button')).toHaveLength(2);
   });
 });

@@ -107,15 +107,15 @@
   opacity: 0.55;
 }
 
-/* Service card */
+/* Service card: icon, name, then the status beside the Cut/Restore button(s). */
 .service-card {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 7px;
   box-sizing: border-box;
   width: 240px;
   min-height: 58px;
-  padding: 8px 8px 8px 9px;
+  padding: 7px 8px 7px 8px;
   border: 1px solid var(--line-2);
   border-radius: 6px;
   background: var(--paper);
@@ -129,9 +129,9 @@
 
 .service-icon {
   flex: none;
-  width: 30px;
-  height: 30px;
-  margin-top: 2px;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
 }
 
 .service-card-body {
@@ -142,25 +142,35 @@
   min-width: 0;
 }
 
-.service-card-name,
-.service-row-name {
+.service-card-name {
   font-size: 13px;
   font-weight: 680;
   line-height: 1.15;
   font-variation-settings: 'wdth' 88;
+  overflow-wrap: break-word;
 }
 
-.service-row {
+/* The status takes what the buttons leave; a long one wraps, and the buttons drop below it rather than squeeze it. */
+.service-card-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 4px 6px;
 }
 
-.service-row-text {
+.service-card-status {
   display: flex;
-  flex: 1;
+  flex: 1 1 56px;
   flex-direction: column;
   min-width: 0;
+}
+
+.service-card-buttons {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .service-row-status {
@@ -168,12 +178,17 @@
   color: var(--ink-2);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.25;
   font-variation-settings: 'wdth' 94;
 }
 
-.service-row[data-cut='true'] .service-row-status {
+.service-row-status[data-cut='true'] {
   color: var(--stop-red);
   font-weight: 650;
+}
+
+.service-status-key {
+  color: var(--ink);
 }
 
 .service-glyph {
@@ -206,7 +221,13 @@
   font: inherit;
   font-size: 12px;
   font-weight: 650;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+/* One of several on a card: the glyph and its service's letter. */
+.service-button.is-keyed {
+  padding: 0 7px;
 }
 
 .service-button:hover:not(:disabled) {
@@ -222,6 +243,11 @@
 
 .service-button.is-restore:hover:not(:disabled) {
   background: var(--ink-hover);
+}
+
+/* A cut that is planned or over: pressed, but the service is up, so not the ink "Restore". */
+.service-button.is-remove {
+  border-color: var(--ink);
 }
 
 .service-button:disabled {

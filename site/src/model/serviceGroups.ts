@@ -6,8 +6,10 @@ export interface ServiceGroup {
   id: string;
   name: string;
   services: string[];
-  /** Short row labels on a card with several services; each row keeps the register's name as its title. */
+  /** Short labels on a card with several services, for each one's status line; each keeps the register's name as its title. */
   rowLabels?: Record<string, string>;
+  /** The one-letter key on each service's own Cut button, on a card with several services. */
+  buttonKeys?: Record<string, string>;
 }
 
 /** The register's name for a service. Throws when the register has no such service. */
@@ -21,7 +23,7 @@ export function serviceName(id: string): string {
  * Every service a scenario can cut, in cable order (controller ruling R3, D-102). Names are the
  * register's, except two display names: the register's hosted ERP name lists its modules and is too
  * long for a card, and the vendor card has no register entry of its own. The two vendor accesses
- * share one card and one cable, each with its own row on the card.
+ * share one card and one cable; each has its own Cut button and, when it differs, its own status line.
  */
 export const SERVICE_GROUPS: ServiceGroup[] = [
   { id: 'hosted-erp', name: 'Hosted ERP', services: ['hosted-erp'] },
@@ -33,6 +35,7 @@ export const SERVICE_GROUPS: ServiceGroup[] = [
     name: 'Vendor remote access',
     services: ['vendor-a-access', 'vendor-b-access'],
     rowLabels: { 'vendor-a-access': 'Vendor A', 'vendor-b-access': 'Vendor B' },
+    buttonKeys: { 'vendor-a-access': 'A', 'vendor-b-access': 'B' },
   },
 ];
 

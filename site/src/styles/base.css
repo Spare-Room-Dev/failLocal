@@ -166,10 +166,21 @@ body {
 }
 
 /*
- * A card narrower than its 240 px goes compact (ruling R11): no icon, narrower names that wrap, compact
- * buttons. Keyed on the card's own width, since cable spacing (a sixth of the scene) sets it.
+ * Below its full 240 px a card's name may wrap, so every name keeps room for two lines: the cards along
+ * the band stay one height whichever names wrap (the vendor card's included).
  */
 @container (max-width: 239px) {
+  .service-card-name {
+    min-height: calc(2 * 1.15em);
+  }
+}
+
+/*
+ * The card keeps its icon and its button glyphs down to a 150 px slot (a 1440 px window's slots are about
+ * 170 px). Narrower (a tablet's), it goes compact: no icon, and a lone service's button keeps only its
+ * glyph, with its accessible name unchanged. A keyed button keeps its letter.
+ */
+@container (max-width: 149px) {
   .service-icon {
     display: none;
   }
@@ -179,34 +190,13 @@ body {
     padding: 6px 6px 6px 8px;
   }
 
-  /* Names wrap rather than truncate, so every one reads in full ("Perth operations link"). */
-  .service-card-name,
-  .service-row-name {
+  .service-card-name {
     font-variation-settings: 'wdth' 80;
-    overflow-wrap: break-word;
   }
 
   .service-button {
-    height: 24px;
+    height: 26px;
     padding: 0 6px;
-  }
-
-  .service-button .service-glyph {
-    display: none;
-  }
-
-  /* A card with several services puts each row's status beside its short name. */
-  .service-card-name ~ .service-row .service-row-text {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 6px;
-  }
-}
-
-/* Narrower still (a laptop's stage), the button keeps only its glyph; its accessible name is unchanged. */
-@container (max-width: 159px) {
-  .service-button .service-glyph {
-    display: block;
   }
 
   .service-button-text {

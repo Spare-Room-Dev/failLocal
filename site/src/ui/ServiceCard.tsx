@@ -8,6 +8,7 @@ import type { RunSpec } from '../model/run.js';
 import { SERVICE_GROUPS, serviceName } from '../model/serviceGroups.js';
 import type { ServiceGroup } from '../model/serviceGroups.js';
 import { actions, appStore, useStore } from '../model/store.js';
+import { ServiceIcon } from './glyphs.js';
 import './chrome.css';
 
 /** A free-play cut starts on the current day and runs for this many days. */
@@ -31,102 +32,151 @@ function groupName(service: string): string {
   return group.name;
 }
 
-/** "Up", "Access revoked", "Down via <cause>" or "Cut since day N", from the run's events. */
-function statusLine(timeline: Timeline | null, service: string, state: ServiceState, hour: number): ReactNode {
-  if (state === 'up') return 'Up';
-  if (state === 'revoked') return 'Access revoked';
-  const down = (timeline?.events ?? []).filter((e) => e.kind === 'service-down' && e.subject === service && e.hour <= Math.max(hour, 0));
-  const start = down.at(-1);
-  // The engine gives every outage a service-down event at its start, so a down sample always has one.
-  if (!start) throw new Error(`${service} is down at hour ${hour} with no service-down event`);
-  if (start.from) return `Down via ${groupName(start.from)}`;
+/** "day N", N a clock value, kept on one line. */
+function Day({ hour }: { hour: number }) {
   return (
-    <>
-      Cut since <span className="service-row-day">day <span data-clock>{Math.floor(start.hour / 24)}</span></span>
-    </>
-  );
-}
-
-/** One service's row. `label` names it to assistive technology and in the tooltip; `shown` is the text on the card. */
-function ServiceRow({ service, label, shown = label }: { service: string; label: string; shown?: string }) {
-  const timeline = useStore(appStore, (s) => s.lastGood);
-  const hour = useStore(appStore, (s) => s.clock.hour);
-  const mode = useStore(appStore, (s) => s.mode);
-  const spec = useStore(appStore, (s) => s.spec);
-
-  const state = stateAt(timeline, service, hour);
-  const cuts = specCuts(spec);
-  const pressed = cuts.some((c) => c.service === service);
-  const onClick = () => {
-    if (pressed) {
-      // From the end, so the earlier indices stay valid as each cut goes. A register scenario's cuts
-      // share their indices with the free spec the store seeds from them (R4).
-      for (let i = cuts.length - 1; i >= 0; i--) if (cuts[i]!.service === service) actions.removeCut(i);
-      return;
-    }
-    actions.addCut({ service, atDays: Math.floor(hour / 24), forDays: DEFAULT_CUT_DAYS });
-  };
-
-  return (
-    <div className="service-row" data-cut={state !== 'up'}>
-      <div className="service-row-text">
-        <span className="service-row-name" title={label}>
-          {shown}
-        </span>
-        <span className="service-row-status">
-          {state !== 'up' && <BreakGlyph />}
-          {statusLine(timeline, service, state, hour)}
-        </span>
-      </div>
-      <button
-        type="button"
-        className={`service-button${pressed ? ' is-restore' : ''}`}
-        aria-pressed={pressed}
-        aria-label={`${pressed ? 'Restore' : 'Cut'} ${label}`}
-        disabled={mode !== 'free'}
-        onClick={onClick}
-      >
-        {pressed ? <JoinGlyph /> : <ScissorsGlyph />}
-        <span className="service-button-text">{pressed ? 'Restore' : 'Cut'}</span>
-      </button>
-    </div>
+    <span className="service-row-day">
+      day <span data-clock>{Math.floor(hour / 24)}</span>
+    </span>
   );
 }
 
 /**
- * One outside service on the stage (DESIGN.md "Service Card"). A card with several services, such as
- * vendor remote access, has a row per service, each with its own status line and Cut/Restore button.
- * Only free play edits cuts; elsewhere the buttons are disabled.
+ * A service's status from the run's events: "Up", "Access revoked", "Down via <cause>" or "Cut since
+ * day N" while it is out; with a cut of its own that has not started, "Cut from day N"; once that cut
+ * has ended, "Restored day N". `quiet` is true for a plain "Up".
  */
-export function ServiceCard({ group }: { group: ServiceGroup }) {
+function status(timeline: Timeline | null, service: string, state: ServiceState, hour: number, cut: boolean): { text: ReactNode; quiet: boolean } {
+  const events = timeline?.events ?? [];
+  const now = Math.max(hour, 0);
+  if (state === 'revoked') return { text: 'Access revoked', quiet: false };
+  if (state === 'down') {
+    const start = events.filter((e) => e.kind === 'service-down' && e.subject === service && e.hour <= now).at(-1);
+    // The engine gives every outage a service-down event at its start, so a down sample always has one.
+    if (!start) throw new Error(`${service} is down at hour ${hour} with no service-down event`);
+    if (start.from) return { text: `Down via ${groupName(start.from)}`, quiet: false };
+    return { text: <>Cut since <Day hour={start.hour} /></>, quiet: false };
+  }
+  if (cut) {
+    const restored = events.filter((e) => e.kind === 'service-up' && e.subject === service && e.hour <= now).at(-1);
+    if (restored) return { text: <>Restored <Day hour={restored.hour} /></>, quiet: false };
+    const upcoming = events.find((e) => e.kind === 'service-down' && e.subject === service && !e.from && e.hour > now);
+    if (upcoming) return { text: <>Cut from <Day hour={upcoming.hour} /></>, quiet: false };
+  }
+  return { text: 'Up', quiet: true };
+}
+
+interface ServiceView {
+  id: string;
+  /** Names it to assistive technology and in tooltips: the register's name, or the group's for a lone service. */
+  label: string;
+  state: ServiceState;
+  /** Whether the spec cuts it. */
+  cut: boolean;
+  status: { text: ReactNode; quiet: boolean };
+}
+
+function useServiceViews(group: ServiceGroup): ServiceView[] {
   const timeline = useStore(appStore, (s) => s.lastGood);
   const hour = useStore(appStore, (s) => s.clock.hour);
-  const cut = group.services.some((id) => stateAt(timeline, id, hour) !== 'up');
+  const spec = useStore(appStore, (s) => s.spec);
+  const cuts = specCuts(spec);
   const single = group.services.length === 1;
+  return group.services.map((id) => {
+    const state = stateAt(timeline, id, hour);
+    const cut = cuts.some((c) => c.service === id);
+    return { id, label: single ? group.name : serviceName(id), state, cut, status: status(timeline, id, state, hour, cut) };
+  });
+}
+
+/**
+ * A service's Cut button. With a cut in the spec it is pressed, and names what a press does: "Restore"
+ * while the cut holds the service down, "Remove cut" when the cut has not started or has ended (the
+ * service is up either way). `keyLetter` marks one of several buttons on a card.
+ */
+function CutButton({ view, keyLetter }: { view: ServiceView; keyLetter?: string }) {
+  const hour = useStore(appStore, (s) => s.clock.hour);
+  const mode = useStore(appStore, (s) => s.mode);
+  const spec = useStore(appStore, (s) => s.spec);
+  const restores = view.cut && view.state !== 'up';
+  const verb = !view.cut ? 'Cut' : restores ? 'Restore' : 'Remove cut';
+  const onClick = () => {
+    if (view.cut) {
+      // From the end, so the earlier indices stay valid as each cut goes. A register scenario's cuts
+      // share their indices with the free spec the store seeds from them (R4).
+      const cuts = specCuts(spec);
+      for (let i = cuts.length - 1; i >= 0; i--) if (cuts[i]!.service === view.id) actions.removeCut(i);
+      return;
+    }
+    actions.addCut({ service: view.id, atDays: Math.floor(hour / 24), forDays: DEFAULT_CUT_DAYS });
+  };
   return (
-    <section className="service-card" role="group" aria-label={group.name} data-service-group={group.id} data-cut={cut}>
-      <ServiceIcon cut={cut} />
-      <div className="service-card-body">
-        {!single && (
-          <span className="service-card-name" title={group.name}>
-            {group.name}
-          </span>
-        )}
-        {group.services.map((id) => (
-          <ServiceRow key={id} service={id} label={single ? group.name : serviceName(id)} shown={group.rowLabels?.[id]} />
-        ))}
-      </div>
-    </section>
+    <button
+      type="button"
+      className={`service-button${restores ? ' is-restore' : ''}${view.cut && !restores ? ' is-remove' : ''}${keyLetter ? ' is-keyed' : ''}`}
+      aria-pressed={view.cut}
+      aria-label={verb === 'Remove cut' ? `Remove the ${view.label} cut` : `${verb} ${view.label}`}
+      title={keyLetter ? view.label : undefined}
+      disabled={mode !== 'free'}
+      onClick={onClick}
+    >
+      {restores ? <JoinGlyph /> : view.cut ? <UndoGlyph /> : <ScissorsGlyph />}
+      {keyLetter ? <span className="service-button-key">{keyLetter}</span> : <span className="service-button-text">{verb}</span>}
+    </button>
   );
 }
 
-function ServiceIcon({ cut }: { cut: boolean }) {
+function StatusLine({ view, prefix }: { view: ServiceView; prefix?: string }) {
   return (
-    <svg className="service-icon" viewBox="0 0 30 30" aria-hidden="true">
-      <rect x={4} y={7} width={22} height={14} rx={2} fill="none" stroke="var(--ink)" strokeWidth={1.5} />
-      <path d="M15 21 V26 M9 26 H21" stroke="var(--ink)" strokeWidth={1.5} fill="none" />
-      {cut && <path d="M4 27 L26 3" stroke="var(--stop-red)" strokeWidth={2.5} />}
-    </svg>
+    <span className="service-row-status" data-cut={view.state !== 'up'}>
+      {view.state !== 'up' && <BreakGlyph />}
+      {prefix && (
+        <span className="service-status-key" title={view.label}>
+          {prefix}
+        </span>
+      )}
+      {prefix && ' '}
+      <span>{view.status.text}</span>
+    </span>
+  );
+}
+
+/**
+ * One outside service on the stage (DESIGN.md "Service Card"): its icon, its name, then its status
+ * beside its Cut/Restore button. A card with several services, such as vendor remote access, keeps the
+ * same shape: one status ("Up" while every service is quietly up, else a line per service) and a
+ * compact keyed button per service, each named for its service. Only free play edits cuts; elsewhere
+ * the buttons are disabled.
+ */
+export function ServiceCard({ group }: { group: ServiceGroup }) {
+  const views = useServiceViews(group);
+  const cut = views.some((v) => v.state !== 'up');
+  const single = views.length === 1;
+  return (
+    <section className="service-card" role="group" aria-label={group.name} data-service-group={group.id} data-cut={cut}>
+      <ServiceIcon group={group.id} cut={cut} />
+      <div className="service-card-body">
+        <span className="service-card-name" title={group.name}>
+          {group.name}
+        </span>
+        <div className="service-card-foot">
+          <span className="service-card-status">
+            {single ? (
+              <StatusLine view={views[0]!} />
+            ) : views.every((v) => v.status.quiet) ? (
+              <span className="service-row-status">Up</span>
+            ) : (
+              views.map((v) => <StatusLine key={v.id} view={v} prefix={group.rowLabels?.[v.id] ?? v.label} />)
+            )}
+          </span>
+          <span className="service-card-buttons">
+            {views.map((v) => (
+              <CutButton key={v.id} view={v} keyLetter={single ? undefined : (group.buttonKeys?.[v.id] ?? v.label)} />
+            ))}
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -154,6 +204,15 @@ function JoinGlyph() {
     <svg className="service-glyph" viewBox="0 0 14 14" aria-hidden="true">
       <path d="M1 7 H5 M9 7 H13" stroke="currentColor" strokeWidth={1.5} />
       <rect x={5} y={4.5} width={4} height={5} rx={1} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** "Remove cut": a cross, the cut taken off the plan. */
+function UndoGlyph() {
+  return (
+    <svg className="service-glyph" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M3.5 3.5 L10.5 10.5 M10.5 3.5 L3.5 10.5" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" />
     </svg>
   );
 }
