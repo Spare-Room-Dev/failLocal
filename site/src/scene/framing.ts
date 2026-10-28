@@ -1,4 +1,5 @@
-import { centreOn, clampCamera, fitCamera, K_MAX, K_MIN, project } from './iso.js';
+import { HERO_LABEL } from './cables.js';
+import { clampCamera, fitCamera, K_MAX, K_MIN, project } from './iso.js';
 import type { Camera, Vec3 } from './iso.js';
 import { BOARD, ENTRY_POST_H, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from './layout.js';
 
@@ -26,10 +27,29 @@ export const SITE_FRAME = {
   margin: { top: 76, right: 28, bottom: 22, left: 16 },
 } as const;
 
-/** The landing hero's scale, pixels per metre (DESIGN.md Layout, Projection). */
-export const HERO_K = 1.18;
-/** The ground point at the hero's centre: between the pit's east wall, the ROM pad and the crusher's dump pocket. */
-export const HERO_FOCUS = { x: 850, y: 440 } as const;
+/** Points round the pit's crest, so a frame holds the whole pit. */
+const PIT_RING: Vec3[] = Array.from({ length: 16 }, (_, i) => {
+  const a = (i / 16) * 2 * Math.PI;
+  const { centre, benches } = LAYOUT.pit;
+  return { x: centre.x + benches[0]!.radiusX * Math.cos(a), y: centre.y + benches[0]!.radiusY * Math.sin(a), z: 0 };
+});
+
+/**
+ * The welcome hero (DESIGN.md Layout, Landing; re-derived from the approved welcome comp, finish review A2): the
+ * board as an object on the gallery floor, from its back corner (under the five cabled labels) to its whole
+ * front-left face (corner to corner, with the plate), the whole pit at its heart and every entry post in frame;
+ * the rest of the board runs off the right edge. On a phone, where the labels and cables are hidden, the pit with the stretch of face below it.
+ */
+export const HERO_FRAME = {
+  desktop: {
+    points: [{ x: 0, y: 0, z: 0 }, plinthFoot(0), plinthFoot(BOARD.w), ...PIT_RING, ...Object.values(LAYOUT.entryPosts).map((p) => ({ ...p, z: ENTRY_POST_H }))],
+    margin: { top: HERO_LABEL.top + HERO_LABEL.h + 12, right: 20, bottom: 36, left: 28 },
+  },
+  phone: {
+    points: [plinthFoot(300), plinthFoot(1100), ...PIT_RING],
+    margin: { top: 10, right: 10, bottom: 14, left: 10 },
+  },
+} as const;
 
 /**
  * The camera at which every point fits inside the view less its margins, as large as it can be, the points'
@@ -51,11 +71,13 @@ export function fitPoints(points: readonly Vec3[], view: Size, margin: { top: nu
 
 /**
  * The camera a diorama opens on, and returns to on Fit or `0`. The site fits `SITE_FRAME`; on a phone it
- * crops to the working area instead (DESIGN.md Layout, Phone). The hero is a fixed k = `HERO_K` crop centred
- * on `HERO_FOCUS`, the same on every width.
+ * crops to the working area instead (DESIGN.md Layout, Phone). The hero fits `HERO_FRAME`.
  */
 export function defaultCamera(framing: Framing, view: Size, phone: boolean): Camera {
-  if (framing === 'hero') return centreOn(HERO_FOCUS, HERO_K, view);
+  if (framing === 'hero') {
+    const f = phone ? HERO_FRAME.phone : HERO_FRAME.desktop;
+    return fitPoints(f.points, view, f.margin);
+  }
   if (phone) return clampCamera(fitCamera(BOARD, view, LAYOUT.workingArea), BOARD, view);
   return clampCamera(fitPoints(SITE_FRAME.points, view, SITE_FRAME.margin), BOARD, view);
 }

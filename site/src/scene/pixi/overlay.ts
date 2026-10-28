@@ -2,7 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { SceneState } from '../../model/sceneState.js';
 import { cableFraction, SERVICE_GROUPS } from '../../model/serviceGroups.js';
 import type { AnimState } from '../animation.js';
-import { CABLE, cableRoutes } from '../cables.js';
+import { CABLE, cableRoutes, HERO_LABEL, labelRow } from '../cables.js';
 import type { CableRoute } from '../cables.js';
 import { mix, project } from '../iso.js';
 import type { Camera, Vec3 } from '../iso.js';
@@ -44,8 +44,13 @@ export interface FlagLayout {
 }
 
 export interface OverlayOptions {
-  /** Cables and plaques: off for the decorative welcome scene, which has no cards to cable to. */
-  labels: boolean;
+  /** Plaques on the survey flags: off for the decorative welcome scene. */
+  plaques: boolean;
+  /**
+   * Where the service cables come from: the cards over the stage's top edge (the site), or the hero's own boxed
+   * service labels along its top, drawn here (the welcome scene, DESIGN.md Layout, Landing).
+   */
+  cables: 'cards' | 'labels';
   /** Stage-pixel boxes that plaques must keep clear of under camera `cam` (the Fit button and the honesty plate). */
   keepClear?(cam: Camera, view: { w: number; h: number }): Box[];
   /** Pixel density for overlay text. */
@@ -65,7 +70,9 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
   const cableLabels = SERVICE_GROUPS.map(() => label(options.resolution));
   const markers = new Graphics({ label: 'parked-markers' });
   const flags = Object.keys(LAYOUT.areas).map((id) => new Plaque(id, options.resolution));
-  screen.addChild(cables, ...cableLabels.map((l) => l.root), markers, ...flags.map((f) => f.root));
+  // The hero's service labels, one per group, which its cables drop from.
+  const serviceLabels = options.cables === 'labels' ? SERVICE_GROUPS.map((g) => serviceLabel(g.name, options.resolution)) : [];
+  screen.addChild(cables, ...cableLabels.map((l) => l.root), ...serviceLabels.map((l) => l.root), markers, ...flags.map((f) => f.root));
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(PHONE) : null;
 
   // Cable routes depend only on the camera and the stage size.
@@ -75,7 +82,7 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
 
   return {
     setScene(scene, selected) {
-      for (const f of flags) f.set(scene, selected, options.labels);
+      for (const f of flags) f.set(scene, selected, options.plaques);
       placedKey = '';
     },
     relayout() {
@@ -83,16 +90,18 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
     },
     frame(a, scene, cam, view, clock, reduced) {
       const key = `${cam.k},${cam.ox},${cam.oy},${view.w},${view.h}`;
-      const showCables = options.labels && !phone?.matches;
+      const showCables = !phone?.matches;
       if (showCables && key !== routeKey) {
         routeKey = key;
-        routes = cableRoutes(
-          SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w),
-          SERVICE_GROUPS.map((g) => {
-            const { sx, sy } = project({ ...LAYOUT.entryPosts[g.id]!, z: ENTRY_POST_H }, cam);
-            return { x: sx, y: sy };
-          }),
-        );
+        const posts = SERVICE_GROUPS.map((g) => {
+          const { sx, sy } = project({ ...LAYOUT.entryPosts[g.id]!, z: ENTRY_POST_H }, cam);
+          return { x: sx, y: sy };
+        });
+        if (options.cables === 'labels') {
+          const row = labelRow(serviceLabels.map((l) => l.w), view.w);
+          row.forEach((b, i) => serviceLabels[i]!.root.position.set(Math.round(b.x), b.y));
+          routes = cableRoutes(row.map((b) => Math.round(b.x + b.w / 2)), posts, HERO_LABEL.top + HERO_LABEL.h);
+        } else routes = cableRoutes(SERVICE_GROUPS.map((_, i) => cableFraction(i) * view.w), posts);
       }
       let laid: Record<string, FlagLayout> | null = null;
       const placeKey = `${key},${showCables}`;
@@ -102,6 +111,7 @@ export function buildOverlay(screen: Container, options: OverlayOptions): Overla
       }
       drawMarkers(markers, a, cam);
       cables.visible = showCables;
+      for (const l of serviceLabels) l.root.visible = showCables;
       for (const l of cableLabels) l.root.visible = false;
       if (showCables) drawCables(cables, cableLabels, routes, a, scene, view, clock, reduced);
       return laid;
@@ -120,7 +130,7 @@ const CABLE_CLEAR = 3;
 function layFlags(flags: Plaque[], scene: SceneState, cam: Camera, view: { w: number; h: number }, options: OverlayOptions, routes: CableRoute[]): Record<string, FlagLayout> {
   const feet = new Map(flags.map((f) => [f.id, f.foot(cam)]));
   const order = flags.map((f, i) => ({ f, i, rank: SEVERITY[scene.processes[f.id]!.state] })).sort((a, b) => a.rank - b.rank || a.i - b.i);
-  const requests: PlaqueRequest[] = options.labels ? order.map(({ f }) => ({ id: f.id, foot: feet.get(f.id)!, w: f.width, side: POLE_SIDE[f.id] ?? 1 })) : [];
+  const requests: PlaqueRequest[] = options.plaques ? order.map(({ f }) => ({ id: f.id, foot: feet.get(f.id)!, w: f.width, side: POLE_SIDE[f.id] ?? 1 })) : [];
   const soft = routes.flatMap((r) => segmentBoxes(r.points, CABLE_CLEAR));
   const placed = placePlaques(requests, view, options.keepClear?.(cam, view) ?? [], soft);
   const out: Record<string, FlagLayout> = {};
@@ -173,6 +183,17 @@ function label(resolution: number): Label {
   const text = new Text({ text: '', resolution, style: { fontFamily: FONT, fontSize: 10.5, fontWeight: '700', fill: STOP_RED } });
   root.addChild(box, text);
   return { root, box, text };
+}
+
+/** A hero service label: the group's name in a paper box with an ink hairline (DESIGN.md Layout, Landing). */
+function serviceLabel(name: string, resolution: number): { root: Container; w: number } {
+  const root = new Container({ label: 'service-label' });
+  const text = new Text({ text: name, resolution, style: { fontFamily: FONT, fontSize: 11.5, fontWeight: '600', fill: INK } });
+  const w = Math.ceil(text.width) + 16;
+  const box = new Graphics().roundRect(0, 0, w, HERO_LABEL.h, 3).fill(PAPER).stroke({ color: INK, width: 1 });
+  text.position.set(8, Math.round((HERO_LABEL.h - text.height) / 2));
+  root.addChild(box, text);
+  return { root, w };
 }
 
 /** Ink, 1.5 px, octilinear (cables.ts); a live cable carries a travelling dot, a severed one breaks, a revoked one is dashed. */
@@ -272,13 +293,13 @@ class Plaque {
     this.root.addChild(this.g, this.name, this.word, this.note);
   }
 
-  set(scene: SceneState, selected: string | null, labels: boolean): void {
+  set(scene: SceneState, selected: string | null, plaques: boolean): void {
     const p = scene.processes[this.id];
     if (!p) throw new Error(`scene has no process ${this.id}`);
     this.flag = p.flag;
     this.selected = selected === this.id;
-    this.name.visible = this.word.visible = this.note.visible = labels;
-    if (!labels) return;
+    this.name.visible = this.word.visible = this.note.visible = plaques;
+    if (!plaques) return;
     const sel = this.selected;
     this.name.text = p.label;
     this.word.text = STATE_WORD[p.state];

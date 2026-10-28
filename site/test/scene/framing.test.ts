@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { defaultCamera, HERO_FOCUS, HERO_K } from '../../src/scene/framing.js';
+import { CABLE, HERO_LABEL } from '../../src/scene/cables.js';
+import { defaultCamera } from '../../src/scene/framing.js';
 import { clampCamera, fitCamera, K_MAX, project, unproject } from '../../src/scene/iso.js';
-import { BOARD, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../../src/scene/layout.js';
+import { BOARD, ENTRY_POST_H, LAYOUT, PLINTH_DEPTH, SLAB_DEPTH } from '../../src/scene/layout.js';
 import { placePlaques, PLAQUE_H, POLE_LENGTHS } from '../../src/scene/plaques.js';
 import type { PlaqueRequest } from '../../src/scene/plaques.js';
 import { placePlate, plateBoxes, plateCorners, plateFont, platePosition } from '../../src/scene/plate.js';
@@ -55,26 +56,38 @@ describe('default framing', () => {
     }
   });
 
-  test('the welcome hero is the k = 1.18 crop on the pit, ROM pad and crusher', () => {
-    for (const view of [{ w: 640, h: 560 }, { w: 358, h: 280 }]) {
-      const cam = defaultCamera('hero', view, view.w < 500);
-      expect(cam.k).toBe(HERO_K);
-      expect(HERO_K).toBe(1.18);
-      expect(HERO_K).toBeLessThan(K_MAX);
-      const g = unproject(view.w / 2, view.h / 2, cam);
-      expect(g.x).toBeCloseTo(HERO_FOCUS.x, 6);
-      expect(g.y).toBeCloseTo(HERO_FOCUS.y, 6);
+  test('the welcome hero shows the board as an object: front-left corner and face on the floor, the pit at its heart, cropped on the right', () => {
+    // The hero layer at 1440 × 900, and stacked under the copy at 1024 × 768.
+    for (const view of [{ w: 840, h: 750 }, { w: 992, h: 708 }]) {
+      const cam = defaultCamera('hero', view, false);
+      expect(cam.k, `${view.w}`).toBeGreaterThanOrEqual(0.4);
+      expect(onStage(project({ x: 0, y: BOARD.h, z: -SLAB_DEPTH - PLINTH_DEPTH }, cam), view, 12), `${view.w} corner`).toBe(true);
+      expect(platePosition(cam, view, { w: 322, h: 12 }), `${view.w} plate`).not.toBeNull();
+      // The whole board from its back corner to the far end of its front-left face is in frame: it is cut off only on the right.
+      expect(onStage(project({ x: 0, y: 0, z: 0 }, cam), view, 12), `${view.w} back corner`).toBe(true);
+      expect(onStage(project({ x: BOARD.w, y: BOARD.h, z: -SLAB_DEPTH - PLINTH_DEPTH }, cam), view, 12), `${view.w} far corner`).toBe(true);
+      const pit = project(LAYOUT.pit.centre, cam);
+      expect(pit.sx / view.w).toBeGreaterThan(0.3);
+      expect(pit.sx / view.w).toBeLessThan(0.7);
+      expect(pit.sy / view.h).toBeGreaterThan(0.3);
+      expect(pit.sy / view.h).toBeLessThan(0.7);
+      // Cropped on the right: the board's right corner is past the edge.
+      expect(project({ x: BOARD.w, y: 0, z: 0 }, cam).sx).toBeGreaterThan(view.w);
+      // Every entry post is in frame, under the labels with room for the cables' buses.
+      const below = HERO_LABEL.top + HERO_LABEL.h + CABLE.busTop + 4 * CABLE.busStep + 14;
+      for (const post of Object.values(LAYOUT.entryPosts)) {
+        const t = project({ ...post, z: ENTRY_POST_H }, cam);
+        expect(onStage(t, view, 12), `${view.w} post`).toBe(true);
+        expect(t.sy).toBeGreaterThanOrEqual(below);
+      }
     }
-    // The ROM pad (haulage) and the crusher's dump pocket are in the desktop crop.
-    const view = { w: 640, h: 560 };
-    const cam = defaultCamera('hero', view, false);
-    for (const p of [LAYOUT.areas.haulage!.anchor, { ...LAYOUT.dumpPocket }]) {
-      const s = project(p, cam);
-      expect(s.sx).toBeGreaterThan(0);
-      expect(s.sx).toBeLessThan(view.w);
-      expect(s.sy).toBeGreaterThan(0);
-      expect(s.sy).toBeLessThan(view.h);
-    }
+  });
+
+  test('on a phone the hero frames the pit with the plinth face and its plate below', () => {
+    const view = { w: 358, h: 358 };
+    const cam = defaultCamera('hero', view, true);
+    expect(onStage(project(LAYOUT.pit.centre, cam), view, 40)).toBe(true);
+    expect(platePosition(cam, view, { w: 322, h: 12 })).not.toBeNull();
   });
 });
 

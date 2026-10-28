@@ -39,7 +39,7 @@ export function App({ register = defaultRegister }: AppProps) {
   const Page = PAGES[route];
   return (
     <>
-      <main className="page-frame">
+      <main className={route === 'welcome' ? 'page-frame page-frame--welcome' : 'page-frame'}>
         {register.site.fictional && <span className="badge">Fictional model site</span>}
         <Page />
       </main>

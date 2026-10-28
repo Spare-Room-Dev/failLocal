@@ -552,12 +552,25 @@ test('phone: the scene crops to the working area, hides the cables, and a tap se
   await expect(page.getByRole('heading', { name: 'Crushing and conveying' })).toBeVisible();
 });
 
-test('welcome hero: the k = 1.18 crop, moving, and still under reduced motion', async ({ page }, info) => {
+test('welcome hero: the board as an object, moving, and still under reduced motion', async ({ page }, info) => {
   test.skip(!['desktop', 'phone'].includes(info.project.name), 'the welcome page on a laptop and a phone');
   await open(page, '#/');
   await expect(page.locator('.welcome-scene .scene--diorama[data-ready="true"]')).toBeVisible({ timeout: 20_000 });
-  expect((await page.evaluate(() => window.__faillocal!.diorama!.camera())).k).toBe(1.18);
+  // It opens on the hero framing (framing.ts HERO_FRAME), with the plate engraved on the board's face.
+  const cams = await page.evaluate(() => ({ now: window.__faillocal!.diorama!.camera(), fit: window.__faillocal!.diorama!.defaultCamera() }));
+  expect(cams.now).toEqual(cams.fit);
+  await expect(page.locator('.welcome-scene .scene-plinth')).toHaveAttribute('data-placement', 'face');
+  await expect(page.locator('.welcome-scene .scene-plinth')).toHaveText('FICTIONAL MODEL SITE · PILBARA IRON ORE · SYNTHETIC DATA');
   await expect(page.locator('.welcome-scene button, .welcome-scene [tabindex]')).toHaveCount(0);
+  await expect(page.locator('.welcome-scene')).toHaveAttribute('aria-hidden', 'true');
+  if (info.project.name === 'desktop') {
+    // Full bleed: the model runs to the window's right edge and fills the hero down to the footer.
+    const scene = (await page.locator('.welcome-scene').boundingBox())!;
+    const vp = page.viewportSize()!;
+    expect(scene.x + scene.width).toBe(vp.width);
+    expect(scene.y + scene.height).toBeGreaterThan(vp.height * 0.8);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(vp.width);
+  }
   const frames = () => page.evaluate(() => window.__faillocal!.diorama!.frames());
   const before = await frames();
   await expect.poll(frames).toBeGreaterThan(before + 3);

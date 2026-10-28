@@ -37,7 +37,20 @@ export interface CableRoute {
 /** How far below the bus a post must sit for the cable to drop onto it. */
 const POST_CLEARANCE = 14;
 
-export function cableRoutes(anchors: number[], posts: Pt[]): CableRoute[] {
+/**
+ * One route per anchor. Cables start at y = `top` (0: the stage top under the cards; on the hero, under its
+ * labels), and everything below is measured from there.
+ */
+export function cableRoutes(anchors: number[], stagePosts: Pt[], top = 0): CableRoute[] {
+  const posts = stagePosts.map((p) => ({ x: p.x, y: p.y - top }));
+  return routesFromTop(anchors, posts).map((r) => ({
+    ...r,
+    points: r.points.map((p) => ({ x: p.x, y: p.y + top })),
+    corner: { x: r.corner.x, y: r.corner.y + top },
+  }));
+}
+
+function routesFromTop(anchors: number[], posts: Pt[]): CableRoute[] {
   const dir = anchors.map((a, i) => Math.sign(Math.round(posts[i]!.x - a)));
   // Buses depend on which cables reach their posts, and reaching depends on the bus: settle both.
   let reach = posts.map((p) => p.y >= CABLE.busTop + POST_CLEARANCE);
@@ -68,5 +81,27 @@ export function cableRoutes(anchors: number[], posts: Pt[]): CableRoute[] {
     const roomy = reach[i] && post.y - legTop >= CABLE.breakDrop + CABLE.breakGap + 18;
     const breakAt = roomy ? length - (post.y - legTop - CABLE.breakDrop) : CABLE.cardDrop;
     return { points, length, reaches: reach[i]!, breakAt, corner: { x: ax, y: reach[i] && dir[i] !== 0 ? bus[i]! : CABLE.stub } };
+  });
+}
+
+/** The hero's service labels (DESIGN.md Layout, Landing): boxes this tall, this far from the top and the right edge, this far apart. */
+export const HERO_LABEL = { top: 14, h: 22, right: 24, gap: 14, minGap: 6 } as const;
+
+type Box = { x: number; y: number; w: number; h: number };
+
+/**
+ * The hero's labels as one row along the top, in card order left to right, right-aligned (the board is cropped
+ * on the right, the copy is on the left). Gaps shrink toward `minGap` when the row would not fit; each cable
+ * drops from the centre of its label's bottom edge.
+ */
+export function labelRow(widths: number[], viewW: number): Box[] {
+  const total = widths.reduce((a, b) => a + b, 0);
+  const room = viewW - HERO_LABEL.right - total;
+  const gap = Math.max(HERO_LABEL.minGap, Math.min(HERO_LABEL.gap, room / Math.max(1, widths.length)));
+  let x = Math.max(0, viewW - HERO_LABEL.right - total - gap * (widths.length - 1));
+  return widths.map((w) => {
+    const b = { x, y: HERO_LABEL.top, w, h: HERO_LABEL.h };
+    x += w + gap;
+    return b;
   });
 }

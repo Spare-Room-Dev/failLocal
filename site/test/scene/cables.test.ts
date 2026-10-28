@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CABLE, cableRoutes } from '../../src/scene/cables.js';
+import { CABLE, cableRoutes, labelRow } from '../../src/scene/cables.js';
 import { chamfer, dashes, lengths, pointAt } from '../../src/scene/polyline.js';
 import type { Pt } from '../../src/scene/polyline.js';
 
@@ -80,5 +80,41 @@ describe('polyline', () => {
     expect(dashes(line, 3, 6).map((d) => d.map((p) => p.x))).toEqual([[0, 3], [6, 9], [12, 15], [18, 20]]);
     expect(dashes(line, 3, 6, 2).map((d) => d.map((p) => p.x))[0]).toEqual([2, 5]);
     expect(lengths(line)).toEqual([0, 20]);
+  });
+});
+
+describe('the hero\'s cabled labels', () => {
+  const widths = [78, 86, 140, 122, 136];
+
+  it('sit in one row along the top, left to right, apart, right-aligned inside the view', () => {
+    const view = 880;
+    const row = labelRow(widths, view);
+    expect(row).toHaveLength(5);
+    for (const [i, b] of row.entries()) {
+      expect(b.w).toBe(widths[i]);
+      expect(b.y).toBe(row[0]!.y);
+      expect(b.x).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.w).toBeLessThanOrEqual(view);
+      if (i > 0) expect(b.x - (row[i - 1]!.x + row[i - 1]!.w)).toBeGreaterThanOrEqual(6);
+    }
+    // Right-aligned: the last label ends near the view's right edge.
+    expect(view - (row[4]!.x + row[4]!.w)).toBeLessThan(40);
+  });
+
+  it('squeeze their gaps, never overlapping, when the view is narrow', () => {
+    const row = labelRow(widths, 600);
+    for (const [i, b] of row.entries()) if (i > 0) expect(b.x).toBeGreaterThanOrEqual(row[i - 1]!.x + row[i - 1]!.w);
+  });
+
+  it('cables start under their labels and still reach their posts', () => {
+    const anchors = [155, 309, 464, 619, 773];
+    const top = 34;
+    const low = [{ x: 476, y: 250 }, { x: 553, y: 270 }, { x: 630, y: 290 }, { x: 708, y: 310 }, { x: 786, y: 330 }];
+    for (const [i, r] of cableRoutes(anchors, low, top).entries()) {
+      expect(r.points[0]).toEqual({ x: anchors[i], y: top });
+      expect(r.reaches).toBe(true);
+      expect(r.points[r.points.length - 1]).toEqual(low[i]);
+      for (const p of r.points) expect(p.y).toBeGreaterThanOrEqual(top);
+    }
   });
 });

@@ -360,7 +360,8 @@ async function mount(app: Application, host: HTMLElement, onLayout: (l: SceneLay
         for (const snap of snapshots) snap.resize(current.w, current.h, app.renderer.resolution);
         dynamic = buildDynamic(built.slots, aboveWorld);
         overlay = buildOverlay(overlayRoot, {
-          labels: options.interactive,
+          plaques: options.interactive,
+          cables: options.interactive ? 'cards' : 'labels',
           resolution: window.devicePixelRatio || 1,
           keepClear: (c, v) => [{ x: v.w - FIT_CORNER.w, y: 0, w: FIT_CORNER.w, h: FIT_CORNER.h }, ...plateBoxes(plateAt(c, v), 4)],
         });

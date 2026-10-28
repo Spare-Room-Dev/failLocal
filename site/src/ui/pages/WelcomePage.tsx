@@ -7,8 +7,9 @@ import { SceneView } from '../SceneView.js';
 import { useMediaQuery } from '../useMediaQuery.js';
 
 /**
- * The hero: the model at hour 0 of the current run, cropped on the pit, ROM pad and crusher at k = 1.18, with
- * its ambient motion (a still frame under reduced motion). A picture: hidden from assistive tech and out of the tab order.
+ * The hero: the model at hour 0 of the current run, framed as an object on the gallery floor (framing.ts
+ * HERO_FRAME) with the five services as boxed labels cabled into it, and its ambient motion (a still frame under
+ * reduced motion). A picture: hidden from assistive tech and out of the tab order.
  */
 function ScenePreview() {
   const run = useStore(appStore, (s) => s.lastGood);
