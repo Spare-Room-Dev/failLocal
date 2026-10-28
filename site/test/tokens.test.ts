@@ -19,7 +19,8 @@ describe('tokens.css', () => {
     const colours = Object.entries(designColours());
     expect(colours.length).toBeGreaterThan(0);
     for (const [name, hex] of colours) {
-      expect(tokens).toMatch(new RegExp(`^\\s*--${name}:\\s*${hex};`, 'm'));
+      const value = hex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(tokens).toMatch(new RegExp(`^\\s*--${name}:\\s*${value};`, 'm'));
     }
   });
 });
