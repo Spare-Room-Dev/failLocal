@@ -91,13 +91,31 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
     if (m.type() === 'error') errors.push(m.text());
   });
   page.on('pageerror', (e) => errors.push(e.message));
+  // Count every WebGL context the page creates and every one that is lost, on its own canvas: a leaked
+  // context's canvas has left the document, so a listener on window would never hear it. Every destroyed
+  // diorama loses its context on purpose, so after the cycles exactly as many contexts may be alive as after
+  // the first mount: the live diorama's, and PixiJS's one page-wide test context (shader precision).
   await page.addInitScript(() => {
-    const lost: string[] = [];
-    (window as unknown as { __contextsLost: string[] }).__contextsLost = lost;
-    window.addEventListener('webglcontextlost', () => lost.push('lost'), true);
+    const counts = { created: 0, lost: 0 };
+    (window as unknown as { __contexts: typeof counts }).__contexts = counts;
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      const known = (this as unknown as { __gl?: unknown }).__gl;
+      const ctx = (original as (...a: unknown[]) => unknown).call(this, type, ...rest);
+      if (ctx && /webgl/i.test(type) && known !== ctx) {
+        (this as unknown as { __gl?: unknown }).__gl = ctx;
+        counts.created++;
+        this.addEventListener('webglcontextlost', () => counts.lost++);
+      }
+      return ctx;
+    } as typeof original;
   });
 
+  type Counts = { created: number; lost: number };
+  const alive = () => page.evaluate(() => { const c = (window as unknown as { __contexts: Counts }).__contexts; return c.created - c.lost; });
   await openSite(page);
+  const baseline = await alive();
+  expect(baseline).toBeLessThanOrEqual(2);
   for (let i = 0; i < 20; i++) {
     await page.evaluate(() => (location.hash = '#/sources'));
     await expect(page.locator('.scene--diorama')).toHaveCount(0);
@@ -111,7 +129,10 @@ test('scene mount and unmount does not leak contexts', async ({ page }, info) =>
   }
   await expect(page.locator('.scene--diorama[data-ready="true"]')).toBeVisible({ timeout: 20_000 });
 
-  expect(await page.evaluate(() => (window as unknown as { __contextsLost: string[] }).__contextsLost)).toEqual([]);
+  const contexts = await page.evaluate(() => (window as unknown as { __contexts: Counts }).__contexts);
+  expect(contexts.created).toBeGreaterThanOrEqual(26);
+  // Losses are reported asynchronously; wait for the last destroyed one to land.
+  await expect.poll(alive).toBe(baseline);
   expect(await page.locator('canvas').count()).toBe(1);
   expect(errors).toEqual([]);
   const colours = await sampleColours(page);
