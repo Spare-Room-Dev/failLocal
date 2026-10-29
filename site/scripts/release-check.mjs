@@ -2,7 +2,7 @@
  * Release gate, run after `npm run build` by `npm run release`. Fails while the build still carries a
  * marked placeholder or draft marker, while the link-preview tags are not absolute https:// URLs (the
  * release needs `VITE_SITE_ORIGIN`), while `dist/og.png` is still the placeholder render (D-115), or when
- * the root `vercel.json` is missing or does not carry exactly the rules in `site/public/_headers` (D-116).
+ * `site/vercel.json` is missing or does not carry exactly the rules in `site/public/_headers` (D-116).
  * Unmarked draft labels are approved through the owner's copy checklist, not here.
  */
 import { createHash } from 'node:crypto';
@@ -129,7 +129,7 @@ export function checkPreviewImageRegenerated(distDir, placeholderSha256 = PLACEH
     : [];
 }
 
-const VERCEL_JSON = new URL('../../vercel.json', import.meta.url);
+const VERCEL_JSON = new URL('../vercel.json', import.meta.url);
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
 
 function main() {

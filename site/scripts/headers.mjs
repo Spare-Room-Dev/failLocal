@@ -1,6 +1,6 @@
 /**
  * Parses `site/public/_headers`, the site's one list of response headers (D-113, D-116). `vite preview`
- * and the e2e suite serve it, and the root `vercel.json` mirrors it for the deployed site. An unindented
+ * and the e2e suite serve it, and `site/vercel.json` mirrors it for the deployed site. An unindented
  * line names a path pattern, and each indented `Name: value` line under it adds a header for that path.
  * `#` starts a comment.
  * @param {string} text

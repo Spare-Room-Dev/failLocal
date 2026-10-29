@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run release -w site",
-  "outputDirectory": "site/dist",
+  "buildCommand": "npm run release",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/(.*)",

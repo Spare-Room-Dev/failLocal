@@ -18,7 +18,7 @@ import {
 import { parseHeaders, vercelHeaderProblems } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
-const VERCEL_JSON = new URL('../../vercel.json', import.meta.url);
+const VERCEL_JSON = new URL('../vercel.json', import.meta.url);
 const INDEX_HTML = new URL('../index.html', import.meta.url);
 const OG_PNG = new URL('../public/og.png', import.meta.url);
 
