@@ -41,8 +41,10 @@ Every page also sends `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Po
 ## Deploy
 
 `npm run release -w site` is the release build: the normal build and build guard, then the release gate (`scripts/release-check.mjs`, D-115).
-The gate fails while any placeholder or draft copy remains in the built JS or HTML, while the link-preview URLs in `index.html` are not absolute `https://` addresses, and when `dist/_headers` is missing.
+The gate fails while a marked placeholder or draft marker remains in the built JS or HTML, while the link-preview URLs in `index.html` are not absolute `https://` addresses, while `dist/og.png` is still the placeholder render, and when `dist/_headers` is missing.
+It does not catch draft labels that carry no marker; the owner approves those through the copy checklist, not the gate.
 Set `VITE_SITE_ORIGIN` to the site's address, `https://` and no trailing slash, for example `https://faillocal.example.com`; the link preview is built from it.
+Set it as an environment variable, not in a `.env` file: the build guard (`scripts/check-build.mjs`) reads only the environment, so a value from `.env.production` would reach the page but fail the guard.
 
 Cloudflare Pages, connected to the Git repository:
 
@@ -64,6 +66,7 @@ After each deploy, run the end-to-end checks against the live site and confirm t
 ```sh
 E2E_BASE_URL=https://faillocal.example.com npm run e2e -w site
 curl -sI https://faillocal.example.com/ | grep -i content-security-policy
+curl -sI "https://faillocal.example.com$(curl -s https://faillocal.example.com/ | grep -o '/assets/[^"]*\.js' | head -1)" | grep -i cache-control
 ```
 
 `E2E_BASE_URL` points the Playwright suite at a site that is already being served, instead of building and previewing one locally.

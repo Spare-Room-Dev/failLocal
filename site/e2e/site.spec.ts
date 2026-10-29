@@ -328,8 +328,25 @@ test('phone card strip never shows a partial control', async ({ page }, info) =>
     await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
     await expect(page.getByRole('button', { name: 'Restore Hosted ERP' })).toHaveAttribute('aria-pressed', 'true');
     const strip = page.locator('.site-cards');
-    await strip.evaluate((e) => (e.scrollLeft = 0));
+    // Measure the strip where it comes to rest, after the browser has applied its scroll snap: poll until
+    // scrollLeft holds still across a few frames, never forcing it.
+    await expect
+      .poll(() =>
+        strip.evaluate(async (e) => {
+          const frame = () => new Promise((r) => requestAnimationFrame(r));
+          const before = e.scrollLeft;
+          for (let i = 0; i < 5; i++) await frame();
+          return e.scrollLeft === before;
+        }),
+      )
+      .toBe(true);
     const s = (await strip.boundingBox())!;
+    // At rest, card 1 keeps the 16 px lead every other element on the page keeps from the screen's edge.
+    const slots = await strip.locator('.site-card-slot').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as Box));
+    expect(slots[0]!.x - s.x, `${width} px: card 1's lead`).toBeCloseTo(16, 0);
+    // One whole card shows below 480 px of stage, two from there; the next one only peeks into the fade.
+    const whole = slots.filter((c) => c.x + c.width <= s.x + s.width - STRIP_FADE + 0.5).length;
+    expect(whole, `${width} px: whole cards`).toBe(width < 480 ? 1 : 2);
     const buttons = await strip.locator('.service-button').evaluateAll((els) =>
       els.map((e) => ({ name: e.getAttribute('aria-label') ?? e.textContent, ...(e.getBoundingClientRect().toJSON() as Box) })),
     );
@@ -437,6 +454,7 @@ test('the site runs under the deployed CSP', async ({ page }) => {
   const response = await page.goto('/?e2e#/');
   // `vite preview` serves public/_headers; without the header, no violations would prove nothing.
   expect(response!.headers()['content-security-policy']).toContain("script-src 'self'");
+  expect(response!.headers()['cross-origin-resource-policy']).toBe('same-origin');
   await expect(page.getByRole('button', { name: 'Show me the site' })).toBeVisible();
   expect(await violations()).toEqual([]);
 

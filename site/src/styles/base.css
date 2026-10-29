@@ -444,7 +444,9 @@ body {
    * the last card scroll clear of the fade. The cards are sized to the stage, one across below 480 px
    * and two from there, so at the start the peek holds only the next card's glyph edge, never a
    * control: the 40 px peek is narrower than the space from a card's left edge to its first button.
-   * Each card ends where the 48 px fade begins (16 px lead, 8 px gaps, 40 px peek).
+   * Each card ends where the 48 px fade begins (16 px lead, 8 px gaps, 40 px peek). The scroll padding
+   * matches the side padding, so the snapped resting position keeps the 16 px lead; without it the strip
+   * snaps card 1 flush to the screen's edge on load.
    */
   .site-cards {
     display: flex;
@@ -452,6 +454,7 @@ body {
     padding: 2px 40px 8px 16px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px 40px;
     mask-image: linear-gradient(to right, black calc(100% - 48px), transparent);
   }
 

@@ -1,12 +1,13 @@
 // @vitest-environment node
+import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { RELEASE_BLOCKERS, checkHeadersShipped, checkNoBlockers, checkPreviewTags } from '../scripts/release-check.mjs';
+import { PLACEHOLDER_OG_SHA256, RELEASE_BLOCKERS, checkHeadersShipped, checkNoBlockers, checkPreviewImageRegenerated, checkPreviewTags } from '../scripts/release-check.mjs';
 
 /** A throwaway `dist/` holding `files` (path → contents). */
-function fixtureDist(files: Record<string, string>): string {
+function fixtureDist(files: Record<string, string | Buffer>): string {
   const dir = mkdtempSync(join(tmpdir(), 'faillocal-release-'));
   for (const [path, contents] of Object.entries(files)) {
     mkdirSync(join(dir, path, '..'), { recursive: true });
@@ -21,7 +22,16 @@ function previewHtml(url: string, image: string): string {
 }
 
 test('release-check rejects placeholders and draft markers', () => {
-  expect(RELEASE_BLOCKERS).toEqual(['[Your name]', '[owner]', '[Placeholder', 'draft-marker', 'draft-banner', 'Draft copy', 'awaiting owner review']);
+  expect(RELEASE_BLOCKERS).toEqual([
+    '[Your name]',
+    '[owner]',
+    '[Placeholder',
+    'placeholder until',
+    'draft-marker',
+    'draft-banner',
+    'Draft copy',
+    'awaiting owner review',
+  ]);
   for (const blocker of RELEASE_BLOCKERS) {
     const dist = fixtureDist({ 'assets/index.js': `const s = ${JSON.stringify(`before ${blocker} after`)};` });
     const problems = checkNoBlockers(dist);
@@ -29,6 +39,11 @@ test('release-check rejects placeholders and draft markers', () => {
     expect(problems[0]).toContain('dist/assets/index.js');
     expect(problems[0]).toContain(blocker);
   }
+  // The Limitations page's decision-log note, as React renders it.
+  const limits = fixtureDist({ 'assets/index.js': 'jsx("span",{className:"placeholder",children:"(placeholder until the repo is public)"})' });
+  expect(checkNoBlockers(limits)).toEqual(['dist/assets/index.js contains "placeholder until"']);
+  // React DOM's own code names the `placeholder` attribute; that alone is not a blocker.
+  expect(checkNoBlockers(fixtureDist({ 'assets/react.js': 'const a = ["placeholder","value"];' }))).toEqual([]);
   const html = fixtureDist({ 'index.html': '<p>By [Your name]</p>' });
   expect(checkNoBlockers(html)).toEqual(['dist/index.html contains "[Your name]"']);
   const css = fixtureDist({ 'assets/index.css': '.draft-marker { color: red }', 'assets/index.js': 'const ok = 1;' });
@@ -63,4 +78,17 @@ test('release-check requires absolute preview URLs', () => {
 test('release-check requires the headers file', () => {
   expect(checkHeadersShipped(fixtureDist({ '_headers': '/*\n  X-Content-Type-Options: nosniff\n', 'index.html': '' }))).toEqual([]);
   expect(checkHeadersShipped(fixtureDist({ 'index.html': '' }))).toEqual(['dist/_headers is missing']);
+});
+
+test('release-check requires og.png to be made again after the byline lands', () => {
+  // The gate refuses the committed placeholder render by its hash (checked against the real image by
+  // `npm run release`); here a fixture image stands in, so regenerating og.png does not break this test.
+  expect(PLACEHOLDER_OG_SHA256).toMatch(/^[0-9a-f]{64}$/);
+  const image = Buffer.from('the placeholder render');
+  const hash = createHash('sha256').update(image).digest('hex');
+  expect(checkPreviewImageRegenerated(fixtureDist({ 'og.png': image }), hash)).toEqual([
+    'dist/og.png is still the placeholder render showing "[Your name]"; make it again with `npm run og-image -w site` (D-114)',
+  ]);
+  expect(checkPreviewImageRegenerated(fixtureDist({ 'og.png': Buffer.from('a regenerated image') }), hash)).toEqual([]);
+  expect(checkPreviewImageRegenerated(fixtureDist({ 'index.html': '' }), hash)).toEqual(['dist/og.png is missing']);
 });
