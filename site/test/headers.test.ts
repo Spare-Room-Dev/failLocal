@@ -18,6 +18,8 @@ import {
 import { parseHeaders } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
+const INDEX_HTML = new URL('../index.html', import.meta.url);
+const OG_PNG = new URL('../public/og.png', import.meta.url);
 
 const REGISTER = `
 sources:
@@ -54,6 +56,34 @@ test('headers file carries the exact security headers', () => {
   });
 });
 
+describe('index.html', () => {
+  test('index.html carries the link-preview tags', () => {
+    const html = readFileSync(INDEX_HTML, 'utf8');
+    const meta = (attr: 'name' | 'property', key: string) =>
+      html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`))?.[1];
+    expect(meta('name', 'description')).toBeTruthy();
+    expect(meta('property', 'og:type')).toBe('website');
+    expect(meta('property', 'og:title')).toBeTruthy();
+    expect(meta('property', 'og:description')).toBeTruthy();
+    expect(meta('property', 'og:url')).toBe('%VITE_SITE_ORIGIN%/');
+    expect(meta('property', 'og:image')).toBe('%VITE_SITE_ORIGIN%/og.png');
+    expect(meta('property', 'og:image:width')).toBe('1200');
+    expect(meta('property', 'og:image:height')).toBe('630');
+    expect(meta('property', 'og:image:alt')).toBeTruthy();
+    expect(meta('name', 'twitter:card')).toBe('summary_large_image');
+    expect(html).toMatch(/<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml"\s*\/?>/);
+    expect(meta('name', 'theme-color')).toBeTruthy();
+  });
+
+  test('og.png is 1200 × 630 and under 400 KB', () => {
+    const png = readFileSync(OG_PNG);
+    expect(png.subarray(1, 4).toString('ascii')).toBe('PNG');
+    expect(png.readUInt32BE(16)).toBe(1200);
+    expect(png.readUInt32BE(20)).toBe(630);
+    expect(png.length).toBeLessThan(400_000);
+  });
+});
+
 describe('check-build', () => {
   test('check-build rejects an inline script', () => {
     const clean = '<script type="module" crossorigin src="/assets/index.js"></script><div id="root"></div>';
@@ -81,6 +111,15 @@ describe('check-build', () => {
       { file: 'assets/index.js', url: 'https://tracker.example.net/pixel.gif' },
       { file: 'assets/index.js', url: 'https://example.org/report.pdf' },
     ]);
+  });
+
+  test('the site origin\'s preview URLs are allowed only when an origin is given', () => {
+    const withOrigin = allowedUrls(REGISTER, 'https://x.example');
+    expect(withOrigin.has('https://x.example/og.png')).toBe(true);
+    expect(withOrigin.has('https://x.example/')).toBe(true);
+    const without = allowedUrls(REGISTER);
+    expect(without.has('https://x.example/og.png')).toBe(false);
+    expect([...without].some((u) => u.startsWith('https://x.example'))).toBe(false);
   });
 
   test('zod 4 JSON Schema dialect URIs are allowed exactly, near misses are not', () => {

@@ -15,7 +15,8 @@
     "test": "vitest run",
     "pretypecheck": "npm run register",
     "typecheck": "tsc --noEmit -p .",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "og-image": "node scripts/og-image.mjs"
   },
   "dependencies": {
     "@faillocal/engine": "*",

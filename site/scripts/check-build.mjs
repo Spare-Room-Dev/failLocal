@@ -75,16 +75,20 @@ export function checkIndexHtml(html) {
 }
 
 /**
- * The register's `sources[].url` plus the extra allowed URLs.
+ * The register's `sources[].url` plus the extra allowed URLs, plus, when the deployed origin is given
+ * (`VITE_SITE_ORIGIN`, no trailing slash), the link-preview URLs index.html names: `${origin}/` and
+ * `${origin}/og.png`.
  * @param {string} registerYaml
+ * @param {string} [origin]
  * @returns {Set<string>}
  */
-export function allowedUrls(registerYaml) {
+export function allowedUrls(registerYaml, origin) {
   const register = parse(registerYaml);
   /** @type {{ url?: unknown }[]} */
   const sources = Array.isArray(register?.sources) ? register.sources : [];
   const urls = sources.map((s) => s.url).filter((u) => typeof u === 'string');
-  return new Set([...urls, ...EXTRA_ALLOWED_URLS]);
+  const site = origin ? [`${origin}/`, `${origin}/og.png`] : [];
+  return new Set([...urls, ...EXTRA_ALLOWED_URLS, ...site]);
 }
 
 /**
@@ -160,7 +164,7 @@ export function checkNoYamlParser(distDir) {
 function main() {
   const distDir = fileURLToPath(new URL('../dist/', import.meta.url));
   const registerPath = fileURLToPath(new URL('../../register/pilbara-model-site.yaml', import.meta.url));
-  const allowed = allowedUrls(readFileSync(registerPath, 'utf8'));
+  const allowed = allowedUrls(readFileSync(registerPath, 'utf8'), process.env.VITE_SITE_ORIGIN);
 
   const problems = checkIndexHtml(readFileSync(join(distDir, 'index.html'), 'utf8'));
   for (const { file, url } of findDisallowedUrls(distDir, allowed)) problems.push(`dist/${file} names a URL off the allow-list: ${url}`);
