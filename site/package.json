@@ -10,6 +10,7 @@
     "dev": "vite",
     "prebuild": "npm run register",
     "build": "vite build && node scripts/check-build.mjs",
+    "release": "npm run build && node scripts/release-check.mjs",
     "preview": "vite preview",
     "pretest": "npm run register",
     "test": "vitest run",

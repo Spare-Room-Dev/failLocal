@@ -38,5 +38,35 @@ The build guard fails the build on inline script or style in `index.html`, on an
 Deployment is the static `site/dist` folder on Cloudflare Pages; `site/public/_headers` is copied into it and sets the Content-Security-Policy and other security headers for every path.
 Every page also sends `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` set to `same-origin`, and the fingerprinted files under `/assets/` are cached for a year as immutable (D-113).
 
+## Deploy
+
+`npm run release -w site` is the release build: the normal build and build guard, then the release gate (`scripts/release-check.mjs`, D-115).
+The gate fails while any placeholder or draft copy remains in the built JS or HTML, while the link-preview URLs in `index.html` are not absolute `https://` addresses, and when `dist/_headers` is missing.
+Set `VITE_SITE_ORIGIN` to the site's address, `https://` and no trailing slash, for example `https://faillocal.example.com`; the link preview is built from it.
+
+Cloudflare Pages, connected to the Git repository:
+
+- **Root directory:** the repository root (leave it empty), so the npm workspaces install together.
+- **Build command:** `npm run release -w site`
+- **Build output directory:** `site/dist`
+- **Environment variable:** `VITE_SITE_ORIGIN`, set to the site's address as above.
+- **Node version:** read from `.node-version` (Node 22).
+
+Or upload a build from this machine instead (direct upload, needs a Cloudflare login):
+
+```sh
+VITE_SITE_ORIGIN=https://faillocal.example.com npm run release -w site
+npx wrangler pages deploy site/dist --project-name faillocal
+```
+
+After each deploy, run the end-to-end checks against the live site and confirm the security headers are served:
+
+```sh
+E2E_BASE_URL=https://faillocal.example.com npm run e2e -w site
+curl -sI https://faillocal.example.com/ | grep -i content-security-policy
+```
+
+`E2E_BASE_URL` points the Playwright suite at a site that is already being served, instead of building and previewing one locally.
+
 Every judgement and assumed value in the register is explained in [docs/decisions.md](docs/decisions.md).
 Licensed under Apache-2.0.
