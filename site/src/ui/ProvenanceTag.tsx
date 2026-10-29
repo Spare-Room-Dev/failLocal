@@ -27,8 +27,9 @@ let closeOpenTip: (() => void) | null = null;
  * A tag that is a button with a popover. Hover or focus shows it; a press toggles it (closing it if it
  * is showing, opening and pinning it if not); Escape dismisses it wherever focus is (WCAG 1.4.13). A tap
  * focuses before its click, so on touch the press toggles the pin alone: a tap opens it, the next
- * closes it, and a tap elsewhere (a blur) closes it too. The popover sits inside the hover area, so the pointer can move onto it, and
- * only one popover is open at a time.
+ * closes it. While it is pinned, a press anywhere outside the tag and its popover closes it: iOS Safari
+ * does not focus a tapped button, so no blur comes to close it. The popover sits inside the hover area,
+ * so the pointer can move onto it, and only one popover is open at a time.
  */
 function TipTag({ className, label, text, tip }: TipTagProps) {
   const tipId = useId();
@@ -37,6 +38,7 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
   const [pinned, setPinned] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const open = !dismissed && (hovered || focused || pinned);
+  const rootRef = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   // Nudged sideways so an open popover stays inside the window (a tag near the right edge of the detail column).
   const [nudge, setNudge] = useState(0);
@@ -75,8 +77,18 @@ function TipTag({ className, label, text, tip }: TipTagProps) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!pinned) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!(e.target instanceof Node && rootRef.current?.contains(e.target))) dismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [pinned]);
+
   return (
     <span
+      ref={rootRef}
       className="qty-tag-anchor"
       // Hover is a mouse or pen's: a tap's pointer enters and leaves around every press, so touch is left to the press.
       onPointerEnter={(e) => {

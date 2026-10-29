@@ -22,11 +22,9 @@
 .guided-kicker {
   flex-basis: 100%;
   margin: 0;
-  color: var(--ink-3);
-  font-size: 12px;
-  font-weight: 680;
-  font-variation-settings: 'wdth' 88;
-  text-transform: uppercase;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .guided-title {

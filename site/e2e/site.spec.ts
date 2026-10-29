@@ -315,6 +315,70 @@ test('phone layout', async ({ page }, info) => {
   await page.screenshot({ path: info.outputPath('phone-390x844.png'), fullPage: true });
 });
 
+/** The strip's fade (base.css: `.site-cards` masks its last 48 px to transparent). */
+const STRIP_FADE = 48;
+
+test('phone card strip never shows a partial control', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'the phone card strip');
+  for (const width of [360, 390, 430, 600, 760]) {
+    await page.setViewportSize({ width, height: 844 });
+    await open(page, '#/site');
+    // Free play opens on s1-projection, whose own hosted-erp cut shows as Restore; restore it, then cut it plainly.
+    await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+    await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
+    await expect(page.getByRole('button', { name: 'Restore Hosted ERP' })).toHaveAttribute('aria-pressed', 'true');
+    const strip = page.locator('.site-cards');
+    await strip.evaluate((e) => (e.scrollLeft = 0));
+    const s = (await strip.boundingBox())!;
+    const buttons = await strip.locator('.service-button').evaluateAll((els) =>
+      els.map((e) => ({ name: e.getAttribute('aria-label') ?? e.textContent, ...(e.getBoundingClientRect().toJSON() as Box) })),
+    );
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const b of buttons) {
+      const inside = b.x >= s.x - 0.5 && b.x + b.width <= s.x + s.width - STRIP_FADE + 0.5;
+      const outside = b.x >= s.x + s.width - 0.5;
+      expect(inside || outside, `${width} px: ${b.name} at ${b.x}..${b.x + b.width} in a strip ${s.x}..${s.x + s.width}`).toBe(true);
+    }
+  }
+});
+
+test('rotating a phone keeps the run', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'a phone turning');
+  await open(page, '#/site');
+  await page.getByRole('region', { name: 'Free play' }).getByRole('combobox', { name: 'Scenario' }).selectOption('s1-projection');
+  await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+  await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
+  const prepared = page.getByRole('button', { name: 'Prepared', exact: true });
+  await prepared.click();
+  await scrubToDay(page, 5);
+
+  const read = () =>
+    Promise.all([
+      page.locator('.top-bar-scenario').textContent(),
+      prepared.getAttribute('aria-pressed'),
+      page.locator('[data-service-group="hosted-erp"] .service-button').getAttribute('aria-pressed'),
+      page.locator('[data-service-group="hosted-erp"] .service-button').getAttribute('aria-label'),
+      page.locator('.timeline-figure').filter({ visible: true }).first().textContent(),
+    ]);
+  const before = await read();
+  expect(before[1]).toBe('true');
+  expect(before[2]).toBe('true');
+  expect(before[4]).toMatch(/^Day 5 of/);
+
+  for (const size of [
+    { width: 844, height: 390 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    await expect.poll(read).toEqual(before);
+    const scene = page.locator('.scene--diorama canvas, .scene--schematic').first();
+    await expect(scene).toBeVisible();
+    const box = (await scene.boundingBox())!;
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.height).toBeGreaterThan(0);
+  }
+});
+
 test('tablet layout', async ({ page }, info) => {
   test.skip(!info.project.name.startsWith('tablet'), 'the tablet layouts');
   await open(page, '#/site');

@@ -68,9 +68,9 @@ Status updated 28 Oct 2026 at the end of Plan 2b (branch `feat/site-2b`). Items 
 ## Open after 2b (known gaps)
 
 - **Network overlay** is not built (D-110); the Limitations page says so in a draft line.
-- **Phone tree remounts** when the window crosses 760 px.
+- **Phone tree remounts** when the window crosses 760 px. — **checked in Release 2** (task 2): the run lives in the store, so the e2e test `rotating a phone keeps the run` (390×844 → 844×390 → back) keeps the scenario, Prepared, the Hosted ERP cut and the day; no fix needed.
 - **Two-line-status cards are taller** in s3 and s4.
-- **At 390 px the card band clips** the second card's Cut button.
-- **iOS: a tap outside doesn't close** a pinned provenance popover.
-- **`.guided-kicker` eyebrow** breaks the craft-floor ban on eyebrows.
+- **At 390 px the card band clips** the second card's Cut button. — **done in Release 2** (task 2): phone cards sized to the stage, one across below 480 px and two from 480 to 760 px, with a 40 px peek; e2e `phone card strip never shows a partial control`.
+- **iOS: a tap outside doesn't close** a pinned provenance popover. — **done in Release 2** (task 2): a pinned popover closes on a `pointerdown` outside its tag.
+- **`.guided-kicker` eyebrow** breaks the craft-floor ban on eyebrows. — **done in Release 2** (task 2): sentence case, 13 px, weight 600, `--ink-2`.
 - **Snapshot RenderTextures may allocate MSAA per layer**; measure GPU memory before changing anything.

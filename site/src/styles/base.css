@@ -439,9 +439,12 @@ body {
   }
 
   /*
-   * A horizontally scrolling strip of 210 px cards above the scene. The next card peeks in at the right
+   * A horizontally scrolling strip of cards above the scene. The next card peeks 40 px in at the right
    * edge and fades out there, so the strip reads as one that scrolls (finish B4); the end padding lets
-   * the last card scroll clear of the fade.
+   * the last card scroll clear of the fade. The cards are sized to the stage, one across below 480 px
+   * and two from there, so at the start the peek holds only the next card's glyph edge, never a
+   * control: the 40 px peek is narrower than the space from a card's left edge to its first button.
+   * Each card ends where the 48 px fade begins (16 px lead, 8 px gaps, 40 px peek).
    */
   .site-cards {
     display: flex;
@@ -454,11 +457,17 @@ body {
 
   .site-card-slot {
     display: block;
-    flex: 0 0 210px;
-    width: 210px;
+    flex: 0 0 calc(100cqw - 64px);
+    width: auto;
     height: auto;
     transform: none;
     scroll-snap-align: start;
+  }
+
+  @container (min-width: 480px) {
+    .site-card-slot {
+      flex-basis: calc((100cqw - 72px) / 2);
+    }
   }
 
   /* Under the scene, in reading order (finish B4): the summary strip, the timeline, the legend, the events, the stocks. */

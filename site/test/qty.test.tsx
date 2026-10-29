@@ -114,6 +114,29 @@ describe('Qty', () => {
     expect(tip.hidden).toBe(true);
   });
 
+  it('a tap outside closes a pinned popover', () => {
+    render(<Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine (D-088).' }} />);
+    const tag = screen.getByRole('button', { name: 'assumed value' });
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    // iOS Safari does not focus a tapped button, so the press pins it and no blur ever comes.
+    fireEvent.pointerDown(tag, { pointerType: 'touch' });
+    fireEvent.click(tag);
+    expect(tip.hidden).toBe(false);
+    fireEvent.pointerDown(document.body, { pointerType: 'touch' });
+    expect(tip.hidden).toBe(true);
+  });
+
+  it('a tap inside a pinned popover keeps it open', () => {
+    render(<Qty value={25} kind="mtpa" provenance={{ kind: 'assumed', reasoning: 'A mid-size mine (D-088).' }} />);
+    const tag = screen.getByRole('button', { name: 'assumed value' });
+    const tip = screen.getByRole('tooltip', { hidden: true });
+    fireEvent.pointerDown(tag, { pointerType: 'touch' });
+    fireEvent.click(tag);
+    expect(tip.hidden).toBe(false);
+    fireEvent.pointerDown(tip, { pointerType: 'touch' });
+    expect(tip.hidden).toBe(false);
+  });
+
   it('only one popover is open at a time', () => {
     render(
       <>
