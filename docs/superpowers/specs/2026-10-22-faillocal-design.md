@@ -129,7 +129,8 @@ This is the single architecture; do not build two.
                                                     │
                                                     ▼
              site (TypeScript, Vite, React for UI, PixiJS for the animated scene), static
-             hosted on Cloudflare Pages at a subdomain of the owner's site [user]
+             hosted on Vercel at a subdomain of the owner's site [user]
+             (owner changed from Cloudflare Pages on 29 Oct 2026, D-116)
 ```
 
 - **Engine in TypeScript** so the same code runs in the browser (live assumptions editing) and in the CLI.

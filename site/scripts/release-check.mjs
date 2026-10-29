@@ -1,14 +1,15 @@
 /**
  * Release gate, run after `npm run build` by `npm run release`. Fails while the build still carries a
  * marked placeholder or draft marker, while the link-preview tags are not absolute https:// URLs (the
- * release needs `VITE_SITE_ORIGIN`), while `dist/og.png` is still the placeholder render, or when
- * `dist/_headers` is missing (D-115). Unmarked draft labels are approved through the owner's copy
- * checklist, not here.
+ * release needs `VITE_SITE_ORIGIN`), while `dist/og.png` is still the placeholder render (D-115), or when
+ * the root `vercel.json` is missing or does not carry exactly the rules in `site/public/_headers` (D-116).
+ * Unmarked draft labels are approved through the owner's copy checklist, not here.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseHeaders, vercelHeaderProblems } from './headers.mjs';
 
 /** Strings that mark copy the owner has not yet written or approved. None may ship. */
 export const RELEASE_BLOCKERS = Object.freeze([
@@ -87,13 +88,22 @@ export function checkPreviewTags(html) {
 }
 
 /**
- * A problem when `distDir` has no `_headers` file, without which Cloudflare Pages serves the site
- * with no Content-Security-Policy or other security headers.
- * @param {string} distDir
+ * The problems with the Vercel config at `vercelPath`: it must exist, parse, and carry exactly the rules
+ * in the `_headers` file at `headersPath`. Without it, Vercel serves the site with no Content-Security-Policy
+ * or other security headers (D-116).
+ * @param {string} vercelPath
+ * @param {string} headersPath
  * @returns {string[]}
  */
-export function checkHeadersShipped(distDir) {
-  return existsSync(join(distDir, '_headers')) ? [] : ['dist/_headers is missing'];
+export function checkVercelConfig(vercelPath, headersPath) {
+  if (!existsSync(vercelPath)) return ['vercel.json is missing, so Vercel would serve the site with no security headers'];
+  let vercel;
+  try {
+    vercel = JSON.parse(readFileSync(vercelPath, 'utf8'));
+  } catch (e) {
+    return [`vercel.json is not valid JSON: ${e instanceof Error ? e.message : e}`];
+  }
+  return vercelHeaderProblems(parseHeaders(readFileSync(headersPath, 'utf8')), vercel);
 }
 
 /**
@@ -119,20 +129,23 @@ export function checkPreviewImageRegenerated(distDir, placeholderSha256 = PLACEH
     : [];
 }
 
+const VERCEL_JSON = new URL('../../vercel.json', import.meta.url);
+const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
+
 function main() {
   const distDir = fileURLToPath(new URL('../dist/', import.meta.url));
   const problems = [
     ...checkNoBlockers(distDir),
     ...checkPreviewTags(readFileSync(join(distDir, 'index.html'), 'utf8')),
     ...checkPreviewImageRegenerated(distDir),
-    ...checkHeadersShipped(distDir),
+    ...checkVercelConfig(fileURLToPath(VERCEL_JSON), fileURLToPath(HEADERS_FILE)),
   ];
   if (problems.length) {
     console.error(`release-check: FAILED\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);
   }
   console.log(
-    'release-check: ok — no marked placeholder or draft marker; link-preview URLs are absolute https://; og.png is regenerated; dist/_headers is present',
+    'release-check: ok — no marked placeholder or draft marker; link-preview URLs are absolute https://; og.png is regenerated; vercel.json carries the _headers rules',
   );
 }
 

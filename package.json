@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "workspaces": ["engine", "site"],
-  "engines": { "node": ">=22" },
+  "engines": { "node": "22.x" },
   "scripts": {
     "test": "npm test -w engine && npm test -w site",
     "typecheck": "tsc --noEmit -p engine && npm run typecheck -w site",

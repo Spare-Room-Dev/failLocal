@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Delegated: the owner left the choice to the designer, recorded in `docs/superpowers/specs/2026-10-22-faillocal-design.md` §6. TypeScript + Vite, React for UI chrome and panels, PixiJS for the animated site scene. All art is vector drawn in code (PixiJS graphics / SVG): no bitmap, AI-generated, bought or commissioned imagery. It is a static site on Cloudflare Pages at a subdomain of the owner's personal site (the domain is not yet known).
+Delegated: the owner left the choice to the designer, recorded in `docs/superpowers/specs/2026-10-22-faillocal-design.md` §6. TypeScript + Vite, React for UI chrome and panels, PixiJS for the animated site scene. All art is vector drawn in code (PixiJS graphics / SVG): no bitmap, AI-generated, bought or commissioned imagery. It is a static site on Vercel at a subdomain of the owner's personal site, `faillocal.spareroomdev.com` (the owner changed from Cloudflare Pages on 29 Oct 2026, D-116).
 
 ## Users
 

@@ -78,25 +78,25 @@ describe('AssumptionCaveat', () => {
     expect(untaggedNumbers(guided)).toEqual([]);
   });
 
-  test('the Limitations caveat carries the same "Draft copy" marker as the guided run', () => {
+  test('neither the Limitations caveat nor the guided run carries a draft marker', () => {
     const { container } = render(<LimitsPage />);
     const item = container.querySelector('.assumption-caveat')!.closest('li')!;
-    const marker = item.querySelector('.draft-marker');
-    expect(marker?.textContent).toBe('Draft copy');
+    expect(item.querySelector('.draft-marker')).toBeNull();
+    expect(item.textContent).not.toContain('Draft copy');
     cleanup();
     const guided = guidedCaveat().closest('[data-step="comparison"]')!;
-    expect(guided.querySelector('.draft-marker')?.textContent).toBe('Draft copy');
+    expect(guided.querySelector('.draft-marker')).toBeNull();
+    expect(guided.textContent).not.toContain('Draft copy');
   });
 
   test('prints no threshold figure', () => {
     expect(limitsCaveat().textContent).not.toMatch(/10 hours|9 days/);
   });
 
-  test("the comparison card's labels sit inside the Draft copy marker", () => {
+  test("the comparison card's totals and caveat sit in its caption region", () => {
     guidedCaveat();
-    const draft = document.querySelector('[data-step="comparison"] .guided-draft-region')!;
-    expect(draft.querySelector('.draft-marker')?.textContent).toBe('Draft copy');
-    expect(draft.querySelector('.guided-totals')).not.toBeNull();
-    expect(draft.querySelector('.assumption-caveat')).not.toBeNull();
+    const region = document.querySelector('[data-step="comparison"] .guided-card .guided-captions')!;
+    expect(region.querySelector('.guided-totals')).not.toBeNull();
+    expect(region.querySelector('.assumption-caveat')).not.toBeNull();
   });
 });

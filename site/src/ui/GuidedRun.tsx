@@ -131,7 +131,6 @@ function GuidedSession({ register }: { register: Register }) {
         <ComparisonCard register={register} sources={sources} />
       ) : (
         <div className="guided-captions">
-          <span className="draft-marker">Draft copy</span>
           <p className="guided-caption" aria-live="polite">
             <Caption parts={step.caption(stepRun(register, step))} sources={sources} />
           </p>
@@ -175,8 +174,7 @@ function ComparisonCard({ register, sources }: { register: Register; sources: So
   const c = useMemo(() => comparison(register), [register]);
   return (
     <div className="guided-card">
-      <div className="guided-captions guided-draft-region">
-        <span className="draft-marker">Draft copy</span>
+      <div className="guided-captions">
         <dl className="guided-totals">
           <div>
             <dt>Revenue at risk, unprepared</dt>

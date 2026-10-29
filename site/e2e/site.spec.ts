@@ -53,7 +53,7 @@ test('guided run plays and ends on the comparison', async ({ page }) => {
   await expect(caveat).toContainText('This projection rests on two assumed numbers');
   await expect(caveat.locator('[data-quantity]')).toHaveCount(2);
   for (const qty of await caveat.locator('[data-quantity]').all()) await expect(qty).toContainText('assumed');
-  await expect(guided.locator('.guided-draft-region .guided-totals')).toBeVisible();
+  await expect(guided.locator('.guided-card .guided-captions .guided-totals')).toBeVisible();
 });
 
 test('free play: cut hosted-erp, scrub to day 13, haulage reads Stopped', async ({ page }) => {

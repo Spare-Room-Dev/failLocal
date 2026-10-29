@@ -25,9 +25,8 @@ export const EXTRA_ALLOWED_URLS = [
   'http://www.w3.org/1998/Math/MathML',
   // React 19's production error-decoder prefix, in thrown error messages.
   'https://react.dev/errors/',
-  // Temporary: the Limits page's decision-log link, a placeholder until the repo is public
-  // (owner gate 5). Replace this entry with the real URL when the link is filled in.
-  'https://github.com/[owner]/faillocal/blob/main/docs/decisions.md',
+  // The Limits page's decision-log link, in the site's public repository.
+  'https://github.com/Spare-Room-Dev/failLocal/blob/main/docs/decisions.md',
   // zod 4 JSON Schema dialect identifier, never fetched.
   'https://json-schema.org/draft/2020-12/schema',
   // zod 4 JSON Schema dialect identifier, never fetched.

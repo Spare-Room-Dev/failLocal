@@ -15,9 +15,10 @@ import {
   gzippedJsBytes,
   isAllowedUrl,
 } from '../scripts/check-build.mjs';
-import { parseHeaders } from '../scripts/headers.mjs';
+import { parseHeaders, vercelHeaderProblems } from '../scripts/headers.mjs';
 
 const HEADERS_FILE = new URL('../public/_headers', import.meta.url);
+const VERCEL_JSON = new URL('../../vercel.json', import.meta.url);
 const INDEX_HTML = new URL('../index.html', import.meta.url);
 const OG_PNG = new URL('../public/og.png', import.meta.url);
 
@@ -53,6 +54,63 @@ test('headers file carries the exact security headers', () => {
       'Cross-Origin-Resource-Policy': 'same-origin',
     },
     '/assets/*': { 'Cache-Control': 'public, max-age=31536000, immutable' },
+  });
+});
+
+test('vercel.json carries exactly the _headers rules', () => {
+  const rules = parseHeaders(readFileSync(HEADERS_FILE, 'utf8'));
+  const vercel = JSON.parse(readFileSync(VERCEL_JSON, 'utf8'));
+  expect(vercelHeaderProblems(rules, vercel)).toEqual([]);
+  // Every rule, header for header, in Vercel's own shape: `*` in a `_headers` path is `(.*)` in a source.
+  expect(vercel.headers).toEqual(
+    Object.entries(rules).map(([path, headers]) => ({
+      source: path.replaceAll('*', '(.*)'),
+      headers: Object.entries(headers).map(([key, value]) => ({ key, value })),
+    })),
+  );
+});
+
+describe('vercelHeaderProblems', () => {
+  const rules = { '/*': { A: '1', B: '2' }, '/assets/*': { C: '3' } };
+  const rule = (source: string, headers: Record<string, string>) => ({
+    source,
+    headers: Object.entries(headers).map(([key, value]) => ({ key, value })),
+  });
+  const matching = { headers: [rule('/(.*)', { A: '1', B: '2' }), rule('/assets/(.*)', { C: '3' })] };
+
+  test('a matching config has no problems', () => {
+    expect(vercelHeaderProblems(rules, matching)).toEqual([]);
+  });
+
+  test('a changed, missing or extra header is a problem', () => {
+    expect(vercelHeaderProblems(rules, { headers: [rule('/(.*)', { A: '9', B: '2' }), matching.headers[1]] })).toEqual([
+      'vercel.json /(.*) sends A: 9, but _headers /* sends A: 1',
+    ]);
+    expect(vercelHeaderProblems(rules, { headers: [rule('/(.*)', { A: '1' }), matching.headers[1]] })).toEqual([
+      'vercel.json /(.*) is missing B: 2 from _headers /*',
+    ]);
+    expect(vercelHeaderProblems(rules, { headers: [rule('/(.*)', { A: '1', B: '2', D: '4' }), matching.headers[1]] })).toEqual([
+      'vercel.json /(.*) sends D, which _headers /* does not',
+    ]);
+  });
+
+  test('a missing, extra or reordered rule is a problem', () => {
+    expect(vercelHeaderProblems(rules, { headers: [matching.headers[0]] })).toEqual([
+      'vercel.json header sources are ["/(.*)"], but _headers needs ["/(.*)","/assets/(.*)"]',
+    ]);
+    expect(vercelHeaderProblems(rules, { headers: [matching.headers[1], matching.headers[0]] })).toEqual([
+      'vercel.json header sources are ["/assets/(.*)","/(.*)"], but _headers needs ["/(.*)","/assets/(.*)"]',
+    ]);
+    expect(vercelHeaderProblems(rules, {})).toEqual(['vercel.json has no headers list']);
+  });
+
+  test('a duplicate key or a condition on a rule is a problem', () => {
+    const dup = { source: '/(.*)', headers: [{ key: 'A', value: '1' }, { key: 'A', value: '1' }, { key: 'B', value: '2' }] };
+    expect(vercelHeaderProblems(rules, { headers: [dup, matching.headers[1]] })).toEqual(['vercel.json /(.*) sends A twice']);
+    const conditional = { ...matching.headers[0], has: [{ type: 'query', key: 'x' }] };
+    expect(vercelHeaderProblems(rules, { headers: [conditional, matching.headers[1]] })).toEqual([
+      'vercel.json /(.*) has a condition (has), which _headers cannot express',
+    ]);
   });
 });
 

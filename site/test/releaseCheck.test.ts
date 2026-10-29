@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { PLACEHOLDER_OG_SHA256, RELEASE_BLOCKERS, checkHeadersShipped, checkNoBlockers, checkPreviewImageRegenerated, checkPreviewTags } from '../scripts/release-check.mjs';
+import { PLACEHOLDER_OG_SHA256, RELEASE_BLOCKERS, checkNoBlockers, checkPreviewImageRegenerated, checkPreviewTags, checkVercelConfig } from '../scripts/release-check.mjs';
 
 /** A throwaway `dist/` holding `files` (path → contents). */
 function fixtureDist(files: Record<string, string | Buffer>): string {
@@ -75,9 +75,19 @@ test('release-check requires absolute preview URLs', () => {
   ]);
 });
 
-test('release-check requires the headers file', () => {
-  expect(checkHeadersShipped(fixtureDist({ '_headers': '/*\n  X-Content-Type-Options: nosniff\n', 'index.html': '' }))).toEqual([]);
-  expect(checkHeadersShipped(fixtureDist({ 'index.html': '' }))).toEqual(['dist/_headers is missing']);
+test('release-check requires vercel.json to carry the _headers rules', () => {
+  const headers = '/*\n  X-Content-Type-Options: nosniff\n';
+  const vercel = (value: string) =>
+    JSON.stringify({ headers: [{ source: '/(.*)', headers: [{ key: 'X-Content-Type-Options', value }] }] });
+  const dir = (files: Record<string, string>) => fixtureDist({ '_headers': headers, ...files });
+  const check = (d: string) => checkVercelConfig(join(d, 'vercel.json'), join(d, '_headers'));
+
+  expect(check(dir({ 'vercel.json': vercel('nosniff') }))).toEqual([]);
+  expect(check(dir({}))).toEqual(['vercel.json is missing, so Vercel would serve the site with no security headers']);
+  expect(check(dir({ 'vercel.json': '{ not json' }))[0]).toMatch(/^vercel\.json is not valid JSON: /);
+  expect(check(dir({ 'vercel.json': vercel('sniff') }))).toEqual([
+    'vercel.json /(.*) sends X-Content-Type-Options: sniff, but _headers /* sends X-Content-Type-Options: nosniff',
+  ]);
 });
 
 test('release-check requires og.png to be made again after the byline lands', () => {

@@ -51,21 +51,6 @@ body {
   border: 0;
 }
 
-/* "Draft copy": marks text the owner has yet to approve (the guided captions, the assumption caveat). */
-.draft-marker {
-  display: inline-block;
-  align-self: flex-start;
-  padding: 1px 6px;
-  border: 1px dashed var(--line-2);
-  border-radius: 3px;
-  color: var(--ink-3);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
 /*
  * The site's app frame (DESIGN.md "Layout"). Desktop: a 60 px top bar, the stage and a 92 px
  * timeline strip (186 px day and play / flexible axis / 250 px stocks), with the 372 px detail

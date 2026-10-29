@@ -74,7 +74,7 @@ const totalCaption = (lead: string) => (t: Timeline): CaptionParts => [
   ' of revenue at risk.',
 ];
 
-/** Draft copy (the owner approves it at the Task 12 gate). */
+/** The captions, as the owner approved them (Release 2 copy review). */
 const CAPTIONS = {
   start: (): CaptionParts => [
     { date: '2026-05', text: 'May 2026' },

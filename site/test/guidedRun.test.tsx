@@ -80,9 +80,10 @@ describe('GuidedRun', () => {
     });
   });
 
-  test('captions carry a draft marker and the 12 days as a sourced quantity', () => {
+  test('captions carry no draft marker and the 12 days as a sourced quantity', () => {
     const { container } = startGuided();
-    expect(screen.getByText('Draft copy')).toBeTruthy();
+    expect(screen.queryByText('Draft copy')).toBeNull();
+    expect(container.querySelector('.draft-marker')).toBeNull();
     expect(screen.getByText(/What really happened/)).toBeTruthy();
     expect(section().querySelector('time[datetime="2026-05"]')?.textContent).toBe('May 2026');
     expect(untaggedNumbers(container)).toEqual([]);

@@ -48,11 +48,11 @@ describe('pages', () => {
     expect(window.location.hash).toBe('#/site');
   });
 
-  test('welcome keeps the name placeholder and a non-interactive scene', () => {
+  test('welcome carries the owner\'s byline and a non-interactive scene', () => {
     const { container } = render(<App />);
     expect(welcome()).toBeTruthy();
-    const byline = screen.getByText((_, el) => el?.tagName === 'P' && /^Built by \[Your name\], cyber security graduate, Perth · How I built this →$/.test(el.textContent ?? ''));
-    expect(byline.querySelector('.placeholder')!.textContent).toBe('[Your name]');
+    const byline = screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Built by Rob Porter, cyber security graduate, Perth · How I built this →');
+    expect(byline.querySelector('.placeholder')).toBeNull();
     expect(screen.getByRole('link', { name: 'How I built this →' }).getAttribute('href')).toBe('#/built');
     expect(screen.getByRole('link', { name: 'Sources →' }).getAttribute('href')).toBe('#/sources');
     expect(screen.queryByText(/walkthrough/i)).toBeNull();
@@ -90,10 +90,12 @@ describe('pages', () => {
     }
   });
 
-  test('built page shows the draft banner', () => {
+  test('built page carries the owner\'s approved copy, with no draft banner or placeholder', () => {
     go('#/built');
-    render(<App />);
-    expect(screen.getByText('Draft — awaiting owner review')).toBeTruthy();
+    const { container } = render(<App />);
+    expect(screen.queryByText(/awaiting owner review/)).toBeNull();
+    expect(container.querySelector('.draft-banner, .placeholder')).toBeNull();
+    expect(container.textContent).not.toMatch(/\[Placeholder/);
     expect(screen.getAllByText(/Claude Code/).length).toBeGreaterThan(0);
     expect(
       screen.getByText(
@@ -101,23 +103,37 @@ describe('pages', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/every judgement call in the model/)).toBeNull();
-    const review = screen.getByText('[Placeholder: whole-branch review — confirm once done]');
-    expect(review.classList.contains('placeholder')).toBe(true);
-    expect(screen.queryByText('A review of the whole branch before release.')).toBeNull();
+    expect(screen.getByText('A final reviewer read each release\u2019s changes together before it shipped.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'I expected the danger to be someone in the plant controls. In the Scope Systems case the plants were fine; what stopped work was losing ordinary business systems like ordering and payroll. And getting them back wasn\u2019t the end: in the model, backlogs, a purchasing hold and delivery times keep the site short of fuel for days after the restore.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Claude Code proposed the options and I made the calls, such as holding purchasing after a restore and adding delivery times. What I\u2019d pass on: make the agent write every decision down with its reasoning, because if you can\u2019t explain a decision, you don\u2019t own it.',
+      ),
+    ).toBeTruthy();
   });
 
-  test('limits page names the delivery-rate limit and the placeholder decision log', () => {
+  test('limits page names the delivery-rate limit and links the public decision log', () => {
     go('#/limits');
-    render(<App />);
+    const { container } = render(<App />);
     expect(screen.getByText('Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.')).toBeTruthy();
     // One in the assumption caveat, one in the closing line.
     const logs = screen.getAllByRole('link', { name: /decision log/i });
     expect(logs).toHaveLength(2);
-    for (const log of logs) expect(log.getAttribute('href')).toBe('https://github.com/[owner]/faillocal/blob/main/docs/decisions.md');
-    expect(screen.getByText(/placeholder until the repo is public/i)).toBeTruthy();
-    // The deferred network view is stated, as draft copy (D-110, ruling R-x).
+    for (const log of logs) expect(log.getAttribute('href')).toBe('https://github.com/Spare-Room-Dev/failLocal/blob/main/docs/decisions.md');
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Every modelling choice, and why it was made, is in the decision log.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/placeholder until/i)).toBeNull();
+    // The deferred network view is stated (D-110, ruling R-x), as approved copy with no draft marker.
     const network = screen.getByText(/The network view is not built yet\./).closest('li')!;
-    expect(within(network).getByText('Draft copy').classList.contains('draft-marker')).toBe(true);
+    expect(network.textContent).toBe(
+      'The network view is not built yet. The cables and entry posts show which outside services the site depends on, but not how each service\u2019s network runs across the site.',
+    );
+    expect(container.querySelector('.draft-marker, .placeholder')).toBeNull();
   });
 
   test('landing on the site in welcome mode enters free play', () => {

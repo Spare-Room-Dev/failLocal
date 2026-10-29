@@ -37,20 +37,6 @@
   color: var(--ink);
 }
 
-.placeholder {
-  background: var(--state-wash);
-  outline: 1px dashed var(--ink-3);
-  outline-offset: 1px;
-}
-
-.draft-banner {
-  margin: 16px 0 0;
-  padding: 8px 12px;
-  border: 1px dashed var(--ink);
-  background: var(--state-wash);
-  font-weight: 700;
-}
-
 /* Welcome */
 /*
  * The welcome page runs the full width (DESIGN.md Layout, Landing): the copy sits in a 546 px column with a

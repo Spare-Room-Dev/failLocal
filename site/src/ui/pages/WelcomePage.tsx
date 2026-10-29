@@ -68,7 +68,7 @@ export function WelcomePage() {
             Sheet. <a href={hrefOf('sources')}>Sources →</a>
           </p>
           <p className="small-print byline">
-            Built by <span className="placeholder">[Your name]</span>, cyber security graduate, Perth ·{' '}
+            Built by Rob Porter, cyber security graduate, Perth ·{' '}
             <a href={hrefOf('built')}>How I built this →</a>
           </p>
         </div>

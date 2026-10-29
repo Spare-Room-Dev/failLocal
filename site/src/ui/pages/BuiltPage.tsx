@@ -1,10 +1,7 @@
-/** Draft copy for the owner to review and rewrite in their own words at the release gate. */
+/** How the site was made and checked, in the owner's words (approved in the Release 2 copy review). */
 export function BuiltPage() {
   return (
     <article className="page">
-      <p className="draft-banner" role="note">
-        Draft — awaiting owner review
-      </p>
       <h1>How I built this</h1>
       <p>
         I set the goals for FailLocal and the honesty rules it follows, and I approved the design before it was built.
@@ -21,7 +18,7 @@ export function BuiltPage() {
       <ul>
         <li>Automated tests on the simulation engine and on this site, including the wording and provenance rules.</li>
         <li>An independent reviewer read every task&rsquo;s changes before it was accepted.</li>
-        <li className="placeholder">[Placeholder: whole-branch review — confirm once done]</li>
+        <li>A final reviewer read each release&rsquo;s changes together before it shipped.</li>
         <li>
           A decision log, <code>docs/decisions.md</code>, records each modelling choice, the reasoning behind it and
           where its numbers come from.
@@ -29,12 +26,16 @@ export function BuiltPage() {
       </ul>
       <h2>What I learned</h2>
       <ul>
-        <li className="placeholder">
-          [Placeholder for the owner: what building this taught you about how a mine depends on services outside its
-          fence.]
+        <li>
+          I expected the danger to be someone in the plant controls. In the Scope Systems case the plants were fine;
+          what stopped work was losing ordinary business systems like ordering and payroll. And getting them back
+          wasn&rsquo;t the end: in the model, backlogs, a purchasing hold and delivery times keep the site short of fuel
+          for days after the restore.
         </li>
-        <li className="placeholder">
-          [Placeholder for the owner: what you learned about directing an AI coding agent and checking its work.]
+        <li>
+          Claude Code proposed the options and I made the calls, such as holding purchasing after a restore and adding
+          delivery times. What I&rsquo;d pass on: make the agent write every decision down with its reasoning, because
+          if you can&rsquo;t explain a decision, you don&rsquo;t own it.
         </li>
       </ul>
     </article>

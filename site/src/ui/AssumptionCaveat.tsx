@@ -24,7 +24,7 @@ function assumed(used: Record<string, UsedInput>, path: string): UsedInput & { k
 }
 
 /**
- * Draft copy. The two assumed numbers the hosted-ERP projection's revenue figure rests on, each with
+ * The two assumed numbers the hosted-ERP projection's revenue figure rests on, each with
  * its tag. The guided run's closing card and the Limitations page both show this, so they cannot
  * disagree.
  */

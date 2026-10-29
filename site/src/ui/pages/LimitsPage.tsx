@@ -17,18 +17,17 @@ export function LimitsPage() {
         <li>This is a fictional site with synthetic data.</li>
         <li>Lab timings are not comparable with timings on a real site.</li>
         <li>
-          <span className="limits-scenario">{title}.</span> <span className="draft-marker">Draft copy</span>{' '}
+          <span className="limits-scenario">{title}.</span>{' '}
           <AssumptionCaveat assumptionsUsed={caveatInputs(register)} sources={sources} />
         </li>
         <li>Lead times model delivery delay, not delivery rate; there is no delivery-rate modelling.</li>
         <li>
-          <span className="draft-marker">Draft copy</span> The network view is not built yet. The cables and entry posts show
+          The network view is not built yet. The cables and entry posts show
           which outside services the site depends on, but not how each service&rsquo;s network runs across the site.
         </li>
       </ul>
       <p>
-        Every modelling choice, and why it was made, is in the <a href={DECISION_LOG} rel="noopener noreferrer">decision log</a>{' '}
-        <span className="placeholder">(placeholder until the repo is public)</span>.
+        Every modelling choice, and why it was made, is in the <a href={DECISION_LOG} rel="noopener noreferrer">decision log</a>.
       </p>
     </article>
   );
