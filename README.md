@@ -36,6 +36,7 @@ npm run e2e -w site     # build, preview under the deployed headers, and run the
 Adding `?e2e` to the URL installs a test hook, `window.__faillocal`, that only changes playback speed, for the end-to-end tests.
 The build guard fails the build on inline script or style in `index.html`, on any URL other than the register's sources (and a short list of library namespace strings), on more than 450 KB of gzipped JS (D-104), and on a bundle that carries the YAML parser (the register ships as prebuilt JSON).
 Deployment is the static `site/dist` folder on Cloudflare Pages; `site/public/_headers` is copied into it and sets the Content-Security-Policy and other security headers for every path.
+Every page also sends `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` set to `same-origin`, and the fingerprinted files under `/assets/` are cached for a year as immutable (D-113).
 
 Every judgement and assumed value in the register is explained in [docs/decisions.md](docs/decisions.md).
 Licensed under Apache-2.0.

@@ -384,6 +384,47 @@ test('the site runs under the deployed CSP', async ({ page }) => {
   expect(await violations()).toEqual([]);
 });
 
+test('no CSP violation through welcome, guided run and free play', async ({ page }, info) => {
+  test.skip(!['desktop', 'phone'].includes(info.project.name), 'desktop and phone');
+  // Listen before any page script runs, so violations during module evaluation and first paint count too.
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __csp: string[] }).__csp = seen;
+    document.addEventListener('securitypolicyviolation', (e) => seen.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  const cspErrors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error' && m.text().includes('Content Security Policy')) cspErrors.push(m.text());
+  });
+
+  const response = await page.goto('/?e2e#/');
+  expect(response!.headers()['cross-origin-opener-policy']).toBe('same-origin');
+  await page.evaluate((scale) => {
+    window.__faillocal!.timeScale = scale;
+  }, TIME_SCALE);
+
+  await page.getByRole('button', { name: 'Show me the site' }).click();
+  const guided = page.getByRole('region', { name: 'Guided run' });
+  await expect(guided).toHaveAttribute('data-step', 'comparison', { timeout: 20_000 });
+  await guided.getByRole('button', { name: 'Explore it yourself' }).click();
+  await expect(page.getByRole('region', { name: 'Free play' }).filter({ visible: true })).toBeVisible();
+
+  // Free play opens on s1-projection, whose own hosted-erp cut shows as Restore; restore it, then cut it plainly.
+  await page.getByRole('button', { name: 'Restore Hosted ERP' }).click();
+  await page.getByRole('button', { name: 'Cut Hosted ERP' }).click();
+  await expect(page.getByRole('button', { name: 'Restore Hosted ERP' })).toHaveAttribute('aria-pressed', 'true');
+  const prepared = page.getByRole('button', { name: 'Prepared', exact: true });
+  await prepared.click();
+  await expect(prepared).toHaveAttribute('aria-pressed', 'true');
+
+  const tag = page.locator('.revenue-working').filter({ visible: true }).getByRole('button', { name: 'sourced value' }).first();
+  await tag.focus();
+  await expect(page.locator(`#${await tag.getAttribute('aria-describedby')}`)).toBeVisible();
+
+  expect(await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp)).toEqual([]);
+  expect(cspErrors).toEqual([]);
+});
+
 // --- The diorama's DOM layer at each width (task 7) ---------------------------------------------------
 
 type Rect = { x: number; y: number; w: number; h: number };

@@ -37,17 +37,20 @@ function fixtureDist(files: Record<string, string>): string {
   return dir;
 }
 
-test('headers file carries the exact CSP', () => {
+test('headers file carries the exact security headers', () => {
   const headers = parseHeaders(readFileSync(HEADERS_FILE, 'utf8'));
   expect(headers).toEqual({
     '/*': {
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
     },
+    '/assets/*': { 'Cache-Control': 'public, max-age=31536000, immutable' },
   });
 });
 
