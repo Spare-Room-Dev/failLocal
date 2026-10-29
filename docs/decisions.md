@@ -775,7 +775,7 @@ Entries are grouped by topic, so their numbers are not always in order. Each ent
 - **Owner change:**
 
 ## D-107 The engine's YAML loader is a separate entry point
-- **Decision:** `loadRegisterYaml` moved from `@faillocal/engine` to `@faillocal/engine/yaml`, behind the engine package's `exports` map. The site imports the register as JSON compiled at build time, so its bundle carries no YAML parser; the build guard fails any bundle that does. (Made in Plan 2b Task 2, commit 93787ca.)
+- **Decision:** `loadRegisterYaml` moved from `@faillocal/engine` to `@faillocal/engine/yaml`, behind the engine package's `exports` map. The site imports the register as JSON compiled at build time, so its bundle carries no YAML parser; the build guard fails any bundle that does. (Made in Plan 2b Task 2, commit 32149d5.)
 - **Reasoning:** The YAML parser was about a fifth of the site's JavaScript and parsed one file that never changes at runtime. Moving it behind its own entry point keeps the CLI and tests reading YAML while the browser never downloads the parser.
 - **Source / provenance:** measured (site build: 153.5 KB to 123.2 KB gzipped)
 - **Owner change:**
